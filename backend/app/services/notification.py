@@ -1,7 +1,7 @@
 """
 告警通知发送服务
 
-提供邮件（SMTP）和钉钉机器人两种通知渠道，
+提供邮件（SMTP）、钉钉机器人、企业微信机器人和飞书机器人四种通知渠道，
 以及组合发送的 NotificationService。
 """
 
@@ -219,10 +219,87 @@ class WeComNotifier:
             return False
 
 
+class FeishuNotifier:
+    """飞书机器人通知发送器
+
+    通过飞书自定义机器人 Webhook 发送富文本消息。
+    使用 httpx 异步发送 POST 请求。
+    https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot
+    """
+
+    def __init__(self) -> None:
+        self.webhook_url: str = getattr(settings, "FEISHU_WEBHOOK_URL", "")
+
+    async def send(self, message: str) -> bool:
+        """发送飞书机器人消息
+
+        消息格式为 Interactive（卡片消息），支持 Markdown 子集。
+
+        Args:
+            message: Markdown 格式消息内容
+
+        Returns:
+            bool: 发送成功返回 True，否则返回 False
+        """
+        if not self.webhook_url:
+            logger.warning("Feishu webhook URL not configured, skipping")
+            return False
+
+        payload = {
+            "msg_type": "interactive",
+            "card": {
+                "header": {
+                    "title": {
+                        "tag": "plain_text",
+                        "content": "SQL Monitor Alert",
+                    },
+                    "template": "red",
+                },
+                "elements": [
+                    {
+                        "tag": "markdown",
+                        "content": message,
+                    }
+                ],
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(self.webhook_url, json=payload)
+                resp.raise_for_status()
+                result = resp.json()
+
+                if result.get("code") == 0:
+                    logger.info("Feishu notification sent successfully")
+                    return True
+
+                logger.error(
+                    "Feishu API returned error: code=%s, msg=%s",
+                    result.get("code"),
+                    result.get("msg"),
+                )
+                return False
+
+        except httpx.TimeoutException:
+            logger.error("Feishu webhook request timed out")
+            return False
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Feishu webhook returned HTTP %s: %s",
+                e.response.status_code,
+                e.response.text,
+            )
+            return False
+        except httpx.RequestError as e:
+            logger.error("Feishu webhook request failed: %s", e)
+            return False
+
+
 class NotificationService:
     """组合通知服务
 
-    整合 EmailNotifier、DingTalkNotifier 和 WeComNotifier，
+    整合 EmailNotifier、DingTalkNotifier、WeComNotifier 和 FeishuNotifier，
     提供一次性发送所有渠道通知和按渠道单独发送的便捷方法。
     """
 
@@ -230,12 +307,13 @@ class NotificationService:
         self.email_notifier = EmailNotifier()
         self.dingtalk_notifier = DingTalkNotifier()
         self.wecom_notifier = WeComNotifier()
+        self.feishu_notifier = FeishuNotifier()
 
     async def send_webhook(self, channel: str, message: str) -> bool:
         """按指定渠道发送 Webhook 通知
 
         Args:
-            channel: 通知渠道 ("dingtalk" / "wecom")
+            channel: 通知渠道 ("dingtalk" / "wecom" / "feishu")
             message: Markdown 格式消息内容
 
         Returns:
@@ -245,6 +323,8 @@ class NotificationService:
             return await self.dingtalk_notifier.send(message)
         elif channel == "wecom":
             return await self.wecom_notifier.send(message)
+        elif channel == "feishu":
+            return await self.feishu_notifier.send(message)
         else:
             logger.warning("Unknown webhook channel: %s", channel)
             return False
@@ -258,12 +338,13 @@ class NotificationService:
 
         Returns:
             dict: 各渠道发送结果，格式:
-                {"email": True/False, "dingtalk": True/False, "wecom": True/False}
+                {"email": True/False, "dingtalk": True/False, "wecom": True/False, "feishu": True/False}
         """
         result: Dict[str, bool] = {
             "email": False,
             "dingtalk": False,
             "wecom": False,
+            "feishu": False,
         }
 
         # 邮件同步发送
@@ -274,5 +355,8 @@ class NotificationService:
 
         # 企业微信异步发送
         result["wecom"] = await self.wecom_notifier.send(body)
+
+        # 飞书异步发送
+        result["feishu"] = await self.feishu_notifier.send(body)
 
         return result

@@ -16,19 +16,31 @@
           </div>
         </div>
         <div class="toolbar-group" v-if="timePreset === 'custom'">
-          <label class="toolbar-label">开始</label>
-          <input type="datetime-local" v-model="customStart" class="date-input" />
-          <label class="toolbar-label" style="margin-left:8px">结束</label>
-          <input type="datetime-local" v-model="customEnd" class="date-input" />
+          <label class="toolbar-label">起止</label>
+          <div class="custom-range">
+            <input type="datetime-local" v-model="customStart" class="date-input" />
+            <span class="date-sep">→</span>
+            <input type="datetime-local" v-model="customEnd" class="date-input" />
+          </div>
         </div>
+        <div class="toolbar-spacer"></div>
         <button class="btn-primary" :disabled="loading" @click="generateReport">
           <span v-if="loading" class="btn-loading-icon"></span>
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
           {{ loading ? '生成中...' : '生成报告' }}
         </button>
         <button class="btn-secondary" :disabled="!reportData || exporting" @click="exportPDF">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
           {{ exporting ? '导出中...' : '导出PDF' }}
         </button>
-        <button class="btn-secondary" @click="showHistory = !showHistory">
+        <button class="btn-secondary" @click="showHistory = true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
           历史记录
         </button>
       </div>
@@ -37,11 +49,16 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <p>正在生成报告，请稍候...</p>
+      <p class="loading-text">正在生成报告，请稍候...</p>
     </div>
 
     <!-- 错误状态 -->
     <div v-else-if="error" class="error-state">
+      <div class="error-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
       <p class="error-text">{{ error }}</p>
       <button class="btn-primary" @click="generateReport">重新生成</button>
     </div>
@@ -49,46 +66,83 @@
     <!-- 报告内容 -->
     <div v-else-if="reportData" id="report-content" class="report-content">
       <div class="report-header">
-        <h1 class="report-title">SQL 监控平台 - 系统性能分析报告</h1>
+        <div class="report-header-bar"></div>
+        <h1 class="report-title">SQL 监控平台 · 系统性能分析报告</h1>
         <p class="report-period">
-          报告周期：{{ formatPeriod(reportData.start_time, reportData.end_time) }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          {{ formatPeriod(reportData.start_time, reportData.end_time) }}
         </p>
-        <p class="report-generated-at">
-          生成时间：{{ formatDateTime(new Date().toISOString(), { second: true }) }}
-        </p>
+        <p class="report-generated-at">生成时间：{{ formatDateTime(new Date().toISOString(), { second: true }) }}</p>
       </div>
 
       <!-- 概览摘要卡片 -->
       <section class="report-section">
-        <h2 class="section-title">概览摘要</h2>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">概览摘要</h2>
+        </div>
         <div class="summary-grid">
           <div class="summary-card">
+            <div class="card-icon-wrap icon-blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/>
+              </svg>
+            </div>
             <span class="card-label">CPU 使用率</span>
             <span class="card-value" :class="valueColor(reportData.summary.cpu_usage, 80)">
-              {{ formatNum(reportData.summary.cpu_usage) }}%
+              {{ formatNum(reportData.summary.cpu_usage) }}<span class="unit">%</span>
             </span>
           </div>
           <div class="summary-card">
-            <span class="card-label">内存使用量</span>
-            <span class="card-value">{{ formatNum(reportData.summary.sql_server_memory_mb) }} MB</span>
+            <div class="card-icon-wrap icon-green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 19V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
+              </svg>
+            </div>
+            <span class="card-label">内存使用</span>
+            <span class="card-value">
+              {{ formatNum(reportData.summary.sql_server_memory_mb) }}<span class="unit">MB</span>
+            </span>
           </div>
           <div class="summary-card">
-            <span class="card-label">活跃连接数</span>
+            <div class="card-icon-wrap icon-orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <span class="card-label">活跃连接</span>
             <span class="card-value">{{ reportData.summary.active_sessions ?? '-' }}</span>
           </div>
           <div class="summary-card">
+            <div class="card-icon-wrap icon-purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12A10 10 0 1 1 12 2v10z"/><path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" fill-opacity="0.3"/>
+              </svg>
+            </div>
             <span class="card-label">缓存命中率</span>
             <span class="card-value" :class="valueColor(reportData.summary.buffer_cache_hit_ratio, 95, true)">
-              {{ formatNum(reportData.summary.buffer_cache_hit_ratio) }}%
+              {{ formatNum(reportData.summary.buffer_cache_hit_ratio) }}<span class="unit">%</span>
             </span>
           </div>
           <div class="summary-card">
+            <div class="card-icon-wrap" :class="reportData.deadlocks.total_count > 0 ? 'icon-red' : 'icon-grey'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
             <span class="card-label">死锁次数</span>
             <span class="card-value" :class="reportData.deadlocks.total_count > 0 ? 'value-warn' : ''">
               {{ reportData.deadlocks.total_count }}
             </span>
           </div>
           <div class="summary-card">
+            <div class="card-icon-wrap" :class="reportData.slow_queries.total_count > 0 ? 'icon-red' : 'icon-grey'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
             <span class="card-label">慢查询数</span>
             <span class="card-value" :class="reportData.slow_queries.total_count > 0 ? 'value-warn' : ''">
               {{ reportData.slow_queries.total_count }}
@@ -99,25 +153,45 @@
 
       <!-- 性能趋势图表 -->
       <section class="report-section">
-        <h2 class="section-title">性能趋势</h2>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">性能趋势</h2>
+        </div>
         <div v-if="!hasTrendData" class="no-data-state">
+          <div class="no-data-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M3 3v18h18"/><path d="M7 12l4-4 4 4 6-6"/>
+            </svg>
+          </div>
           <p class="no-data">暂无性能趋势数据，请确保监控数据采集任务已启动</p>
         </div>
         <div v-else class="chart-grid">
           <div class="chart-card">
-            <h3 class="chart-title">CPU 使用率</h3>
+            <div class="chart-header">
+              <span class="chart-dot" style="background:#1890ff"></span>
+              <h3 class="chart-title">CPU 使用率</h3>
+            </div>
             <div ref="chartCpu" class="chart-box"></div>
           </div>
           <div class="chart-card">
-            <h3 class="chart-title">内存使用</h3>
+            <div class="chart-header">
+              <span class="chart-dot" style="background:#52c41a"></span>
+              <h3 class="chart-title">内存使用</h3>
+            </div>
             <div ref="chartMemory" class="chart-box"></div>
           </div>
           <div class="chart-card">
-            <h3 class="chart-title">连接数</h3>
+            <div class="chart-header">
+              <span class="chart-dot" style="background:#faad14"></span>
+              <h3 class="chart-title">连接数</h3>
+            </div>
             <div ref="chartConnections" class="chart-box"></div>
           </div>
           <div class="chart-card">
-            <h3 class="chart-title">I/O 延迟</h3>
+            <div class="chart-header">
+              <span class="chart-dot" style="background:#f5222d"></span>
+              <h3 class="chart-title">I/O 延迟</h3>
+            </div>
             <div ref="chartIo" class="chart-box"></div>
           </div>
         </div>
@@ -125,14 +199,12 @@
 
       <!-- 死锁分析 -->
       <section class="report-section">
-        <h2 class="section-title">死锁分析</h2>
-        <div class="stat-row">
-          <div class="stat-item">
-            <span class="stat-label">死锁次数</span>
-            <span class="stat-value" :class="reportData.deadlocks.total_count > 0 ? 'value-warn' : ''">
-              {{ reportData.deadlocks.total_count }}
-            </span>
-          </div>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">死锁分析</h2>
+          <span class="section-tag" :class="reportData.deadlocks.total_count > 0 ? 'tag-warn' : 'tag-ok'">
+            {{ reportData.deadlocks.total_count > 0 ? `共 ${reportData.deadlocks.total_count} 次` : '正常' }}
+          </span>
         </div>
         <table v-if="reportData.deadlocks.latest_events.length > 0" class="data-table">
           <thead>
@@ -145,17 +217,23 @@
           <tbody>
             <tr v-for="ev in reportData.deadlocks.latest_events" :key="ev.id">
               <td>{{ formatDateTime(ev.occur_at, { second: true }) }}</td>
-              <td>{{ ev.victim_session_id }}</td>
+              <td><code class="inline-code">{{ ev.victim_session_id }}</code></td>
               <td>{{ ev.server_address }}</td>
             </tr>
           </tbody>
         </table>
-        <p v-else class="no-data">无死锁事件</p>
+        <div v-else class="empty-block">
+          <div class="empty-icon-ok">✓</div>
+          <span>无死锁事件</span>
+        </div>
       </section>
 
       <!-- 慢查询分析 -->
       <section class="report-section">
-        <h2 class="section-title">慢查询分析</h2>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">慢查询分析</h2>
+        </div>
         <div class="stat-row">
           <div class="stat-item">
             <span class="stat-label">慢查询数</span>
@@ -163,87 +241,158 @@
           </div>
           <div class="stat-item">
             <span class="stat-label">平均耗时</span>
-            <span class="stat-value">{{ formatNum(reportData.slow_queries.avg_duration) }} ms</span>
+            <span class="stat-value">
+              {{ formatNum(reportData.slow_queries.avg_duration) }}<span class="stat-unit">ms</span>
+            </span>
           </div>
         </div>
         <table v-if="reportData.slow_queries.top_queries.length > 0" class="data-table">
           <thead>
             <tr>
-              <th style="width:40px">#</th>
+              <th style="width:48px">#</th>
               <th>SQL（前200字符）</th>
-              <th>执行次数</th>
-              <th>平均耗时(ms)</th>
+              <th style="width:100px">执行次数</th>
+              <th style="width:120px">平均耗时(ms)</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(q, i) in reportData.slow_queries.top_queries" :key="q.id">
-              <td>{{ i + 1 }}</td>
-              <td class="sql-cell" :title="q.sql_text">{{ truncateText(q.sql_text, 120) }}</td>
+              <td><span class="rank-badge">{{ i + 1 }}</span></td>
+              <td class="sql-cell" :title="q.sql_text">
+                <code>{{ truncateText(q.sql_text, 120) }}</code>
+              </td>
               <td>{{ q.execution_count }}</td>
-              <td>{{ formatNum(q.avg_elapsed_ms) }}</td>
+              <td><strong>{{ formatNum(q.avg_elapsed_ms) }}</strong></td>
             </tr>
           </tbody>
         </table>
-        <p v-else class="no-data">无慢查询数据</p>
+        <div v-else class="empty-block">
+          <div class="empty-icon-ok">✓</div>
+          <span>无慢查询数据</span>
+        </div>
       </section>
 
       <!-- 阻塞 / 磁盘 / 索引 -->
       <section class="report-section">
-        <h2 class="section-title">系统状态</h2>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">系统状态</h2>
+        </div>
         <div class="status-grid">
           <div class="status-card">
+            <div class="status-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
             <h3>阻塞进程</h3>
-            <p class="status-value">{{ reportData.blocking.total_count }}</p>
+            <p class="status-value" :class="reportData.blocking.total_count > 0 ? 'value-warn' : ''">
+              {{ reportData.blocking.total_count }}
+            </p>
             <p class="status-label">阻塞事件数</p>
           </div>
           <div class="status-card" v-if="reportData.disk">
+            <div class="status-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+              </svg>
+            </div>
             <h3>磁盘空间</h3>
             <p class="status-value" :class="valueColor(reportData.disk.usage_pct, 85)">
-              {{ formatNum(reportData.disk.usage_pct) }}%
+              {{ formatNum(reportData.disk.usage_pct) }}<span class="stat-unit">%</span>
             </p>
             <p class="status-label">使用率 ({{ reportData.disk.database_name || '-' }})</p>
           </div>
           <div class="status-card">
+            <div class="status-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>
+              </svg>
+            </div>
             <h3>索引状况</h3>
-            <p class="status-value">{{ reportData.indexes.missing_index_count }}</p>
-            <p class="status-label">缺失索引</p>
-            <p class="status-value" style="margin-top:4px">{{ reportData.indexes.high_fragmentation_count }}</p>
-            <p class="status-label">高碎片索引</p>
+            <div class="status-duo">
+              <div>
+                <p class="status-value" :class="reportData.indexes.missing_index_count > 0 ? 'value-warn' : ''">
+                  {{ reportData.indexes.missing_index_count }}
+                </p>
+                <p class="status-label">缺失索引</p>
+              </div>
+              <div class="status-divider"></div>
+              <div>
+                <p class="status-value" :class="reportData.indexes.high_fragmentation_count > 0 ? 'value-warn' : ''">
+                  {{ reportData.indexes.high_fragmentation_count }}
+                </p>
+                <p class="status-label">高碎片索引</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- AI 分析 -->
       <section class="report-section" v-if="reportData.ai_analysis">
-        <h2 class="section-title">AI 分析与建议</h2>
+        <div class="section-header">
+          <div class="section-title-bar"></div>
+          <h2 class="section-title">
+            AI 分析与建议
+            <span class="ai-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+              </svg>
+              DeepSeek
+            </span>
+          </h2>
+        </div>
         <div class="ai-analysis" v-html="renderMarkdown(reportData.ai_analysis)"></div>
       </section>
     </div>
 
     <!-- 历史记录面板 -->
-    <div v-if="showHistory" class="history-overlay" @click.self="showHistory = false">
-      <div class="history-panel">
-        <div class="history-header">
-          <h3>历史报告</h3>
-          <button class="close-btn" @click="showHistory = false">✕</button>
-        </div>
-        <div class="history-list">
-          <div
-            v-for="rec in historyList"
-            :key="rec.id"
-            class="history-item"
-            @click="loadFromHistory(rec)"
-          >
-            <div class="history-item-info">
-              <span class="history-title">{{ rec.title }}</span>
-              <span class="history-time">{{ formatDateTime(rec.created_at, { second: true }) }}</span>
-            </div>
-            <button class="btn-icon" @click.stop="deleteHistory(rec.id)" title="删除">🗑</button>
+    <Transition name="slide-right">
+      <div v-if="showHistory" class="history-overlay" @click.self="showHistory = false">
+        <div class="history-panel">
+          <div class="history-header">
+            <h3>历史报告</h3>
+            <button class="close-btn" @click="showHistory = false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
-          <p v-if="historyList.length === 0" class="no-data">暂无历史记录</p>
+          <div class="history-list">
+            <div
+              v-for="rec in historyList"
+              :key="rec.id"
+              class="history-item"
+              @click="loadFromHistory(rec)"
+            >
+              <div class="history-item-info">
+                <span class="history-title">{{ rec.title }}</span>
+                <span class="history-time">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  {{ formatDateTime(rec.created_at, { second: true }) }}
+                </span>
+              </div>
+              <button class="btn-icon" @click.stop="deleteHistory(rec.id)" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+                </svg>
+              </button>
+            </div>
+            <div v-if="historyList.length === 0" class="empty-block">
+              <div class="empty-icon-grey">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <span>暂无历史记录</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
 
@@ -375,25 +524,39 @@ async function generateReport() {
 }
 
 // ---- 图表渲染 ----
-function makeOption(trend, valueKey, nameKey, color) {
+function makeOption(trend, color) {
   const items = trend || []
   return {
-    tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
-    grid: { left: 50, right: 10, top: 10, bottom: 25 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(0,0,0,0.85)',
+      borderWidth: 0,
+      textStyle: { color: '#fff', fontSize: 12 },
+      axisPointer: { type: 'line', lineStyle: { color: 'rgba(24,144,255,0.3)' } },
+    },
+    grid: { left: 45, right: 12, top: 12, bottom: 28 },
     xAxis: {
       type: 'category',
       data: items.map((i) => {
         const d = new Date(i.collected_at)
         return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0')
       }),
-      axisLabel: { fontSize: 10, interval: 'auto' },
+      axisLine: { lineStyle: { color: '#d9d9d9' } },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 10, color: '#999' },
     },
-    yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
+      axisLabel: { fontSize: 10, color: '#999' },
+    },
     series: [
       {
         type: 'line',
-        data: items.map((i) => i[nameKey || 'metric_value']),
+        data: items.map((i) => i.metric_value),
         smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
         lineStyle: { width: 2, color },
         itemStyle: { color },
         areaStyle: {
@@ -411,16 +574,16 @@ function renderCharts() {
   if (!hasTrendData.value) return
   const trends = reportData.value?.trends || {}
   const charts = [
-    { ref: chartCpu, data: trends.cpu, nameKey: 'metric_value', color: '#1890ff' },
-    { ref: chartMemory, data: trends.memory, nameKey: 'metric_value', color: '#52c41a' },
-    { ref: chartConnections, data: trends.connections, nameKey: 'metric_value', color: '#faad14' },
-    { ref: chartIo, data: trends.io, nameKey: 'metric_value', color: '#f5222d' },
+    { ref: chartCpu, data: trends.cpu, color: '#1890ff' },
+    { ref: chartMemory, data: trends.memory, color: '#52c41a' },
+    { ref: chartConnections, data: trends.connections, color: '#faad14' },
+    { ref: chartIo, data: trends.io, color: '#f5222d' },
   ]
 
-  charts.forEach(({ ref: elRef, data, nameKey, color }) => {
+  charts.forEach(({ ref: elRef, data, color }) => {
     if (!elRef.value) return
     const chart = echarts.init(elRef.value)
-    chart.setOption(makeOption(data, null, nameKey, color))
+    chart.setOption(makeOption(data, color))
     chartInstances.push(chart)
   })
 }
@@ -488,29 +651,128 @@ async function exportPDF() {
 }
 
 // ---- Markdown 渲染 ----
+function escapeHtml(s) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// 行内格式：加粗、行内代码（顺序很重要：先转义再替换）
+function inlineFormat(s) {
+  return s
+    .replace(/`([^`]+)`/g, (_, code) => `<code class="md-code">${escapeHtml(code)}</code>`)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+}
+
 function renderMarkdown(text) {
   if (!text) return ''
-  let html = text
-    // 标题 ###
-    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-    // 标题 ##
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    // 标题 #
-    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    // 加粗
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // 行内代码
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    // 无序列表
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // 有序列表
-    .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
-    // 换行
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br/>')
+  const lines = text.split('\n')
+  const out = []
+  let i = 0
 
-  html = html.replace(/<li>/g, '<ul><li>').replace(/<\/li>(?!.*<\/li>)/g, '</li></ul>')
-  return '<p>' + html + '</p>'
+  while (i < lines.length) {
+    const line = lines[i]
+
+    // 代码块 ```
+    if (/^```/.test(line)) {
+      const lang = line.replace(/^```\s*/, '').trim()
+      const codeLines = []
+      i++
+      while (i < lines.length && !/^```/.test(lines[i])) {
+        codeLines.push(lines[i])
+        i++
+      }
+      i++ // 跳过结束 ```
+      out.push(`<pre class="md-pre"><code${lang ? ` class="lang-${escapeHtml(lang)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+      continue
+    }
+
+    // 标题
+    const h4 = line.match(/^####\s+(.+)$/)
+    if (h4) { out.push(`<h4>${inlineFormat(escapeHtml(h4[1]))}</h4>`); i++; continue }
+    const h3 = line.match(/^###\s+(.+)$/)
+    if (h3) { out.push(`<h3>${inlineFormat(escapeHtml(h3[1]))}</h3>`); i++; continue }
+    const h2 = line.match(/^##\s+(.+)$/)
+    if (h2) { out.push(`<h2>${inlineFormat(escapeHtml(h2[1]))}</h2>`); i++; continue }
+    const h1 = line.match(/^#\s+(.+)$/)
+    if (h1) { out.push(`<h1>${inlineFormat(escapeHtml(h1[1]))}</h1>`); i++; continue }
+
+    // 优先级标记 #### 🟥 优先级1 → 提示框
+    const priMatch = line.match(/^####\s*(🔴|🟠|🟡|🟢|🟣|🟤|⚪|⚫|🔵)?\s*(.+)$/)
+    if (priMatch) {
+      const emoji = priMatch[1] || ''
+      const title = inlineFormat(escapeHtml(priMatch[2]))
+      const colorClass = ['🔴', '🟥'].includes(emoji) ? 'prio-red'
+        : ['🟠', '🟧'].includes(emoji) ? 'prio-orange'
+        : ['🟡'].includes(emoji) ? 'prio-yellow'
+        : ['🟢'].includes(emoji) ? 'prio-green'
+        : ''
+      out.push(`<div class="prio-box ${colorClass}">${emoji ? `<span class="prio-emoji">${emoji}</span>` : ''}<span class="prio-title">${title}</span></div>`)
+      i++
+      continue
+    }
+
+    // 水平线 ---
+    if (/^---+$/.test(line.trim())) {
+      out.push('<hr/>')
+      i++
+      continue
+    }
+
+    // 引用 >
+    const quoteMatch = line.match(/^>\s*(.*)$/)
+    if (quoteMatch) {
+      const quoteLines = [quoteMatch[1]]
+      i++
+      while (i < lines.length && /^>\s*/.test(lines[i])) {
+        quoteLines.push(lines[i].replace(/^>\s*/, ''))
+        i++
+      }
+      out.push(`<blockquote>${inlineFormat(escapeHtml(quoteLines.join('\n'))).replace(/\n/g, '<br/>')}</blockquote>`)
+      continue
+    }
+
+    // 有序列表
+    if (/^\d+\.\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s+/, ''))
+        i++
+      }
+      out.push('<ol>' + items.map(it => `<li>${inlineFormat(escapeHtml(it))}</li>`).join('') + '</ol>')
+      continue
+    }
+
+    // 无序列表
+    if (/^[-*]\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*]\s+/, ''))
+        i++
+      }
+      out.push('<ul>' + items.map(it => `<li>${inlineFormat(escapeHtml(it))}</li>`).join('') + '</ul>')
+      continue
+    }
+
+    // 空行
+    if (line.trim() === '') {
+      i++
+      continue
+    }
+
+    // 普通段落（合并连续非空行）
+    const paraLines = [line]
+    i++
+    while (i < lines.length && lines[i].trim() !== '' && !/^(#|>|[-*]\s+|\d+\.\s+|```|----+)/.test(lines[i])) {
+      paraLines.push(lines[i])
+      i++
+    }
+    out.push(`<p>${inlineFormat(escapeHtml(paraLines.join('\n'))).replace(/\n/g, '<br/>')}</p>`)
+  }
+
+  return out.join('\n')
 }
 
 // ---- 历史记录 ----
@@ -562,12 +824,13 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-/* Toolbar */
+/* ============== Toolbar ============== */
 .toolbar {
   background: var(--bg-card, #fff);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 16px 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color, #f0f0f0);
 }
 
 .toolbar-row {
@@ -583,8 +846,10 @@ onUnmounted(() => {
   gap: 6px;
 }
 
+.toolbar-spacer { flex: 1; }
+
 .toolbar-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted, #8c8c8c);
   font-weight: 500;
 }
@@ -593,15 +858,15 @@ onUnmounted(() => {
   display: flex;
   gap: 4px;
   background: var(--bg-primary, #f5f6fa);
-  border-radius: 6px;
-  padding: 2px;
+  border-radius: 8px;
+  padding: 3px;
 }
 
 .time-btn {
   height: 30px;
   padding: 0 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
   color: var(--text-secondary, #666);
   font-size: 13px;
@@ -619,48 +884,74 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+.custom-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-sep {
+  color: var(--text-muted, #999);
+  font-size: 13px;
+}
+
 .date-input {
   height: 30px;
   padding: 0 8px;
   border: 1px solid var(--border-color, #d9d9d9);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   outline: none;
   background: var(--bg-card, #fff);
   color: var(--text-primary, #333);
+  transition: border-color 0.2s;
 }
+
+.date-input:focus { border-color: #1890ff; }
 
 .btn-primary {
   height: 32px;
   padding: 0 16px;
-  background: #1890ff;
+  background: linear-gradient(135deg, #1890ff, #096dd9);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.btn-primary:hover:not(:disabled) { background: #40a9ff; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 .btn-secondary {
   height: 32px;
-  padding: 0 16px;
+  padding: 0 14px;
   background: var(--bg-card, #fff);
   color: var(--text-primary, #333);
   border: 1px solid var(--border-color, #d9d9d9);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-secondary:hover { color: #1890ff; border-color: #1890ff; }
+.btn-secondary:hover:not(:disabled) {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.04);
+}
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-loading-icon {
   width: 14px;
@@ -673,273 +964,609 @@ onUnmounted(() => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Loading / Error */
+/* ============== Loading / Error ============== */
 .loading-state, .error-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   background: var(--bg-card, #fff);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color, #f0f0f0);
 }
 
 .loading-spinner {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 3px solid var(--border-color, #f0f0f0);
   border-top-color: #1890ff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
-  margin: 0 auto 12px;
+  margin: 0 auto 16px;
 }
 
-.error-text { color: #f5222d; margin-bottom: 12px; }
+.loading-text { color: var(--text-muted, #999); font-size: 14px; }
 
-/* Report Content */
+.error-icon { color: #f5222d; margin-bottom: 12px; opacity: 0.7; }
+.error-text { color: #f5222d; margin-bottom: 16px; font-size: 14px; }
+
+/* ============== Report Content ============== */
 .report-content {
   background: var(--bg-card, #fff);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  padding: 36px 40px;
+  border: 1px solid var(--border-color, #f0f0f0);
 }
 
 .report-header {
   text-align: center;
-  margin-bottom: 32px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid var(--border-color, #f0f0f0);
+  margin-bottom: 36px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  position: relative;
 }
 
-.report-title { font-size: 22px; margin: 0 0 8px; color: var(--text-primary, #333); }
-.report-period { font-size: 14px; color: var(--text-muted, #999); margin: 4px 0; }
-.report-generated-at { font-size: 12px; color: var(--text-muted, #bbb); margin: 4px 0; }
+.report-header-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #1890ff, #52c41a);
+  border-radius: 2px;
+}
 
-.report-section {
-  margin-bottom: 28px;
+.report-title {
+  font-size: 22px;
+  margin: 8px 0 12px;
+  color: var(--text-primary, #1f2937);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.report-period {
+  font-size: 14px;
+  color: var(--text-secondary, #4b5563);
+  margin: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--bg-primary, #f5f6fa);
+  border-radius: 6px;
+}
+
+.report-generated-at { font-size: 12px; color: var(--text-muted, #9ca3af); margin: 8px 0 0; }
+
+.report-section { margin-bottom: 32px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.section-title-bar {
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, #1890ff, #52c41a);
+  border-radius: 2px;
 }
 
 .section-title {
   font-size: 17px;
   font-weight: 600;
-  color: var(--text-primary, #333);
-  margin: 0 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  color: var(--text-primary, #1f2937);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Summary Cards */
+.section-tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.tag-ok { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+.tag-warn { background: rgba(245, 34, 45, 0.1); color: #f5222d; }
+
+/* ============== Summary Cards ============== */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  justify-items: stretch;
+  gap: 12px;
 }
 
 .summary-card {
-  padding: 20px 16px;
+  padding: 18px 14px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 8px;
+  border-radius: 10px;
   text-align: center;
   border: 1px solid var(--border-color, #f0f0f0);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100px;
+  min-height: 120px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
 }
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: #1890ff;
+}
+
+.card-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.icon-blue { background: rgba(24, 144, 255, 0.1); color: #1890ff; }
+.icon-green { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+.icon-orange { background: rgba(250, 173, 20, 0.1); color: #faad14; }
+.icon-purple { background: rgba(114, 46, 209, 0.1); color: #722ed1; }
+.icon-red { background: rgba(245, 34, 45, 0.1); color: #f5222d; }
+.icon-grey { background: rgba(140, 140, 140, 0.1); color: #8c8c8c; }
 
 .card-label {
   display: block;
   font-size: 12px;
-  color: var(--text-muted, #999);
-  margin-bottom: 8px;
+  color: var(--text-muted, #8c8c8c);
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
 .card-value {
   display: block;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary, #333);
-  line-height: 1.3;
+  color: var(--text-primary, #1f2937);
+  line-height: 1.2;
 }
+
+.unit { font-size: 13px; font-weight: 500; color: var(--text-muted, #999); margin-left: 2px; }
 
 .value-warn { color: #f5222d !important; }
 
-/* Charts */
+/* ============== Charts ============== */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 14px;
 }
 
 .chart-card {
-  padding: 12px;
+  padding: 14px 16px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border-color, #f0f0f0);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chart-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .chart-title {
   font-size: 13px;
-  margin: 0 0 8px;
-  color: var(--text-secondary, #666);
+  margin: 0;
+  color: var(--text-secondary, #4b5563);
+  font-weight: 500;
 }
 
-.chart-box { height: 200px; }
+.chart-box { height: 180px; }
 
-/* No Data State */
+/* ============== No Data ============== */
 .no-data-state {
-  padding: 40px 20px;
+  padding: 50px 20px;
   text-align: center;
   background: var(--bg-primary, #fafafa);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px dashed var(--border-color, #d9d9d9);
-  margin: 16px 0;
+  margin: 0;
 }
 
-/* Stats */
+.no-data-icon { color: var(--text-muted, #999); opacity: 0.5; margin-bottom: 8px; }
+.no-data { color: var(--text-muted, #999); font-size: 13px; margin: 0; }
+
+/* ============== Stats ============== */
 .stat-row {
   display: flex;
-  gap: 24px;
-  margin-bottom: 12px;
+  gap: 32px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--bg-primary, #fafafa);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #f0f0f0);
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.stat-item { display: flex; flex-direction: column; gap: 4px; }
+.stat-label { font-size: 12px; color: var(--text-muted, #8c8c8c); }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--text-primary, #1f2937); }
+.stat-unit { font-size: 13px; font-weight: 500; color: var(--text-muted, #999); margin-left: 2px; }
 
-.stat-label { font-size: 12px; color: var(--text-muted, #999); }
-.stat-value { font-size: 20px; font-weight: 600; color: var(--text-primary, #333); }
-
-/* Tables */
+/* ============== Tables ============== */
 .data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  background: var(--bg-primary, #fafafa);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #f0f0f0);
 }
 
 .data-table th {
-  background: var(--bg-primary, #fafafa);
-  padding: 10px 12px;
+  background: #f5f7fa;
+  padding: 12px 14px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-primary, #333);
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  color: var(--text-primary, #1f2937);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  font-size: 13px;
 }
 
 .data-table td {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border-color, #f0f0f0);
-  color: var(--text-secondary, #555);
-  font-size: 12px;
+  color: var(--text-secondary, #4b5563);
+  font-size: 13px;
+  vertical-align: middle;
 }
 
+.data-table tbody tr:hover { background: rgba(24, 144, 255, 0.04); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
 .sql-cell {
-  max-width: 300px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-size: 11px;
 }
 
-/* Status Grid */
+.sql-cell code, .inline-code {
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  background: rgba(24, 144, 255, 0.08);
+  color: #1f2937;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(24, 144, 255, 0.12);
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #1890ff;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ============== Status Cards ============== */
 .status-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .status-card {
-  padding: 16px;
+  padding: 20px 16px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border-color, #f0f0f0);
   text-align: center;
+  transition: all 0.2s;
+}
+
+.status-card:hover {
+  border-color: #1890ff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.status-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(82, 196, 26, 0.1));
+  color: #1890ff;
+  border-radius: 12px;
+  margin-bottom: 10px;
 }
 
 .status-card h3 {
   font-size: 14px;
-  margin: 0 0 12px;
-  color: var(--text-secondary, #666);
+  margin: 0 0 10px;
+  color: var(--text-secondary, #4b5563);
+  font-weight: 500;
 }
 
-.status-value { font-size: 22px; font-weight: 700; color: var(--text-primary, #333); }
-.status-label { font-size: 12px; color: var(--text-muted, #999); margin-top: 2px; }
+.status-value { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin: 0; line-height: 1.2; }
+.status-label { font-size: 12px; color: var(--text-muted, #8c8c8c); margin-top: 4px; }
 
-/* AI Analysis */
-.ai-analysis {
-  padding: 16px;
+.status-duo {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 16px;
+}
+
+.status-divider {
+  width: 1px;
+  background: var(--border-color, #e5e7eb);
+}
+
+/* ============== Empty Block ============== */
+.empty-block {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-muted, #8c8c8c);
+  font-size: 13px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-color, #d9d9d9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-icon-ok {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.empty-icon-grey { color: var(--text-muted, #999); opacity: 0.5; }
+
+/* ============== AI Analysis ============== */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #722ed1, #531dab);
+  color: #fff;
+}
+
+.ai-analysis {
+  padding: 24px 28px;
+  background: linear-gradient(180deg, #fafbff, #fafafa);
+  border-radius: 10px;
   border: 1px solid var(--border-color, #f0f0f0);
   font-size: 14px;
-  line-height: 1.8;
-  color: var(--text-primary, #333);
+  line-height: 1.85;
+  color: var(--text-primary, #1f2937);
+  position: relative;
 }
 
-.ai-analysis :deep(h2) { font-size: 16px; margin: 16px 0 8px; color: #1890ff; }
-.ai-analysis :deep(h3) { font-size: 15px; margin: 14px 0 6px; }
-.ai-analysis :deep(h4) { font-size: 14px; margin: 12px 0 4px; }
-.ai-analysis :deep(strong) { font-weight: 600; }
-.ai-analysis :deep(code) {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 12px;
+.ai-analysis::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #1890ff, #52c41a);
+  border-radius: 3px 0 0 3px;
 }
-.ai-analysis :deep(ul) { padding-left: 20px; margin: 6px 0; }
-.ai-analysis :deep(li) { margin: 4px 0; }
 
-.no-data {
-  color: var(--text-muted, #999);
+.ai-analysis :deep(h1) {
+  font-size: 18px;
+  margin: 18px 0 10px;
+  color: #1890ff;
+  font-weight: 700;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.ai-analysis :deep(h1):first-child { margin-top: 0; }
+
+.ai-analysis :deep(h2) {
+  font-size: 16px;
+  margin: 16px 0 8px;
+  color: #1f2937;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-analysis :deep(h2)::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #1890ff;
+  border-radius: 2px;
+}
+
+.ai-analysis :deep(h3) {
+  font-size: 14px;
+  margin: 12px 0 6px;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.ai-analysis :deep(h4) {
   font-size: 13px;
-  text-align: center;
-  padding: 20px;
+  margin: 10px 0 4px;
+  color: #6b7280;
+  font-weight: 600;
 }
 
-/* History Panel */
+.ai-analysis :deep(p) {
+  margin: 8px 0;
+  color: #374151;
+}
+
+.ai-analysis :deep(strong) {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ai-analysis :deep(em) {
+  font-style: italic;
+  color: #4b5563;
+}
+
+.ai-analysis :deep(ul), .ai-analysis :deep(ol) {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+
+.ai-analysis :deep(ul li), .ai-analysis :deep(ol li) {
+  margin: 4px 0;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.ai-analysis :deep(ul li::marker) { color: #1890ff; }
+.ai-analysis :deep(ol li::marker) { color: #1890ff; font-weight: 600; }
+
+.ai-analysis :deep(.md-code) {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  border: 1px solid #334155;
+}
+
+.ai-analysis :deep(.md-pre) {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 10px 0;
+  border: 1px solid #334155;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.ai-analysis :deep(.md-pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  border: none;
+  white-space: pre;
+}
+
+.ai-analysis :deep(blockquote) {
+  border-left: 3px solid #1890ff;
+  background: rgba(24, 144, 255, 0.04);
+  padding: 8px 14px;
+  margin: 10px 0;
+  color: #4b5563;
+  border-radius: 0 6px 6px 0;
+}
+
+.ai-analysis :deep(hr) {
+  border: none;
+  border-top: 1px dashed var(--border-color, #e5e7eb);
+  margin: 16px 0;
+}
+
+.ai-analysis :deep(.prio-box) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin: 10px 0 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--bg-primary, #f5f7fa);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+.ai-analysis :deep(.prio-emoji) { font-size: 14px; }
+.ai-analysis :deep(.prio-box.prio-red) { background: rgba(245, 34, 45, 0.08); border-color: rgba(245, 34, 45, 0.3); color: #cf1322; }
+.ai-analysis :deep(.prio-box.prio-orange) { background: rgba(250, 140, 22, 0.08); border-color: rgba(250, 140, 22, 0.3); color: #d46b08; }
+.ai-analysis :deep(.prio-box.prio-yellow) { background: rgba(250, 173, 20, 0.08); border-color: rgba(250, 173, 20, 0.3); color: #d48806; }
+.ai-analysis :deep(.prio-box.prio-green) { background: rgba(82, 196, 26, 0.08); border-color: rgba(82, 196, 26, 0.3); color: #389e0d; }
+
+/* ============== History Panel ============== */
 .history-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
+  backdrop-filter: blur(2px);
 }
 
 .history-panel {
-  width: 360px;
+  width: 380px;
   background: var(--bg-card, #fff);
   height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border-color, #f0f0f0);
 }
 
-.history-header h3 { margin: 0; font-size: 16px; }
+.history-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 16px;
   cursor: pointer;
   color: var(--text-muted, #999);
-  padding: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.close-btn:hover { color: var(--text-primary, #333); }
+.close-btn:hover { color: var(--text-primary, #333); background: var(--bg-primary, #f5f6fa); }
 
 .history-list {
   flex: 1;
@@ -951,26 +1578,32 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  border-radius: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s;
   margin-bottom: 4px;
+  border: 1px solid transparent;
 }
 
-.history-item:hover { background: var(--bg-primary, #f5f6fa); }
+.history-item:hover {
+  background: var(--bg-primary, #f5f6fa);
+  border-color: var(--border-color, #e5e7eb);
+}
 
 .history-item-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   overflow: hidden;
+  flex: 1;
+  margin-right: 8px;
 }
 
 .history-title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-primary, #333);
+  color: var(--text-primary, #1f2937);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -978,18 +1611,51 @@ onUnmounted(() => {
 
 .history-time {
   font-size: 11px;
-  color: var(--text-muted, #999);
+  color: var(--text-muted, #8c8c8c);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn-icon {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  opacity: 0.6;
-  transition: opacity 0.15s;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-muted, #999);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-icon:hover { opacity: 1; }
+.btn-icon:hover { color: #f5222d; background: rgba(245, 34, 45, 0.08); }
+
+/* Slide animation */
+.slide-right-enter-active, .slide-right-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-right-enter-from, .slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.slide-right-enter-active .history-panel, .slide-right-leave-active .history-panel {
+  transition: transform 0.3s ease;
+}
+.slide-right-enter-from .history-panel, .slide-right-leave-to .history-panel {
+  transform: translateX(100%);
+}
+
+/* ============== Responsive ============== */
+@media (max-width: 1100px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .summary-grid, .chart-grid, .status-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .report-content { padding: 24px 20px; }
+}
 </style>

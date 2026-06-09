@@ -27,7 +27,12 @@ export function useInstanceFilter() {
    * 格式: "实例名(host:port)"
    */
   function getServerAddress() {
-    return selectedInstance.value || undefined
+    if (!selectedInstance.value) return undefined
+    const inst = selectedInstance.value
+    if (typeof inst === 'object' && inst.name) {
+      return `${inst.name}(${inst.host}:${inst.port})`
+    }
+    return inst || undefined
   }
 
   onMounted(() => {

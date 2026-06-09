@@ -28,7 +28,8 @@ VERSION_FILE = os.path.join(PROJECT_DIR, "VERSION")
 IS_DOCKER = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
 
 # 默认 GitHub 仓库，可通过环境变量 UPGRADE_GITHUB_REPO 覆盖
-GITHUB_REPO = os.environ.get("UPGRADE_GITHUB_REPO", "sunvalley-sql-monitor/sql-monitor")
+GITHUB_REPO = os.environ.get("UPGRADE_GITHUB_REPO", "qianhui602/SQL_MONITORING_TOOLS")
+GITHUB_URL = f"https://github.com/{GITHUB_REPO}.git"
 
 # 是否检查 git 命令可用
 GIT_AVAILABLE = shutil.which("git") is not None

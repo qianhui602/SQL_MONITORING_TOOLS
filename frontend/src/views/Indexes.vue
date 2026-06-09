@@ -6,7 +6,7 @@
         <label class="toolbar-label">实例</label>
         <select v-model="selectedInstance" class="instance-select">
           <option value="">全部实例</option>
-          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+          <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
       </div>
       <div class="toolbar-group">

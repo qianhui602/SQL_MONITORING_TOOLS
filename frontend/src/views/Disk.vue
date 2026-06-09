@@ -5,7 +5,7 @@
         <span class="toolbar-title">磁盘空间监控</span>
         <select v-model="selectedInstance" class="instance-select">
           <option value="">全部实例</option>
-          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+          <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
         <span class="collect-time" v-if="collectedAt">
           采集时间: {{ formatDateTime(collectedAt, { second: true }) }}

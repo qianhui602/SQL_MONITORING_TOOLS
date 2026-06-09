@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     ALERT_EMAILS: List[str] = []
 
     DINGTALK_WEBHOOK_URL: str = ""
+    FEISHU_WEBHOOK_URL: str = ""
 
     # ---------- 日志 ----------
     LOG_LEVEL: str = "INFO"

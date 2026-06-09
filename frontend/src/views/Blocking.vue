@@ -5,7 +5,7 @@
         <span class="toolbar-title">阻塞进程</span>
         <select v-model="selectedInstance" class="instance-select">
           <option value="">全部实例</option>
-          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+          <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
         <span class="blocking-count" v-if="list.length > 0">共 {{ list.length }} 个阻塞链</span>
       </div>

@@ -146,6 +146,10 @@
                 <input type="checkbox" value="wechat" v-model="form.notification_method" />
                 <span>企业微信</span>
               </label>
+              <label class="checkbox-item">
+                <input type="checkbox" value="feishu" v-model="form.notification_method" />
+                <span>飞书</span>
+              </label>
             </div>
           </div>
           <div class="form-row-2col">
@@ -203,7 +207,7 @@ function operatorLabel(op) {
 }
 
 function notifyLabel(m) {
-  const map = { email: '邮件', dingtalk: '钉钉', wechat: '企业微信' }
+  const map = { email: '邮件', dingtalk: '钉钉', wechat: '企业微信', feishu: '飞书' }
   return map[m] || m
 }
 
