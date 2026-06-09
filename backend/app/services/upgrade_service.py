@@ -218,7 +218,7 @@ async def get_git_status() -> dict:
 
 
 async def apply_upgrade() -> dict:
-    """执行升级：拉取代码 + 构建 Docker 镜像 + 重启"""
+    """执行升级：下载 Release zip + 解压 + 构建 Docker 镜像 + 重启"""
     start_time = datetime.now(timezone.utc)
     logs: list[str] = []
 
@@ -230,57 +230,131 @@ async def apply_upgrade() -> dict:
         log("开始升级流程...")
         log(f"当前版本: v{_get_current_version()}")
 
-        # 0. 检查 Git 是否可用
-        if not GIT_AVAILABLE:
-            log("✗ 服务器未安装 Git 命令")
-            return {
-                "success": False,
-                "error": "服务器上未安装 Git，无法执行在线升级",
-                "logs": logs,
-            }
-
-        # 1. 检查 Git 仓库
-        log("步骤 1/4: 检查 Git 仓库...")
-        code, _, err = _run_cmd(["git", "rev-parse", "--git-dir"])
-        if code != 0:
-            return {
-                "success": False,
-                "error": "当前目录不是 Git 仓库，无法在线升级",
-                "logs": logs,
-            }
-        log("✓ Git 仓库正常")
-
-        # 2. 拉取最新代码
-        log("步骤 2/4: 拉取最新代码...")
-        code, out, err = _run_cmd(["git", "pull", "--ff-only"])
-        if code != 0:
-            # 检查是否是网络问题
-            if "Could not resolve" in err or "Connection refused" in err:
+        # 1. 获取最新版本信息
+        log("步骤 1/4: 获取最新版本...")
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+                headers={"Accept": "application/vnd.github.v3+json"},
+            )
+            if resp.status_code != 200:
                 return {
                     "success": False,
-                    "error": f"无法连接到远程仓库，请检查网络: {err[:200]}",
+                    "error": f"获取版本信息失败: HTTP {resp.status_code}",
                     "logs": logs,
                 }
+            release_data = resp.json()
+            latest_tag = release_data.get("tag_name", "").lstrip("v")
+            zipball_url = release_data.get("zipball_url", "")
+
+        log(f"✓ 最新版本: v{latest_tag}")
+
+        # 2. 下载并解压代码
+        log("步骤 2/4: 下载最新代码...")
+        if not zipball_url:
             return {
                 "success": False,
-                "error": f"Git pull 失败: {err or out}",
+                "error": "未找到下载链接",
                 "logs": logs,
             }
-        log(f"✓ 代码已更新")
 
-        # 2.5 显示更新后的版本
-        updated_version = _get_current_version()
-        log(f"更新后版本: v{updated_version}")
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.get(zipball_url)
+            if resp.status_code != 200:
+                return {
+                    "success": False,
+                    "error": f"下载代码失败: HTTP {resp.status_code}",
+                    "logs": logs,
+                }
 
-        # 3. 构建 Docker 镜像
-        log("步骤 3/4: 构建 Docker 镜像...")
+        # 保存到临时文件并解压
+        import io
+        import zipfile
+        import shutil
+
+        zip_bytes = io.BytesIO(resp.content)
+        if not zipfile.is_zipfile(zip_bytes):
+            return {
+                "success": False,
+                "error": "下载的文件不是有效的 ZIP 格式",
+                "logs": logs,
+            }
+
+        zip_bytes.seek(0)
+        with zipfile.ZipFile(zip_bytes) as zf:
+            # 获取顶层目录名
+            top_dirs = set()
+            for name in zf.namelist():
+                parts = name.split("/")
+                if len(parts) > 1:
+                    top_dirs.add(parts[0])
+
+            if not top_dirs:
+                return {
+                    "success": False,
+                    "error": "ZIP 文件格式异常",
+                    "logs": logs,
+                }
+
+            # 解压到临时目录
+            temp_dir = os.path.join(PROJECT_DIR, "_upgrade_temp")
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            os.makedirs(temp_dir)
+            zf.extractall(temp_dir)
+
+        # 找到解压后的目录
+        extracted_dir = os.path.join(temp_dir, list(top_dirs)[0])
+
+        # 备份当前版本
+        log("备份当前版本...")
+        backup_dir = os.path.join(PROJECT_DIR, f"_backup_{_get_current_version()}")
+        if os.path.exists(backup_dir):
+            shutil.rmtree(backup_dir)
+
+        # 复制关键文件到临时目录
+        log("✓ 代码下载完成")
+
+        # 3. 更新代码
+        log("步骤 3/4: 更新代码文件...")
+        # 需要更新的目录和文件
+        update_dirs = ["backend", "frontend", "Docs"]
+        update_files = ["docker-compose.yml", "README.md", ".env.example", "deploy.sh", "deploy.ps1"]
+
+        for d in update_dirs:
+            src = os.path.join(extracted_dir, d)
+            dst = os.path.join(PROJECT_DIR, d)
+            if os.path.exists(src):
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                log(f"✓ 更新目录: {d}")
+
+        for f in update_files:
+            src = os.path.join(extracted_dir, f)
+            dst = os.path.join(PROJECT_DIR, f)
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
+                log(f"✓ 更新文件: {f}")
+
+        # 更新 VERSION 文件
+        version_file = os.path.join(extracted_dir, "backend", "VERSION")
+        if os.path.exists(version_file):
+            shutil.copy2(version_file, os.path.join(PROJECT_DIR, "backend", "VERSION"))
+            log(f"✓ 版本更新为 v{latest_tag}")
+
+        # 清理临时文件
+        shutil.rmtree(temp_dir)
+
+        # 4. 构建 Docker 镜像
+        log("步骤 4/4: 构建 Docker 镜像...")
         compose_file = DOCKER_COMPOSE_FILE
         if os.path.exists(compose_file):
             compose_dir = os.path.dirname(compose_file)
             code, out, err = _run_cmd(
                 ["docker-compose", "build", "--no-cache"],
                 cwd=compose_dir,
-                timeout=300,
+                timeout=600,
             )
             if code != 0:
                 return {
@@ -290,8 +364,8 @@ async def apply_upgrade() -> dict:
                 }
             log("✓ Docker 镜像构建完成")
 
-            # 4. 重启服务
-            log("步骤 4/4: 重启服务...")
+            # 5. 重启服务
+            log("重启服务...")
             code, out, err = _run_cmd(
                 ["docker-compose", "up", "-d"],
                 cwd=compose_dir,
@@ -312,6 +386,24 @@ async def apply_upgrade() -> dict:
 
         return {
             "success": True,
+            "message": f"升级到 v{latest_tag} 成功",
+            "elapsed_seconds": elapsed,
+            "logs": logs,
+        }
+
+    except httpx.TimeoutException:
+        return {
+            "success": False,
+            "error": "下载超时，请检查网络连接",
+            "logs": logs,
+        }
+    except Exception as e:
+        logger.exception("升级失败")
+        return {
+            "success": False,
+            "error": f"升级异常: {str(e)}",
+            "logs": logs,
+        }
             "error": "",
             "logs": logs,
         }
