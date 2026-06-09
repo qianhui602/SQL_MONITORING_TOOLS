@@ -47,10 +47,16 @@
           <div class="config-item" v-for="item in alertConfigs" :key="item.key">
             <label class="config-label">{{ item.label }}</label>
             <input
+              v-if="item.key !== 'mssql_instances_enabled' && item.key !== 'deadlock_alert_enabled' && item.key !== 'wecom_enabled'"
               v-model="item.value"
               class="config-input"
               :placeholder="item.desc"
             />
+            <label v-else class="toggle-label">
+              <input type="checkbox" v-model="item.value" true-value="true" false-value="false" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ item.value === 'true' ? '已开启' : '已关闭' }}</span>
+            </label>
             <span class="config-desc">{{ item.desc }}</span>
           </div>
         </div>
@@ -122,12 +128,15 @@ const pgConfigs = computed(() => {
 
 const alertConfigs = computed(() => {
   const map = {
+    mssql_instances_enabled: { label: '启用多实例采集', password: false },
     scheduler_interval_seconds: { label: '采集间隔(秒)', password: false },
     memory_alert_threshold_pct: { label: '内存告警阈值(%)', password: false },
     memory_alert_duration_minutes: { label: '内存告警持续时长(分钟)', password: false },
     deadlock_alert_enabled: { label: '死锁告警开关', password: false },
     collection_interrupt_threshold: { label: '采集中断阈值(次)', password: false },
     alert_cooldown_minutes: { label: '告警冷却期(分钟)', password: false },
+    wecom_webhook_url: { label: '企业微信 Webhook URL', password: false },
+    wecom_enabled: { label: '企业微信通知开关', password: false },
   }
   return filterAndMap(configList.value, map, null)
 })
@@ -379,5 +388,56 @@ onUnmounted(() => {
   background: #fff2f0;
   border: 1px solid #ffccc7;
   color: #f5222d;
+}
+
+/* 开关样式 */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.toggle-input {
+  display: none;
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #d9d9d9;
+  border-radius: 12px;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+.toggle-input:checked + .toggle-switch {
+  background: #1890ff;
+}
+.toggle-input:checked + .toggle-switch::after {
+  transform: translateX(20px);
+}
+.toggle-text {
+  font-size: 13px;
+  color: #666;
+}
+[data-theme='dark'] .toggle-switch {
+  background: #475569;
+}
+[data-theme='dark'] .toggle-input:checked + .toggle-switch {
+  background: #3b82f6;
+}
+[data-theme='dark'] .toggle-text {
+  color: #94a3b8;
 }
 </style>
