@@ -1,0 +1,42 @@
+# ============================================
+# SQL 监控平台 - Docker Compose 编排文件
+# ============================================
+# 使用方法：
+#   1. 确保 backend/.env 中配置了正确的数据库连接
+#   2. 执行 docker-compose up -d 启动
+#   3. 访问 http://localhost:3000
+# ============================================
+
+services:
+  # ---------- 后端 API 服务 ----------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sql-monitor-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    networks:
+      - monitoring-network
+
+  # ---------- 前端 Nginx 服务 ----------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sql-monitor-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - monitoring-network
+
+networks:
+  monitoring-network:
+    name: sql-monitor-network
+    driver: bridge

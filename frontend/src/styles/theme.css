@@ -1,0 +1,26 @@
+:root,
+[data-theme='light'] {
+  --bg-primary: #f5f6fa;
+  --bg-card: #ffffff;
+  --bg-sidebar: #2b2b2b;
+  --text-primary: #2c3e50;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --border-color: #e8ecf4;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --chart-tooltip-bg: rgba(255,255,255,0.95);
+}
+
+[data-theme='dark'] {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #1e2a45;
+  --bg-sidebar: #12121a;
+  --topbar-bg: #1a1a2e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #777;
+  --border-color: #2a3a5e;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --chart-tooltip-bg: rgba(30,42,69,0.95);
+}
