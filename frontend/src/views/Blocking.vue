@@ -3,6 +3,10 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <span class="toolbar-title">阻塞进程</span>
+        <select v-model="selectedInstance" class="instance-select">
+          <option value="">全部实例</option>
+          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+        </select>
         <span class="blocking-count" v-if="list.length > 0">共 {{ list.length }} 个阻塞链</span>
       </div>
       <div class="toolbar-right">
@@ -129,9 +133,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { getBlockingRealtime } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
 const list = ref([])
 const loading = ref(false)
@@ -141,7 +148,10 @@ let autoRefreshTimer = null
 
 async function fetchData() {
   try {
-    const data = await getBlockingRealtime()
+    const params = {}
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
+    const data = await getBlockingRealtime(params)
     list.value = data?.items || data || []
   } catch (e) {
     console.error('获取阻塞进程数据失败', e)
@@ -188,6 +198,10 @@ function stopAutoRefresh() {
   }
   autoRefreshEnabled.value = false
 }
+
+watch(selectedInstance, () => {
+  fetchData()
+})
 
 onMounted(async () => {
   loading.value = true
@@ -286,6 +300,22 @@ onUnmounted(() => {
 .btn-primary:disabled {
   background: #91d5ff;
   cursor: not-allowed;
+}
+
+.instance-select {
+  height: 32px;
+  min-width: 160px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.instance-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
 /* Loading State */

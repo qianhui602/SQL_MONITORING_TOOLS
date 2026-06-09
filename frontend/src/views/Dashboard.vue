@@ -56,6 +56,13 @@
 
     <div class="chart-toolbar">
       <div class="chart-toolbar-left">
+        <!-- 实例选择 -->
+        <select v-model="selectedInstance" @change="fetchData" class="instance-select" :disabled="loadingInstances">
+          <option value="">所有实例</option>
+          <option v-for="inst in instances" :key="inst.id" :value="`${inst.name}(${inst.host}:${inst.port})`">
+            {{ inst.name }} ({{ inst.host }}:{{ inst.port }})
+          </option>
+        </select>
         <span class="chart-toolbar-label">时间范围：</span>
         <div class="range-tabs">
           <button
@@ -150,7 +157,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as echarts from 'echarts'
-import { getMetricsSummary, getHistoryMetrics, getDeadlocks } from '@/api'
+import { getMetricsSummary, getHistoryMetrics, getDeadlocks, getInstances } from '@/api'
 import { formatTime, formatDateTime } from '@/utils/datetime'
 
 const cpuUsage = ref(0)
@@ -161,6 +168,11 @@ const pageLifeExpectancy = ref(0)
 const lockWaits = ref(0)
 const deadlockCount = ref(0)
 const latestDeadlockTime = ref('')
+
+// 实例相关
+const instances = ref([])
+const selectedInstance = ref('')
+const loadingInstances = ref(false)
 
 const cpuChartRef = ref(null)
 const memoryChartRef = ref(null)
@@ -209,6 +221,19 @@ const modalType = ref('')
 const timeRange = ref('1h')
 const compareMode = ref(false)
 const compareRange = ref('yesterday')
+
+// 获取实例列表
+async function fetchInstances() {
+  try {
+    loadingInstances.value = true
+    const data = await getInstances()
+    instances.value = Array.isArray(data) ? data : (data.items || [])
+  } catch (e) {
+    console.error('获取实例列表失败', e)
+  } finally {
+    loadingInstances.value = false
+  }
+}
 
 const showCustomPanel = ref(false)
 const visibleCharts = ref({
@@ -538,27 +563,28 @@ async function fetchData() {
   try {
     const range = getTimeRange()
     const limit = getHistoryLimit()
+    const serverAddr = selectedInstance.value || undefined
     const promises = [
-      getMetricsSummary(),
-      getHistoryMetrics({ category: 'cpu', start_time: range.start, end_time: range.end, limit }),
-      getHistoryMetrics({ category: 'memory', start_time: range.start, end_time: range.end, limit }),
-      getHistoryMetrics({ category: 'connections', start_time: range.start, end_time: range.end, limit }),
-      getHistoryMetrics({ category: 'io', start_time: range.start, end_time: range.end, limit }),
-      getHistoryMetrics({ category: 'locks', start_time: range.start, end_time: range.end, limit }),
-      getHistoryMetrics({ category: 'batch_requests', start_time: range.start, end_time: range.end, limit }),
-      getDeadlocks({ page: 1, page_size: 1 })
+      getMetricsSummary({ server_address: serverAddr }),
+      getHistoryMetrics({ category: 'cpu', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getHistoryMetrics({ category: 'memory', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getHistoryMetrics({ category: 'connections', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getHistoryMetrics({ category: 'io', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getHistoryMetrics({ category: 'locks', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getHistoryMetrics({ category: 'batch_requests', start_time: range.start, end_time: range.end, limit, server_address: serverAddr }),
+      getDeadlocks({ page: 1, page_size: 1, server_address: serverAddr })
     ]
 
     // 对比模式额外请求
     if (compareMode.value) {
       const compareRange = getCompareTimeRange()
       promises.push(
-        getHistoryMetrics({ category: 'cpu', start_time: compareRange.start, end_time: compareRange.end, limit }),
-        getHistoryMetrics({ category: 'memory', start_time: compareRange.start, end_time: compareRange.end, limit }),
-        getHistoryMetrics({ category: 'connections', start_time: compareRange.start, end_time: compareRange.end, limit }),
-        getHistoryMetrics({ category: 'io', start_time: compareRange.start, end_time: compareRange.end, limit }),
-        getHistoryMetrics({ category: 'locks', start_time: compareRange.start, end_time: compareRange.end, limit }),
-        getHistoryMetrics({ category: 'batch_requests', start_time: compareRange.start, end_time: compareRange.end, limit })
+        getHistoryMetrics({ category: 'cpu', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr }),
+        getHistoryMetrics({ category: 'memory', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr }),
+        getHistoryMetrics({ category: 'connections', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr }),
+        getHistoryMetrics({ category: 'io', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr }),
+        getHistoryMetrics({ category: 'locks', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr }),
+        getHistoryMetrics({ category: 'batch_requests', start_time: compareRange.start, end_time: compareRange.end, limit, server_address: serverAddr })
       )
     }
 
@@ -805,6 +831,7 @@ function handleClickOutside(e) {
 
 onMounted(async () => {
   await nextTick()
+  await fetchInstances() // 获取实例列表
   initCpuChart()
   initMemoryChart()
   initConnChart()
@@ -1245,6 +1272,27 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 .order-reset-btn:hover {
   color: #1890ff;
   border-color: #1890ff;
+}
+
+/* 实例选择下拉框 */
+.instance-select {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 180px;
+}
+.instance-select:focus {
+  border-color: #1890ff;
+}
+.instance-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 模态框样式 */

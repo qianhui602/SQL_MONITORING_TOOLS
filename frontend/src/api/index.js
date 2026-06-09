@@ -106,8 +106,8 @@ export function getHistoryMetrics(params) {
   return request.get('/metrics/history', { params })
 }
 
-export function getMetricsSummary() {
-  return request.get('/metrics/summary')
+export function getMetricsSummary(params) {
+  return request.get('/metrics/summary', { params })
 }
 
 export function getDeadlocks(params) {

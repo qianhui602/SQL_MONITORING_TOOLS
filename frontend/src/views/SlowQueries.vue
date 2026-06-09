@@ -2,6 +2,13 @@
   <div class="slow-queries">
     <div class="toolbar">
       <div class="toolbar-group">
+        <label class="toolbar-label">实例</label>
+        <select v-model="selectedInstance" class="instance-select">
+          <option value="">全部实例</option>
+          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+        </select>
+      </div>
+      <div class="toolbar-group">
         <label class="toolbar-label">时间范围</label>
         <div class="time-range-group">
           <button
@@ -159,6 +166,8 @@ async function fetchList() {
       start_time: range.start_time,
       end_time: range.end_time
     }
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
     const data = await getSlowQueries(params)
     list.value = data.items || []
     total.value = data.total || 0
@@ -216,6 +225,13 @@ function formatNumber(num) {
   if (num === null || num === undefined) return '-'
   return Number(num).toLocaleString()
 }
+
+watch(selectedInstance, () => {
+  page.value = 1
+  expandedId.value = null
+  expandedQuery.value = ''
+  fetchList()
+})
 
 onMounted(() => {
   fetchList()
@@ -298,6 +314,22 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #40a9ff;
+}
+
+.instance-select {
+  height: 32px;
+  min-width: 160px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.instance-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
 .table-card {

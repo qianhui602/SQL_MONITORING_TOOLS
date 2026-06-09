@@ -1,6 +1,6 @@
 """
 数据导出 API 路由
-提供性能指标、告警记录、死锁事件的 CSV 导出接口。
+提供性能指标、告警记录、死锁事件、慢查询的 CSV 导出接口。
 使用 StreamingResponse 实现流式输出，适合大量数据导出。
 """
 
@@ -18,6 +18,7 @@ from app.database import get_db
 from app.models.alert import AlertLog
 from app.models.deadlock import DeadlockEvent
 from app.models.performance import MetricRecord
+from app.models.slow_query import SlowQueryRecord
 from app.models.user import User
 from app.services.auth_service import get_current_user
 
@@ -246,22 +247,41 @@ async def export_slow_queries(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    """导出慢查询数据为 CSV 文件。
-
-    慢查询数据需通过 SQL Server 扩展事件或 Query Store 采集，
-    本接口在慢查询模型（SlowQuery）就绪后启用。
-    当前返回仅包含表头的空 CSV。
-    """
+    """导出慢查询数据为 CSV 文件。"""
     headers = [
-        "ID", "数据库名", "SQL文本", "执行时长(ms)", "CPU时间(ms)",
-        "逻辑读", "物理读", "执行次数", "最后执行时间", "采集时间",
+        "ID", "SQL哈希", "SQL文本", "执行次数", "CPU时间(ms)",
+        "逻辑读", "总耗时(ms)", "平均耗时(ms)", "最后执行时间", "采集时间",
     ]
 
     async def row_generator():
-        # 慢查询模型尚未实现，返回空数据
-        # 当 SlowQuery 模型就绪后，从 slow_queries 表查询
-        return
-        yield  # pragma: no cover - 占位
+        filters = []
+        if start_time:
+            filters.append(SlowQueryRecord.collected_at >= start_time)
+        if end_time:
+            filters.append(SlowQueryRecord.collected_at <= end_time)
+
+        stmt = (
+            select(SlowQueryRecord)
+            .where(*filters) if filters else select(SlowQueryRecord)
+        )
+        stmt = stmt.order_by(SlowQueryRecord.collected_at.desc())
+
+        result = await db.execute(stmt)
+        records = result.scalars().all()
+
+        for r in records:
+            yield (
+                r.id,
+                r.sql_hash,
+                r.sql_text[:200] if r.sql_text else "",
+                r.execution_count,
+                round(r.total_cpu_ms, 2),
+                r.total_logical_reads,
+                round(r.total_elapsed_ms, 2),
+                round(r.avg_elapsed_ms, 2),
+                r.last_execution_time.isoformat() if r.last_execution_time else "",
+                r.collected_at.isoformat(),
+            )
 
     filename = f"slow_queries_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 

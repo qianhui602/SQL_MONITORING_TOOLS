@@ -3,6 +3,10 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <span class="toolbar-title">磁盘空间监控</span>
+        <select v-model="selectedInstance" class="instance-select">
+          <option value="">全部实例</option>
+          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+        </select>
         <span class="collect-time" v-if="collectedAt">
           采集时间: {{ formatDateTime(collectedAt, { second: true }) }}
         </span>
@@ -115,9 +119,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getDiskSpace } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
 const list = ref([])
 const loading = ref(false)
@@ -151,7 +158,10 @@ const totalUsageColor = computed(() => usageColor(overallUsage.value))
 
 async function fetchData() {
   try {
-    const data = await getDiskSpace()
+    const params = {}
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
+    const data = await getDiskSpace(params)
     const items = data?.items || data || []
     list.value = Array.isArray(items) ? items : []
     collectedAt.value = data?.collected_at || null
@@ -194,6 +204,10 @@ function usageBgColor(val) {
   if (num >= 60) return '#fff7e6'
   return '#f6ffed'
 }
+
+watch(selectedInstance, () => {
+  fetchData()
+})
 
 onMounted(async () => {
   loading.value = true
@@ -257,6 +271,22 @@ onMounted(async () => {
 .btn-primary:disabled {
   background: #91d5ff;
   cursor: not-allowed;
+}
+
+.instance-select {
+  height: 32px;
+  min-width: 160px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.instance-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
 /* Overview Cards */

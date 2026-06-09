@@ -33,6 +33,7 @@ class VersionCheckResponse(BaseModel):
     release_notes: str = ""
     published_at: str = ""
     error: str = ""
+    upgrade_enabled: bool = True
 
 
 class GitStatusResponse(BaseModel):
@@ -45,6 +46,7 @@ class GitStatusResponse(BaseModel):
     has_uncommitted: bool = False
     behind_remote: int = 0
     error: str = ""
+    hint: str = ""
 
 
 class UpgradeApplyResponse(BaseModel):

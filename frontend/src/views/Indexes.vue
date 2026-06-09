@@ -3,6 +3,13 @@
     <div class="page-header">
       <h2>索引分析</h2>
       <div class="toolbar-group">
+        <label class="toolbar-label">实例</label>
+        <select v-model="selectedInstance" class="instance-select">
+          <option value="">全部实例</option>
+          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+        </select>
+      </div>
+      <div class="toolbar-group">
         <label class="toolbar-label">数据库</label>
         <input
           v-model="databaseFilter"
@@ -141,8 +148,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getMissingIndexes, getIndexFragmentation } from '@/api'
+import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
 const activeTab = ref('missing')
 const databaseFilter = ref('')
@@ -186,6 +196,8 @@ async function fetchMissing() {
       page_size: missingPageSize.value
     }
     if (databaseFilter.value) params.database_name = databaseFilter.value
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
     const data = await getMissingIndexes(params)
     missingList.value = data.items || []
     missingTotal.value = data.total || 0
@@ -204,6 +216,8 @@ async function fetchFrag() {
       page_size: fragPageSize.value
     }
     if (databaseFilter.value) params.database_name = databaseFilter.value
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
     const data = await getIndexFragmentation(params)
     fragList.value = data.items || []
     fragTotal.value = data.total || 0
@@ -242,6 +256,15 @@ function onFragPageSizeChange() {
   fragPage.value = 1
   fetchFrag()
 }
+
+watch(selectedInstance, () => {
+  onFilterChange()
+})
+
+onMounted(() => {
+  if (activeTab.value === 'missing') fetchMissing()
+  else fetchFrag()
+})
 </script>
 
 <style scoped>
@@ -286,6 +309,22 @@ function onFragPageSizeChange() {
 }
 
 .input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.instance-select {
+  height: 32px;
+  min-width: 160px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.instance-select:focus {
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }

@@ -2,6 +2,13 @@
   <div class="trends">
     <div class="toolbar">
       <div class="toolbar-group">
+        <label class="toolbar-label">实例</label>
+        <select v-model="selectedInstance" class="instance-select">
+          <option value="">全部实例</option>
+          <option v-for="item in instances" :key="item" :value="item">{{ item }}</option>
+        </select>
+      </div>
+      <div class="toolbar-group">
         <label class="toolbar-label">指标分类</label>
         <select v-model="category" class="select-input" @change="onCategoryChange">
           <option value="cpu">CPU</option>
@@ -39,10 +46,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { getHistoryMetrics } from '@/api'
 import { formatTime } from '@/utils/datetime'
+import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
 const category = ref('cpu')
 const timeRange = ref('1h')
@@ -152,6 +162,8 @@ async function fetchHistory() {
       end_time: now.toISOString(),
       limit: 1000
     }
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
 
     const seriesList = []
     let allLabels = []
@@ -177,6 +189,10 @@ async function fetchHistory() {
     console.error('获取历史指标失败', e)
   }
 }
+
+watch(selectedInstance, () => {
+  fetchHistory()
+})
 
 onMounted(async () => {
   await nextTick()
@@ -234,6 +250,22 @@ onUnmounted(() => {
 }
 
 .select-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.instance-select {
+  height: 32px;
+  min-width: 160px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.instance-select:focus {
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
