@@ -40,5 +40,6 @@ api_router.include_router(audit_logs_router, prefix="/audit-logs", tags=["审计
 api_router.include_router(export_router, prefix="/export", tags=["数据导出"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["通知"])
 api_router.include_router(reports_router, prefix="/reports", tags=["报告"])
+api_router.include_router(upgrade_router, prefix="/upgrade", tags=["在线升级"])
 
 __all__ = ["api_router"]

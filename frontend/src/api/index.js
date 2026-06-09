@@ -193,4 +193,9 @@ export function saveReport(data) { return request.post('/reports/save', data) }
 export function getReportHistory() { return request.get('/reports/history') }
 export function deleteReportHistory(id) { return request.delete(`/reports/history/${id}`) }
 
+// ===== 在线升级 =====
+export function checkUpgrade() { return request.get('/upgrade/check') }
+export function getUpgradeGitStatus() { return request.get('/upgrade/git-status') }
+export function applyUpgrade() { return request.post('/upgrade/apply') }
+
 export default request
