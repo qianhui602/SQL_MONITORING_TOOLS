@@ -689,6 +689,34 @@ function renderMarkdown(text) {
       continue
     }
 
+    // 表格检测 (| col1 | col2 |)
+    if (/^\|.*\|/.test(line.trim())) {
+      const tableLines = []
+      while (i < lines.length && /^\|.*\|/.test(lines[i].trim())) {
+        tableLines.push(lines[i])
+        i++
+      }
+      // 解析表格
+      const parseRow = (row) => row.split('|').slice(1, -1).map(c => c.trim())
+      const header = parseRow(tableLines[0])
+      // 检查分隔行 (|---|---|)
+      const hasDivider = tableLines.length > 1 && /^[\|\s:-]+$/.test(tableLines[1])
+      const dataStart = hasDivider ? 2 : 1
+      const rows = tableLines.slice(dataStart).map(parseRow)
+      // 构建表格 HTML
+      let tableHtml = '<div class="md-table-wrap"><table class="md-table"><thead><tr>'
+      header.forEach(h => { tableHtml += `<th>${inlineFormat(escapeHtml(h))}</th>` })
+      tableHtml += '</tr></thead><tbody>'
+      rows.forEach(row => {
+        tableHtml += '<tr>'
+        row.forEach((cell, ci) => { tableHtml += `<td${ci === 0 ? ' class="col-label"' : ''}>${inlineFormat(escapeHtml(cell))}</td>` })
+        tableHtml += '</tr>'
+      })
+      tableHtml += '</tbody></table></div>'
+      out.push(tableHtml)
+      continue
+    }
+
     // 标题
     const h4 = line.match(/^####\s+(.+)$/)
     if (h4) { out.push(`<h4>${inlineFormat(escapeHtml(h4[1]))}</h4>`); i++; continue }
@@ -1522,6 +1550,49 @@ onUnmounted(() => {
 .ai-analysis :deep(.prio-box.prio-orange) { background: rgba(250, 140, 22, 0.08); border-color: rgba(250, 140, 22, 0.3); color: #d46b08; }
 .ai-analysis :deep(.prio-box.prio-yellow) { background: rgba(250, 173, 20, 0.08); border-color: rgba(250, 173, 20, 0.3); color: #d48806; }
 .ai-analysis :deep(.prio-box.prio-green) { background: rgba(82, 196, 26, 0.08); border-color: rgba(82, 196, 26, 0.3); color: #389e0d; }
+
+/* Markdown 表格样式 */
+.ai-analysis :deep(.md-table-wrap) {
+  overflow-x: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+.ai-analysis :deep(.md-table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ai-analysis :deep(.md-table thead) {
+  background: var(--bg-secondary, #f8fafc);
+}
+.ai-analysis :deep(.md-table th) {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  white-space: nowrap;
+}
+.ai-analysis :deep(.md-table td) {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+  color: var(--text-secondary, #4b5563);
+  vertical-align: top;
+}
+.ai-analysis :deep(.md-table td.col-label) {
+  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+  white-space: nowrap;
+  min-width: 120px;
+}
+.ai-analysis :deep(.md-table tbody tr:hover) {
+  background: rgba(24, 144, 255, 0.03);
+}
+.ai-analysis :deep(.md-table tbody tr:last-child td) {
+  border-bottom: none;
+}
 
 /* ============== History Panel ============== */
 .history-overlay {
