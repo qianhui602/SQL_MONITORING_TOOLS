@@ -279,4 +279,102 @@ onCheckGitStatus()
   padding: 20px;
   color: var(--text-muted);
 }
-.empty-state
+.empty-state p { margin: 4px 0; }
+.hint { font-size: 12px; }
+
+.version-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+.btn-outline:hover:not(:disabled) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+.btn-upgrade {
+  background: linear-gradient(135deg, #52c41a, #389e0d);
+  color: #fff;
+  font-weight: 500;
+}
+.btn-upgrade:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.upgrade-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 6px;
+  color: #d46b08;
+  font-size: 13px;
+}
+[data-theme='dark'] .upgrade-warning {
+  background: rgba(250, 140, 22, 0.1);
+  border-color: rgba(250, 140, 22, 0.3);
+  color: #fa8c16;
+}
+
+.log-panel {
+  margin-top: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.log-header {
+  padding: 8px 14px;
+  background: var(--bg-primary);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+.log-content {
+  padding: 12px 14px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.log-line.log-success { color: #4ecb71; }
+.log-line.log-error { color: #f44747; }
+</style>

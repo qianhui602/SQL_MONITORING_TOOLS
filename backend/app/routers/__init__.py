@@ -21,6 +21,7 @@ from app.routers.audit_logs import router as audit_logs_router
 from app.routers.export import router as export_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
+from app.routers.upgrade import router as upgrade_router
 
 api_router = APIRouter()
 

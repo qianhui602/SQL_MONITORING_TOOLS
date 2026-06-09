@@ -95,6 +95,12 @@ const routes = [
     name: 'Users',
     component: () => import('@/views/Users.vue'),
     meta: { title: '用户管理', icon: 'users', requiresAdmin: true }
+  },
+  {
+    path: '/upgrade',
+    name: 'Upgrade',
+    component: () => import('@/views/Upgrade.vue'),
+    meta: { title: '在线升级', icon: 'upgrade', requiresAdmin: true }
   }
 ]
 
