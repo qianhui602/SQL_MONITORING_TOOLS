@@ -19,13 +19,26 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# 项目路径 - 从 backend/app/services/ 向上三级到项目根目录
-_backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # backend/
-PROJECT_DIR = os.path.dirname(_backend_dir)  # 项目根目录
+# 项目路径 - 使用多种方式探测，确保找到正确的项目根目录
+_current_file_dir = os.path.dirname(os.path.abspath(__file__))  # backend/app/services/
+_backend_dir_by_file = os.path.dirname(os.path.dirname(_current_file_dir))  # backend/
+_cwd = os.getcwd()  # 当前工作目录
+
+# 可能的项目根目录：从 backend/ 上级，或当前工作目录
+_possible_backend = _backend_dir_by_file
+if not os.path.isfile(os.path.join(_possible_backend, "VERSION")):
+    # 如果文件路径不对，尝试 cwd 的上级
+    _possible_backend = os.path.join(_cwd, "backend") if os.path.basename(_cwd) != "backend" else _cwd
+
+_backend_dir = _possible_backend
+PROJECT_DIR = os.path.dirname(_backend_dir)
 DOCKER_COMPOSE_FILE = os.path.join(PROJECT_DIR, "docker-compose.yml")
 VERSION_FILE = os.path.join(_backend_dir, "VERSION")
 
-logger.info("Upgrade service initialized: PROJECT_DIR=%s, VERSION_FILE=%s", PROJECT_DIR, VERSION_FILE)
+logger.info(
+    "Upgrade service paths: __file__=%s, _backend_dir=%s, PROJECT_DIR=%s, VERSION_FILE=%s, cwd=%s, VERSION exists=%s",
+    __file__, _backend_dir, PROJECT_DIR, VERSION_FILE, _cwd, os.path.exists(VERSION_FILE),
+)
 
 # 运行模式检测
 IS_DOCKER = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
