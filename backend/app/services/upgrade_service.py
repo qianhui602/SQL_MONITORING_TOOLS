@@ -10,12 +10,15 @@ import logging
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import httpx
 
 from app.config import settings
+
+# 中国时区 (UTC+8)
+_CHINA_TZ = timezone(timedelta(hours=8))
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +55,17 @@ logger.info(
 
 IS_DOCKER = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
 GITHUB_REPO = os.environ.get("UPGRADE_GITHUB_REPO", "qianhui602/SQL_MONITORING_TOOLS")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "") or settings.GITHUB_TOKEN
 GITHUB_URL = f"https://github.com/{GITHUB_REPO}.git"
 GIT_AVAILABLE = shutil.which("git") is not None
+
+
+def _github_headers() -> dict:
+    """返回 GitHub API 请求头，如果有 token 则添加认证"""
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+    return headers
 
 
 def _get_current_version() -> str:
@@ -99,7 +111,7 @@ async def check_version() -> dict:
     try:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-            resp = await client.get(url, headers={"Accept": "application/vnd.github.v3+json"})
+            resp = await client.get(url, headers=_github_headers())
 
             if resp.status_code == 404:
                 return {"current_version": current, "latest_version": current, "has_update": False, "release_url": f"https://github.com/{GITHUB_REPO}/releases", "error": f"GitHub 仓库 {GITHUB_REPO} 不存在或没有公开的 Release", "upgrade_enabled": True}
@@ -153,7 +165,7 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
 
     def log(msg: str):
         logger.info("[UPGRADE-ZIP] %s", msg)
-        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logs.append(f"[{datetime.now(_CHINA_TZ).strftime('%H:%M:%S')}] {msg}")
 
     try:
         log("开始 ZIP 上传升级流程...")
@@ -295,7 +307,7 @@ async def apply_upgrade() -> dict:
 
     def log(msg: str):
         logger.info("[UPGRADE] %s", msg)
-        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logs.append(f"[{datetime.now(_CHINA_TZ).strftime('%H:%M:%S')}] {msg}")
 
     try:
         log("开始升级流程...")
@@ -305,8 +317,10 @@ async def apply_upgrade() -> dict:
         async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
             resp = await client.get(
                 f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
-                headers={"Accept": "application/vnd.github.v3+json"},
+                headers=_github_headers(),
             )
+            if resp.status_code == 403:
+                return {"success": False, "error": "GitHub API 请求频率受限，请稍后再试，或改用 ZIP 上传升级", "logs": logs}
             if resp.status_code != 200:
                 return {"success": False, "error": f"获取版本信息失败: HTTP {resp.status_code}", "logs": logs}
             release_data = resp.json()
@@ -320,7 +334,7 @@ async def apply_upgrade() -> dict:
             return {"success": False, "error": "未找到下载链接", "logs": logs}
 
         async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
-            resp = await client.get(zipball_url)
+            resp = await client.get(zipball_url, headers=_github_headers())
             if resp.status_code != 200:
                 return {"success": False, "error": f"下载代码失败: HTTP {resp.status_code}", "logs": logs}
 
