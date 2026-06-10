@@ -3,6 +3,7 @@
 从环境变量 / .env 文件中读取所有配置
 """
 
+
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
 
     # ---------- 项目基础信息 ----------
     PROJECT_NAME: str = "SQL 监控平台"
-    VERSION: str = "1.0.5"
+    VERSION: str = "1.0.6"
     DEBUG: bool = False
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 
