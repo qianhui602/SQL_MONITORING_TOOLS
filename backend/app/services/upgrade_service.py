@@ -118,7 +118,7 @@ def _container_volume_sync(extracted_dir: str, log_fn=None):
                     shutil.rmtree(item_path)
                 else:
                     os.remove(item_path)
-        shutil.copytree(src_app, dst_app)
+        shutil.copytree(src_app, dst_app, dirs_exist_ok=True)
         _log(f"✓ 已同步 backend/app/ → {dst_app}/ (volume mount)")
 
     # 同步 backend/VERSION -> /app/VERSION
