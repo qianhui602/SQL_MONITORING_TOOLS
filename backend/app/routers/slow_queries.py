@@ -58,10 +58,12 @@ async def get_slow_queries(
     ),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
+    sort_by: str = Query("total_elapsed_ms", description="排序字段"),
+    sort_order: str = Query("desc", description="排序方向 asc/desc"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> SlowQueryResponse:
-    """查询慢查询记录，支持分页和时间范围筛选。"""
+    """查询慢查询记录，支持分页、时间范围筛选和排序。"""
     filters = []
 
     if start_time:
@@ -71,6 +73,22 @@ async def get_slow_queries(
     if server_address:
         filters.append(SlowQueryRecord.server_address == server_address)
 
+    # 排序字段映射
+    sort_field_map = {
+        "execution_count": SlowQueryRecord.execution_count,
+        "total_cpu_time_ms": SlowQueryRecord.total_cpu_ms,
+        "total_logical_reads": SlowQueryRecord.total_logical_reads,
+        "avg_duration_ms": SlowQueryRecord.avg_elapsed_ms,
+        "last_execution_time": SlowQueryRecord.last_execution_time,
+        "collected_at": SlowQueryRecord.collected_at,
+        "total_elapsed_ms": SlowQueryRecord.total_elapsed_ms,
+    }
+    sort_col = sort_field_map.get(sort_by, SlowQueryRecord.total_elapsed_ms)
+    if sort_order == "asc":
+        order_clause = sort_col.asc()
+    else:
+        order_clause = sort_col.desc()
+
     try:
         count_stmt = select(func.count(SlowQueryRecord.id)).where(*filters)
         total_result = await db.execute(count_stmt)
@@ -79,7 +97,7 @@ async def get_slow_queries(
         stmt = (
             select(SlowQueryRecord)
             .where(*filters)
-            .order_by(SlowQueryRecord.total_elapsed_ms.desc())
+            .order_by(order_clause)
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
