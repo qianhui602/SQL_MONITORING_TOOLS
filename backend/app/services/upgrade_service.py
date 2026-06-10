@@ -8,10 +8,8 @@
 import asyncio
 import logging
 import os
-import signal
 import shutil
 import subprocess
-import threading
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -127,25 +125,6 @@ def _container_volume_sync(extracted_dir: str, log_fn=None):
     if os.path.exists(src_ver):
         shutil.copy2(src_ver, dst_ver)
         _log(f"✓ 已同步 VERSION → {dst_ver}")
-
-
-def _restart_backend_container(delay_seconds: int = 2):
-    """在后台线程中延迟重启后端容器，让当前 HTTP 响应先发送完毕。
-
-    容器 restart: unless-stopped 策略会自动重新启动。
-    """
-    def _do_restart():
-        try:
-            # 等待足够时间让当前 HTTP 响应发送完毕
-            import time
-            time.sleep(delay_seconds)
-            # 发送 SIGTERM 到 PID 1（容器主进程），触发容器重启
-            os.kill(1, signal.SIGTERM)
-        except Exception:
-            pass
-
-    t = threading.Thread(target=_do_restart, daemon=True)
-    t.start()
 
 
 def _container_rebuild_frontend(log_fn=None) -> Optional[str]:
@@ -324,11 +303,10 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
         if os.path.exists(compose_file):
             if _is_container:
                 log("容器环境 - 后端代码已通过 volume mount 更新")
-                log("正在重启后端容器以加载新代码...")
-                _restart_backend_container(delay_seconds=3)
-                log("✓ 后端容器将在 3 秒后重启")
-                log("提示: 若本次更新包含前端改动，请在宿主机执行:")
-                log("  docker-compose build frontend && docker-compose up -d")
+                log("提示: 请在宿主机执行以下命令重启后端以加载新代码:")
+                log("  docker-compose restart backend")
+                log("  若本次更新包含前端改动，请在宿主机执行:")
+                log("    docker-compose build frontend && docker-compose up -d")
             else:
                 log("步骤 3/3: 构建 Docker 镜像...")
                 compose_dir = os.path.dirname(compose_file)
@@ -503,11 +481,10 @@ async def apply_upgrade() -> dict:
         if os.path.exists(compose_file):
             if _is_container:
                 log("容器环境 - 后端代码已通过 volume mount 更新")
-                log("正在重启后端容器以加载新代码...")
-                _restart_backend_container(delay_seconds=3)
-                log("✓ 后端容器将在 3 秒后重启")
-                log("提示: 若本次更新包含前端改动，请在宿主机执行:")
-                log("  docker-compose build frontend && docker-compose up -d")
+                log("提示: 请在宿主机执行以下命令重启后端以加载新代码:")
+                log("  docker-compose restart backend")
+                log("  若本次更新包含前端改动，请在宿主机执行:")
+                log("    docker-compose build frontend && docker-compose up -d")
             else:
                 compose_dir = os.path.dirname(compose_file)
                 dc_cmd = _get_docker_compose_cmd()
