@@ -192,6 +192,114 @@ def _compare_versions(v1: str, v2: str) -> int:
         return 0
 
 
+async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
+    """从上传的 ZIP 文件执行升级"""
+    start_time = datetime.now(timezone.utc)
+    logs: list[str] = []
+
+    def log(msg: str):
+        logger.info("[UPGRADE-ZIP] %s", msg)
+        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+    try:
+        log("开始 ZIP 上传升级流程...")
+        log(f"当前版本: v{_get_current_version()}")
+        log(f"上传文件: {filename} ({len(zip_bytes)} bytes)")
+
+        # 1. 解压 ZIP
+        log("步骤 1/3: 解压 ZIP 文件...")
+        import io
+        import zipfile
+
+        zip_bytes_io = io.BytesIO(zip_bytes)
+        if not zipfile.is_zipfile(zip_bytes_io):
+            return {"success": False, "error": "上传的文件不是有效的 ZIP 格式", "logs": logs}
+
+        zip_bytes_io.seek(0)
+        with zipfile.ZipFile(zip_bytes_io) as zf:
+            top_dirs = set()
+            for name in zf.namelist():
+                parts = name.split("/")
+                if len(parts) > 1:
+                    top_dirs.add(parts[0])
+
+            if not top_dirs:
+                return {"success": False, "error": "ZIP 文件格式异常，未找到有效目录", "logs": logs}
+
+            # 解压到临时目录
+            temp_dir = os.path.join(PROJECT_DIR, "_upgrade_temp")
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            os.makedirs(temp_dir)
+            zf.extractall(temp_dir)
+
+        extracted_dir = os.path.join(temp_dir, list(top_dirs)[0])
+        log(f"✓ 解压完成，源目录: {list(top_dirs)[0]}")
+
+        # 2. 更新代码文件
+        log("步骤 2/3: 更新代码文件...")
+        update_dirs = ["backend", "frontend", "Docs"]
+        update_files = ["docker-compose.yml", "README.md", ".env.example", "deploy.sh", "deploy.ps1"]
+
+        for d in update_dirs:
+            src = os.path.join(extracted_dir, d)
+            dst = os.path.join(PROJECT_DIR, d)
+            if os.path.exists(src):
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                log(f"✓ 更新目录: {d}")
+
+        for f in update_files:
+            src = os.path.join(extracted_dir, f)
+            dst = os.path.join(PROJECT_DIR, f)
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
+                log(f"✓ 更新文件: {f}")
+
+        # 更新 VERSION 文件
+        version_file = os.path.join(extracted_dir, "backend", "VERSION")
+        if os.path.exists(version_file):
+            shutil.copy2(version_file, os.path.join(_backend_dir, "VERSION"))
+            new_version = open(version_file).read().strip()
+            log(f"✓ 版本更新为 v{new_version}")
+
+        # 清理临时文件
+        shutil.rmtree(temp_dir)
+        log("✓ 清理临时文件完成")
+
+        # 3. 构建 Docker 镜像
+        compose_file = DOCKER_COMPOSE_FILE
+        if os.path.exists(compose_file):
+            log("步骤 3/3: 构建 Docker 镜像...")
+            compose_dir = os.path.dirname(compose_file)
+            code, out, err = _run_cmd(["docker-compose", "build", "--no-cache"], cwd=compose_dir, timeout=600)
+            if code != 0:
+                return {"success": False, "error": f"Docker 构建失败: {err[:300] if err else out[:300]}", "logs": logs}
+            log("✓ Docker 镜像构建完成")
+
+            log("重启服务...")
+            code, out, err = _run_cmd(["docker-compose", "up", "-d"], cwd=compose_dir, timeout=120)
+            if code != 0:
+                return {"success": False, "error": f"重启服务失败: {err or out}", "logs": logs}
+            log("✓ 服务已重启")
+        else:
+            log("步骤 3/3: 未检测到 docker-compose.yml，跳过 Docker 构建")
+
+        elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+        log(f"✓ ZIP 升级完成！耗时: {elapsed:.0f} 秒")
+
+        return {"success": True, "message": "ZIP 升级成功", "elapsed_seconds": elapsed, "logs": logs}
+
+    except Exception as e:
+        logger.exception("ZIP upgrade failed")
+        # 清理临时目录
+        temp_dir = os.path.join(PROJECT_DIR, "_upgrade_temp")
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        return {"success": False, "error": f"升级异常: {str(e)}", "logs": logs}
+
+
 async def get_git_status() -> dict:
     """获取当前项目状态"""
     # 检查关键文件是否存在

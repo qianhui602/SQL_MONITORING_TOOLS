@@ -161,6 +161,81 @@
       </div>
     </div>
 
+    <!-- ZIP 文件上传升级 -->
+    <div class="card">
+      <div class="card-header">
+        <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <h3>ZIP 上传升级</h3>
+      </div>
+
+      <div class="card-body">
+        <p class="upload-hint">从 GitHub Release 下载 ZIP 文件后，手动上传进行升级。支持 <code>.zip</code> 格式，最大 100MB。</p>
+
+        <div
+          class="upload-zone"
+          :class="{ 'drag-over': isDragging, 'uploading': zipUploading }"
+          @dragover.prevent="isDragging = true"
+          @dragleave="isDragging = false"
+          @drop.prevent="onDropZip"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="zipFileInput"
+            type="file"
+            accept=".zip"
+            style="display:none"
+            @change="onZipFileSelect"
+          />
+          <div v-if="zipUploading" class="upload-loading">
+            <div class="spinner-sm"></div>
+            <span>上传并升级中...</span>
+          </div>
+          <div v-else class="upload-content">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p v-if="zipFile">{{ zipFile.name }} ({{ formatFileSize(zipFile.size) }})</p>
+            <p v-else>点击或拖拽 ZIP 文件到此处</p>
+            <p class="upload-sub">从 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank" @click.stop>GitHub Releases</a> 下载最新版本</p>
+          </div>
+        </div>
+
+        <button
+          v-if="zipFile && !zipUploading"
+          class="btn btn-upgrade"
+          @click="onUploadZip"
+          :disabled="zipUploading"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          开始上传升级
+        </button>
+
+        <!-- 上传升级日志 -->
+        <div v-if="zipLogs.length > 0" class="log-panel">
+          <div class="log-header">
+            <span>升级日志</span>
+            <span class="log-status" v-if="zipSuccess === true">✓ 完成</span>
+            <span class="log-status log-status-fail" v-else-if="zipSuccess === false">✗ 失败</span>
+          </div>
+          <div class="log-content">
+            <div
+              v-for="(line, i) in zipLogs" :key="i"
+              class="log-line"
+              :class="{
+                'log-success': line.includes('✓'),
+                'log-error': line.includes('✗'),
+                'log-info': line.includes('!')
+              }"
+            >{{ line }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 执行升级 -->
     <div class="card">
       <div class="card-header">
@@ -255,7 +330,7 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
-import { checkUpgrade, getUpgradeGitStatus, applyUpgrade } from '@/api'
+import { checkUpgrade, getUpgradeGitStatus, applyUpgrade, uploadZipUpgrade } from '@/api'
 
 const checking = ref(false)
 const checkingGit = ref(false)
@@ -265,6 +340,14 @@ const upgrading = ref(false)
 const upgradeStep = ref(0)
 const upgradeSuccess = ref(null)
 const logRef = ref(null)
+
+// ZIP 上传相关
+const zipFileInput = ref(null)
+const zipFile = ref(null)
+const isDragging = ref(false)
+const zipUploading = ref(false)
+const zipLogs = ref([])
+const zipSuccess = ref(null)
 
 const versionData = ref({
   current_version: '0.0.0',
@@ -366,6 +449,67 @@ async function onApplyUpgrade() {
 // 页面加载时自动检查
 onCheckVersion()
 onCheckGitStatus()
+
+// ---- ZIP 上传升级 ----
+function triggerFileInput() {
+  if (zipUploading.value) return
+  zipFileInput.value.click()
+}
+
+function onZipFileSelect(e) {
+  const file = e.target.files[0]
+  if (file && file.name.endsWith('.zip')) {
+    zipFile.value = file
+  }
+}
+
+function onDropZip(e) {
+  isDragging.value = false
+  const file = e.dataTransfer.files[0]
+  if (file && file.name.endsWith('.zip')) {
+    zipFile.value = file
+  }
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let size = bytes
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++ }
+  return `${size.toFixed(1)} ${units[i]}`
+}
+
+async function onUploadZip() {
+  if (!zipFile.value) return
+  if (!confirm('确定要上传 ZIP 文件进行升级吗？升级期间服务可能短暂不可用。')) return
+
+  zipUploading.value = true
+  zipSuccess.value = null
+  zipLogs.value = []
+
+  try {
+    const data = await uploadZipUpgrade(zipFile.value)
+    if (data.logs) {
+      zipLogs.value = data.logs
+    }
+    zipSuccess.value = data.success
+    if (!data.success) {
+      zipLogs.value.push(`[错误] ${data.error}`)
+    }
+  } catch (e) {
+    zipSuccess.value = false
+    zipLogs.value.push(`[错误] ${e.message}`)
+  } finally {
+    zipUploading.value = false
+    nextTick(() => {
+      const logEl = document.querySelector('.log-content')
+      if (logEl) logEl.scrollTop = logEl.scrollHeight
+    })
+    onCheckVersion()
+    onCheckGitStatus()
+  }
+}
 </script>
 
 <style scoped>
@@ -423,6 +567,70 @@ onCheckGitStatus()
 
 .card-body {
   padding: 24px;
+}
+
+/* ========== ZIP Upload ========== */
+.upload-hint {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.upload-hint code {
+  background: var(--bg-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.upload-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.04);
+}
+
+.upload-zone.uploading {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.upload-content p {
+  margin: 8px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.upload-content p.upload-sub {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.upload-content p.upload-sub a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.upload-content p.upload-sub a:hover {
+  text-decoration: underline;
+}
+
+.upload-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 /* ========== Badges ========== */

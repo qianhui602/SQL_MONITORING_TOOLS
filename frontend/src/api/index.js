@@ -197,5 +197,12 @@ export function deleteReportHistory(id) { return request.delete(`/reports/histor
 export function checkUpgrade() { return request.get('/upgrade/check') }
 export function getUpgradeGitStatus() { return request.get('/upgrade/git-status') }
 export function applyUpgrade() { return request.post('/upgrade/apply') }
+export function uploadZipUpgrade(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/upgrade/upload-zip', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
 
 export default request

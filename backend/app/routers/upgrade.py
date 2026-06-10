@@ -7,13 +7,14 @@
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel
 
 from app.models.user import User
 from app.services.auth_service import get_current_user, require_admin
 from app.services.upgrade_service import (
     apply_upgrade,
+    apply_upgrade_from_zip,
     check_version,
     get_git_status,
 )
@@ -96,3 +97,27 @@ async def perform_upgrade(
     - 需要服务器上已配置好 Git 远程仓库
     """
     return await apply_upgrade()
+
+
+@router.post(
+    "/upload-zip",
+    response_model=UpgradeApplyResponse,
+    summary="上传 ZIP 文件升级",
+)
+async def upload_zip_upgrade(
+    file: UploadFile = File(...),
+    _: User = Depends(require_admin),
+):
+    """上传 ZIP 文件进行升级。
+
+    从上传的 ZIP 文件中解压并更新代码，然后构建 Docker 镜像并重启服务。
+    """
+    if not file.filename or not file.filename.endswith(".zip"):
+        return UpgradeApplyResponse(success=False, error="请上传 .zip 格式的文件")
+
+    zip_bytes = await file.read()
+    if len(zip_bytes) > 100 * 1024 * 1024:  # 100MB
+        return UpgradeApplyResponse(success=False, error="文件大小不能超过 100MB")
+
+    logger.info("ZIP upgrade uploaded: %s (%d bytes)", file.filename, len(zip_bytes))
+    return await apply_upgrade_from_zip(zip_bytes, file.filename)
