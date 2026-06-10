@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     DINGTALK_WEBHOOK_URL: str = ""
     FEISHU_WEBHOOK_URL: str = ""
 
+    # ---------- 升级 / GitHub ----------
+    GITHUB_TOKEN: str = ""
+
     # ---------- 日志 ----------
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = (

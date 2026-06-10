@@ -128,6 +128,12 @@ _DEFAULT_CONFIGS = [
         "value": "deepseek-v4-flash",
         "desc": "DeepSeek 模型（deepseek-v4-flash / deepseek-v4-pro）",
     },
+    # ========== 系统设置 ==========
+    {
+        "key": "timezone",
+        "value": "Asia/Shanghai",
+        "desc": "系统时区（用于日志和报表时间显示）",
+    },
 ]
 
 

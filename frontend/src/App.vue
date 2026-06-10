@@ -8,13 +8,27 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import { useTheme } from '@/stores/theme'
+import { setTimezone } from '@/utils/datetime'
+import { getConfig } from '@/api'
 
 // 在组件挂载时应用已保存的主题
 useTheme()
+
+// 初始化时区设置
+onMounted(async () => {
+  try {
+    const cfg = await getConfig('timezone')
+    if (cfg && cfg.config_value) {
+      setTimezone(cfg.config_value)
+    }
+  } catch (e) {
+    // 使用默认时区 UTC+8
+  }
+})
 
 const route = useRoute()
 

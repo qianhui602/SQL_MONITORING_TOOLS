@@ -10,6 +10,25 @@
 
     <div class="config-sections">
       <div class="config-section">
+        <h3 class="section-title">系统设置</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">系统时区</label>
+            <select v-model="timezone" class="config-select">
+              <option value="Asia/Shanghai">Asia/Shanghai (UTC+8) - 北京时间</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9) - 东京时间</option>
+              <option value="America/New_York">America/New_York (UTC-5) - 纽约时间</option>
+              <option value="America/Los_Angeles">America/Los_Angeles (UTC-8) - 洛杉矶时间</option>
+              <option value="Europe/London">Europe/London (UTC+0) - 伦敦时间</option>
+              <option value="Europe/Berlin">Europe/Berlin (UTC+1) - 柏林时间</option>
+              <option value="UTC">UTC (UTC+0)</option>
+            </select>
+            <span class="config-desc">系统时区（用于日志和报表时间显示）</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-section">
         <h3 class="section-title">SQL Server 连接配置</h3>
         <div class="config-grid">
           <div class="config-item" v-for="item in mssqlConfigs" :key="item.key">
@@ -96,10 +115,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import request, { getConfigs, updateConfig } from '@/api'
+import { setTimezone } from '@/utils/datetime'
 
 const configList = ref([])
 const deepseekApiKey = ref('')
 const deepseekModel = ref('deepseek-v4-flash')
+const timezone = ref('Asia/Shanghai')
 const message = ref('')
 const messageType = ref('success')
 let toastTimer = null
@@ -172,6 +193,12 @@ async function fetchConfigs() {
     const modelCfg = configList.value.find(c => c.config_key === 'deepseek_model')
     if (apiKeyCfg) deepseekApiKey.value = apiKeyCfg.config_value
     if (modelCfg) deepseekModel.value = modelCfg.config_value
+    // 提取系统时区配置
+    const tzCfg = configList.value.find(c => c.config_key === 'timezone')
+    if (tzCfg) {
+      timezone.value = tzCfg.config_value
+      setTimezone(tzCfg.config_value)
+    }
   } catch (e) {
     console.error('获取配置失败', e)
   }
@@ -184,12 +211,18 @@ async function saveAll() {
     { key: 'deepseek_api_key', value: deepseekApiKey.value },
     { key: 'deepseek_model', value: deepseekModel.value }
   )
+  // 添加系统时区配置
+  allConfigs.push(
+    { key: 'timezone', value: timezone.value }
+  )
   try {
     for (const cfg of allConfigs) {
       await updateConfig(cfg.key, cfg.value)
     }
     message.value = '保存成功！配置将在下一个采集周期自动应用。'
     messageType.value = 'success'
+    // 立即应用时区设置
+    setTimezone(timezone.value)
   } catch (e) {
     message.value = '保存失败: ' + (e.message || '未知错误')
     messageType.value = 'error'

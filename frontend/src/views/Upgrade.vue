@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card sys-info-card">
       <div class="card-header">
         <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
@@ -33,6 +33,7 @@
       </div>
 
       <div v-else class="card-body">
+        <!-- 版本对比 -->
         <div class="version-compare">
           <div class="version-block current">
             <div class="version-label">当前版本</div>
@@ -48,36 +49,73 @@
             <div class="version-number" v-if="versionData.latest_version">v{{ versionData.latest_version }}</div>
             <div class="version-number unknown" v-else>--</div>
           </div>
+          <div class="version-status-icon" v-if="versionData.has_update">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </div>
         </div>
 
+        <!-- 状态网格 -->
         <div class="sys-grid">
           <div class="sys-item">
-            <span class="sys-label">项目状态</span>
-            <span class="sys-value" :class="gitStatus.project_ready ? 'text-ok' : 'text-warn'">{{ gitStatus.project_ready ? '文件完整' : '文件不完整' }}</span>
+            <span class="sys-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg>
+            </span>
+            <div class="sys-body">
+              <span class="sys-label">项目状态</span>
+              <span class="sys-value" :class="gitStatus.project_ready ? 'text-ok' : 'text-warn'">{{ gitStatus.project_ready ? '文件完整' : '文件不完整' }}</span>
+            </div>
           </div>
           <div class="sys-item">
-            <span class="sys-label">后端服务</span>
-            <span class="sys-value" :class="gitStatus.has_backend ? 'text-ok' : 'text-warn'">{{ gitStatus.has_backend ? '已部署' : '未找到' }}</span>
+            <span class="sys-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </span>
+            <div class="sys-body">
+              <span class="sys-label">后端服务</span>
+              <span class="sys-value" :class="gitStatus.has_backend ? 'text-ok' : 'text-warn'">{{ gitStatus.has_backend ? '已部署' : '未找到' }}</span>
+            </div>
           </div>
           <div class="sys-item">
-            <span class="sys-label">前端服务</span>
-            <span class="sys-value" :class="gitStatus.has_frontend ? 'text-ok' : 'text-warn'">{{ gitStatus.has_frontend ? '已部署' : '未找到' }}</span>
+            <span class="sys-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </span>
+            <div class="sys-body">
+              <span class="sys-label">前端服务</span>
+              <span class="sys-value" :class="gitStatus.has_frontend ? 'text-ok' : 'text-warn'">{{ gitStatus.has_frontend ? '已部署' : '未找到' }}</span>
+            </div>
           </div>
           <div class="sys-item">
-            <span class="sys-label">升级方式</span>
-            <span class="sys-value text-muted">{{ gitStatus.hint || 'Release ZIP' }}</span>
+            <span class="sys-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </span>
+            <div class="sys-body">
+              <span class="sys-label">升级方式</span>
+              <span class="sys-value text-muted">{{ gitStatus.hint || 'Release ZIP' }}</span>
+            </div>
           </div>
+        </div>
+
+        <!-- 错误与更新说明 -->
+        <div v-if="versionData.release_notes" class="release-notes-block">
+          <div class="block-label">更新说明</div>
+          <pre class="release-notes-content">{{ versionData.release_notes }}</pre>
         </div>
 
         <div v-if="versionData.error" class="status-bar status-error">
           <span>{{ versionData.error }}</span>
-          <span v-if="versionData.error.includes('403') || versionData.error.includes('频率')" class="status-hint">
+          <span v-if="versionData.error.includes('403') || versionData.error.includes('频率') || versionData.error.includes('限流')" class="status-hint">
             — 可尝试 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank">手动下载 ZIP</a> 后使用「ZIP 上传升级」
           </span>
+        </div>
+
+        <div v-if="versionData.release_url" class="release-link">
+          <a :href="versionData.release_url" target="_blank" rel="noopener">在 GitHub 上查看发布页 →</a>
         </div>
       </div>
     </div>
 
+    <!-- 升级卡片 -->
     <div class="card">
       <div class="card-header">
         <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -117,10 +155,15 @@
         </div>
 
         <div v-if="upgradeMode === 'zip'">
-          <p class="upload-hint">从 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank">GitHub Releases</a> 下载 <code>.zip</code> 文件上传（最大 100MB）。</p>
-          <div class="upload-zone" :class="{ 'drag-over': isDragging, 'uploading': zipUploading }"
-            @dragover.prevent="isDragging = true" @dragleave="isDragging = false"
-            @drop.prevent="onDropZip" @click="triggerFileInput">
+          <p class="upload-hint">从 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank">GitHub Releases</a> 下载 <code>.zip</code> 文件后上传（最大 100MB）。</p>
+          <div
+            class="upload-zone"
+            :class="{ 'drag-over': isDragging, 'uploading': zipUploading }"
+            @dragover.prevent="isDragging = true"
+            @dragleave="isDragging = false"
+            @drop.prevent="onDropZip"
+            @click="triggerFileInput"
+          >
             <input ref="zipFileInput" type="file" accept=".zip" style="display:none" @change="onZipFileSelect" />
             <div v-if="zipUploading" class="upload-loading">
               <div class="spinner-sm"></div><span>上传并升级中...</span>
@@ -133,6 +176,7 @@
           <button v-if="zipFile && !zipUploading" class="btn btn-upgrade" @click="onUploadZip">开始上传升级</button>
         </div>
 
+        <!-- 升级日志 -->
         <div v-if="currentLogs.length > 0" class="log-panel">
           <div class="log-header">
             <span>升级日志</span>
@@ -140,11 +184,16 @@
             <span class="log-status log-status-fail" v-else-if="currentSuccess === false">✗ 失败</span>
           </div>
           <div class="log-content" ref="logRef">
-            <div v-for="(line, i) in currentLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗') || line.includes('错误') }">{{ line }}</div>
+            <div v-for="(line, i) in currentLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗') || line.includes('错误'), 'log-info': line.includes('!') }">{{ line }}</div>
           </div>
         </div>
 
+        <!-- 提示 -->
         <div class="upgrade-tip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
           <span>升级期间服务可能短暂不可用，建议在业务低峰期执行。</span>
         </div>
       </div>
@@ -252,43 +301,65 @@ async function onUploadZip() {
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .page-header h2 { margin: 0; font-size: 18px; color: var(--text-primary); }
 .header-actions { display: flex; gap: 8px; }
+
 .card { background: var(--bg-card); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border-color); }
 .card-header { display: flex; align-items: center; gap: 10px; padding: 16px 24px; border-bottom: 1px solid var(--border-color); }
 .card-header h3 { margin: 0; font-size: 15px; color: var(--text-primary); flex: 1; }
 .card-icon { color: var(--text-muted); flex-shrink: 0; }
 .card-body { padding: 24px; }
+
 .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
 .badge-update { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
 .badge-warn { background: rgba(250, 140, 22, 0.12); color: #fa8c16; }
 .badge-ok { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
 .badge-loading { background: rgba(24, 144, 255, 0.12); color: #1890ff; }
+
 .skeleton-line { height: 16px; background: var(--border-color); border-radius: 4px; margin-bottom: 12px; animation: shimmer 1.5s ease-in-out infinite; }
 @keyframes shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-.version-compare { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding: 20px 24px; background: var(--bg-primary); border-radius: 8px; }
+
+/* 版本对比 */
+.version-compare { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding: 20px 24px; background: var(--bg-primary); border-radius: 8px; position: relative; }
 .version-block { text-align: center; min-width: 100px; }
 .version-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
 .version-number { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 .version-block.current .version-number { color: var(--text-primary); }
 .version-block.latest .version-number { color: var(--text-muted); }
 .version-block.latest.has-update .version-number { color: #52c41a; }
-.version-number.unknown { color: var(--text-muted); font-weight: 400; }
+.version-block .version-number.unknown { color: var(--text-muted); font-weight: 400; }
 .version-arrow { color: var(--text-muted); display: flex; align-items: center; }
+.version-status-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); }
+
+/* 系统状态网格 */
 .sys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-.sys-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-primary); border-radius: 6px; }
-.sys-label { font-size: 12px; color: var(--text-muted); }
+.sys-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-primary); border-radius: 6px; }
+.sys-icon { display: flex; align-items: center; color: var(--text-muted); flex-shrink: 0; }
+.sys-body { display: flex; flex-direction: column; gap: 1px; }
+.sys-label { font-size: 11px; color: var(--text-muted); }
 .sys-value { font-size: 14px; font-weight: 500; }
 .text-ok { color: #52c41a; }
 .text-warn { color: #fa8c16; }
 .text-muted { color: var(--text-muted); }
+
+.release-notes-block { margin-bottom: 12px; }
+.block-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.release-notes-content { font-size: 13px; line-height: 1.6; color: var(--text-primary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-family: inherit; margin: 0; padding: 12px; background: var(--bg-primary); border-radius: 6px; border: 1px solid var(--border-color); }
+
 .status-bar { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 12px; flex-wrap: wrap; }
 .status-error { background: rgba(245, 34, 45, 0.06); border: 1px solid rgba(245, 34, 45, 0.15); color: #f5222d; }
 .status-hint { color: #fa8c16; }
 .status-hint a { color: #1890ff; text-decoration: underline; }
+
+.release-link { margin-top: 4px; }
+.release-link a { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #1890ff; text-decoration: none; }
+.release-link a:hover { text-decoration: underline; }
+
+/* Tabs */
 .upgrade-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
-.upgrade-tab { flex: 1; padding: 12px 16px; background: var(--bg-primary); border: none; font-size: 14px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; text-align: center; }
-.upgrade-tab+.upgrade-tab { border-left: 1px solid var(--border-color); }
+.upgrade-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; background: var(--bg-primary); border: none; font-size: 14px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.upgrade-tab + .upgrade-tab { border-left: 1px solid var(--border-color); }
 .upgrade-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
 .upgrade-tab.active { color: #1890ff; background: rgba(24, 144, 255, 0.06); font-weight: 500; }
+
 .upload-hint { margin: 0 0 16px; color: var(--text-secondary); font-size: 13px; }
 .upload-hint a { color: #1890ff; }
 .upload-hint code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
@@ -297,14 +368,19 @@ async function onUploadZip() {
 .upload-zone.uploading { cursor: not-allowed; opacity: 0.7; }
 .upload-content p { margin: 8px 0 0; color: var(--text-primary); font-size: 14px; }
 .upload-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-secondary); font-size: 14px; }
+
 .upgrade-steps { display: flex; align-items: flex-start; margin-bottom: 20px; padding: 16px 20px; background: var(--bg-primary); border-radius: 8px; }
 .step { display: flex; align-items: flex-start; gap: 10px; flex: 1; }
 .step-indicator { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; background: var(--border-color); color: var(--text-muted); transition: all 0.3s; }
 .step-completed .step-indicator { background: #52c41a; color: #fff; }
-.step-active .step-indicator { background: #1890ff; color: #fff; box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); }
-.step-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.step-active .step-indicator { background: #1890ff; color: #fff; box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); } 50% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0.1); } }
+.step-title { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+.step-desc { font-size: 12px; color: var(--text-muted); }
 .step-connector { width: 24px; height: 2px; background: var(--border-color); margin-top: 14px; flex-shrink: 0; transition: background 0.3s; }
 .step-connector.active { background: #52c41a; }
+.step-completed .step-title { color: #52c41a; }
+
 .btn { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
@@ -313,7 +389,10 @@ async function onUploadZip() {
 .btn-upgrade:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(82, 196, 26, 0.4); transform: translateY(-1px); }
 .spinner-sm { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
 .upgrade-tip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-top: 16px; background: rgba(250, 140, 22, 0.08); border: 1px solid rgba(250, 140, 22, 0.2); border-radius: 8px; color: #d46b08; font-size: 13px; }
+.upgrade-tip svg { flex-shrink: 0; }
+
 .log-panel { margin-top: 16px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
 .log-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--bg-primary); font-size: 13px; font-weight: 500; color: var(--text-primary); border-bottom: 1px solid var(--border-color); }
 .log-status { font-weight: 600; color: #52c41a; font-size: 12px; }
