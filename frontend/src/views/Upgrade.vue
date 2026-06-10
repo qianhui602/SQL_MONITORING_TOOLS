@@ -25,7 +25,6 @@
         <div v-else-if="versionData.error" class="badge badge-warn">检测异常</div>
       </div>
 
-      <!-- 加载骨架 -->
       <div v-if="loadingVersion" class="card-body">
         <div class="skeleton-line" style="width:60%"></div>
         <div class="skeleton-line" style="width:40%"></div>
@@ -33,7 +32,6 @@
       </div>
 
       <div v-else class="card-body">
-        <!-- 版本对比 -->
         <div class="version-compare">
           <div class="version-block current">
             <div class="version-label">当前版本</div>
@@ -46,20 +44,16 @@
           </div>
           <div class="version-block" :class="versionData.has_update ? 'latest has-update' : 'latest'">
             <div class="version-label">最新版本</div>
-            <div class="version-number" v-if="versionData.latest_version">
-              v{{ versionData.latest_version }}
-            </div>
+            <div class="version-number" v-if="versionData.latest_version">v{{ versionData.latest_version }}</div>
             <div class="version-number unknown" v-else>--</div>
           </div>
         </div>
 
-        <!-- 更新说明 -->
         <div v-if="versionData.release_notes" class="release-notes-block">
           <div class="block-label">更新说明</div>
           <pre class="release-notes-content">{{ versionData.release_notes }}</pre>
         </div>
 
-        <!-- 错误/信息提示 -->
         <div v-if="versionData.error" class="status-bar status-error">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -67,7 +61,6 @@
           <span>{{ versionData.error }}</span>
         </div>
 
-        <!-- 版本发布链接 -->
         <div v-if="versionData.release_url" class="release-link">
           <a :href="versionData.release_url" target="_blank" rel="noopener">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -97,7 +90,6 @@
         <div class="skeleton-line" style="width:30%"></div>
       </div>
 
-      <!-- 未检测到 Git 仓库但项目正常 -->
       <div v-else-if="!gitStatus.is_git_repo" class="card-body">
         <div class="info-grid">
           <div class="info-item">
@@ -181,13 +173,7 @@
           @drop.prevent="onDropZip"
           @click="triggerFileInput"
         >
-          <input
-            ref="zipFileInput"
-            type="file"
-            accept=".zip"
-            style="display:none"
-            @change="onZipFileSelect"
-          />
+          <input ref="zipFileInput" type="file" accept=".zip" style="display:none" @change="onZipFileSelect" />
           <div v-if="zipUploading" class="upload-loading">
             <div class="spinner-sm"></div>
             <span>上传并升级中...</span>
@@ -202,19 +188,13 @@
           </div>
         </div>
 
-        <button
-          v-if="zipFile && !zipUploading"
-          class="btn btn-upgrade"
-          @click="onUploadZip"
-          :disabled="zipUploading"
-        >
+        <button v-if="zipFile && !zipUploading" class="btn btn-upgrade" @click="onUploadZip" :disabled="zipUploading">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
           </svg>
           开始上传升级
         </button>
 
-        <!-- 上传升级日志 -->
         <div v-if="zipLogs.length > 0" class="log-panel">
           <div class="log-header">
             <span>升级日志</span>
@@ -222,15 +202,7 @@
             <span class="log-status log-status-fail" v-else-if="zipSuccess === false">✗ 失败</span>
           </div>
           <div class="log-content">
-            <div
-              v-for="(line, i) in zipLogs" :key="i"
-              class="log-line"
-              :class="{
-                'log-success': line.includes('✓'),
-                'log-error': line.includes('✗'),
-                'log-info': line.includes('!')
-              }"
-            >{{ line }}</div>
+            <div v-for="(line, i) in zipLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗'), 'log-info': line.includes('!') }">{{ line }}</div>
           </div>
         </div>
       </div>
@@ -247,43 +219,23 @@
       </div>
 
       <div class="card-body">
-        <!-- 升级流程步骤示意 -->
         <div class="upgrade-steps">
           <div class="step" :class="stepState(0)">
-            <div class="step-indicator">
-              <span v-if="upgradeStep > 0">✓</span>
-              <span v-else>1</span>
-            </div>
-            <div class="step-content">
-              <div class="step-title">拉取代码</div>
-              <div class="step-desc">从 Git 远程仓库拉取最新代码</div>
-            </div>
+            <div class="step-indicator"><span v-if="upgradeStep > 0">✓</span><span v-else>1</span></div>
+            <div class="step-content"><div class="step-title">拉取代码</div><div class="step-desc">从 Git 远程仓库拉取最新代码</div></div>
           </div>
           <div class="step-connector" :class="{ active: upgradeStep > 1 }"></div>
           <div class="step" :class="stepState(1)">
-            <div class="step-indicator">
-              <span v-if="upgradeStep > 1">✓</span>
-              <span v-else>2</span>
-            </div>
-            <div class="step-content">
-              <div class="step-title">构建镜像</div>
-              <div class="step-desc">使用最新代码构建 Docker 镜像</div>
-            </div>
+            <div class="step-indicator"><span v-if="upgradeStep > 1">✓</span><span v-else>2</span></div>
+            <div class="step-content"><div class="step-title">构建镜像</div><div class="step-desc">使用最新代码构建 Docker 镜像</div></div>
           </div>
           <div class="step-connector" :class="{ active: upgradeStep > 2 }"></div>
           <div class="step" :class="stepState(2)">
-            <div class="step-indicator">
-              <span v-if="upgradeStep > 2">✓</span>
-              <span v-else>3</span>
-            </div>
-            <div class="step-content">
-              <div class="step-title">重启服务</div>
-              <div class="step-desc">使用新镜像重新启动所有服务</div>
-            </div>
+            <div class="step-indicator"><span v-if="upgradeStep > 2">✓</span><span v-else>3</span></div>
+            <div class="step-content"><div class="step-title">重启服务</div><div class="step-desc">使用新镜像重新启动所有服务</div></div>
           </div>
         </div>
 
-        <!-- 提示信息 -->
         <div class="upgrade-warning">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -292,17 +244,11 @@
           <span>升级期间服务可能短暂不可用，建议在业务低峰期执行。</span>
         </div>
 
-        <!-- 执行按钮 -->
-        <button
-          class="btn btn-upgrade"
-          @click="onApplyUpgrade"
-          :disabled="upgrading || !gitStatus.is_git_repo"
-        >
+        <button class="btn btn-upgrade" @click="onApplyUpgrade" :disabled="upgrading">
           <span v-if="upgrading" class="spinner-sm"></span>
           {{ upgrading ? '升级中...' : '开始升级' }}
         </button>
 
-        <!-- 升级日志 -->
         <div v-if="upgradeLogs.length > 0" class="log-panel">
           <div class="log-header">
             <span>升级日志</span>
@@ -310,17 +256,7 @@
             <span class="log-status log-status-fail" v-else-if="upgradeSuccess === false">✗ 失败</span>
           </div>
           <div class="log-content" ref="logRef">
-            <div
-              v-for="(line, i) in upgradeLogs" :key="i"
-              class="log-line"
-              :class="{
-                'log-success': line.includes('✓'),
-                'log-error': line.includes('✗'),
-                'log-info': line.includes('!')
-              }"
-            >
-              {{ line }}
-            </div>
+            <div v-for="(line, i) in upgradeLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗'), 'log-info': line.includes('!') }">{{ line }}</div>
           </div>
         </div>
       </div>
@@ -341,7 +277,6 @@ const upgradeStep = ref(0)
 const upgradeSuccess = ref(null)
 const logRef = ref(null)
 
-// ZIP 上传相关
 const zipFileInput = ref(null)
 const zipFile = ref(null)
 const isDragging = ref(false)
@@ -389,12 +324,7 @@ async function onCheckVersion() {
     const data = await checkUpgrade()
     versionData.value = data
   } catch (e) {
-    versionData.value = {
-      current_version: '0.0.0',
-      latest_version: '',
-      has_update: false,
-      error: e.message,
-    }
+    versionData.value = { current_version: '0.0.0', latest_version: '', has_update: false, error: e.message }
   } finally {
     checking.value = false
     loadingVersion.value = false
@@ -416,568 +346,166 @@ async function onCheckGitStatus() {
 
 async function onApplyUpgrade() {
   if (!confirm('确定要执行升级吗？升级期间服务可能短暂不可用。')) return
-
   upgrading.value = true
   upgradeStep.value = 0
   upgradeSuccess.value = null
   upgradeLogs.value = []
-
   try {
     const data = await applyUpgrade()
     if (data.logs) {
       upgradeLogs.value = data.logs
-      // 根据日志推断当前步骤
       if (data.logs.some(l => l.includes('步骤 2'))) upgradeStep.value = 1
       if (data.logs.some(l => l.includes('步骤 3'))) upgradeStep.value = 2
-      if (data.logs.some(l => l.includes('步骤 4'))) upgradeStep.value = 3
+      if (data.logs.some(l => l.includes('步骤 4') || l.includes('升级完成'))) upgradeStep.value = 3
     }
     upgradeSuccess.value = data.success
-    if (data.success) {
-      upgradeStep.value = 4
-    }
-    await nextTick()
-    if (logRef.value) {
-      logRef.value.scrollTop = logRef.value.scrollHeight
-    }
+    if (!data.success) upgradeLogs.value.push(`[错误] ${data.error}`)
   } catch (e) {
     upgradeSuccess.value = false
-    upgradeLogs.value.push(`[${new Date().toLocaleTimeString()}] ✗ 升级请求失败: ${e.message}`)
+    upgradeLogs.value.push(`[错误] ${e.message}`)
   } finally {
     upgrading.value = false
+    nextTick(() => { if (logRef.value) logRef.value.scrollTop = logRef.value.scrollHeight })
+    onCheckVersion()
+    onCheckGitStatus()
   }
 }
 
-// ZIP 上传相关
+onCheckVersion()
+onCheckGitStatus()
+
 function triggerFileInput() {
-  if (!zipUploading.value) {
-    zipFileInput.value?.click()
-  }
+  if (zipUploading.value) return
+  zipFileInput.value.click()
 }
 
 function onZipFileSelect(e) {
-  const file = e.target.files?.[0]
-  if (file) {
-    zipFile.value = file
-  }
+  const file = e.target.files[0]
+  if (file && file.name.endsWith('.zip')) zipFile.value = file
 }
 
 function onDropZip(e) {
   isDragging.value = false
-  const file = e.dataTransfer.files?.[0]
-  if (file && file.name.endsWith('.zip')) {
-    zipFile.value = file
-  }
+  const file = e.dataTransfer.files[0]
+  if (file && file.name.endsWith('.zip')) zipFile.value = file
 }
 
 function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0, size = bytes
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++ }
+  return `${size.toFixed(1)} ${units[i]}`
 }
 
 async function onUploadZip() {
   if (!zipFile.value) return
-
+  if (!confirm('确定要上传 ZIP 文件进行升级吗？升级期间服务可能短暂不可用。')) return
   zipUploading.value = true
-  zipLogs.value = []
   zipSuccess.value = null
-
+  zipLogs.value = []
   try {
     const data = await uploadZipUpgrade(zipFile.value)
-    if (data.logs) {
-      zipLogs.value = data.logs
-    }
+    if (data.logs) zipLogs.value = data.logs
     zipSuccess.value = data.success
+    if (!data.success) zipLogs.value.push(`[错误] ${data.error}`)
   } catch (e) {
     zipSuccess.value = false
-    zipLogs.value.push(`[${new Date().toLocaleTimeString()}] ✗ 上传失败: ${e.message}`)
+    zipLogs.value.push(`[错误] ${e.message}`)
   } finally {
     zipUploading.value = false
+    nextTick(() => { const logEl = document.querySelector('.log-content'); if (logEl) logEl.scrollTop = logEl.scrollHeight })
+    onCheckVersion()
+    onCheckGitStatus()
   }
 }
-
-// 初始化加载
-onCheckVersion()
-onCheckGitStatus()
 </script>
 
 <style scoped>
-.upgrade-page {
-  padding: 20px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  flex: 1;
-}
-
-.card-icon {
-  color: #666;
-}
-
-.card-body {
-  padding: 20px;
-}
-
-/* Badge */
-.badge {
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-.badge-update { background: #e6f7ff; color: #1890ff; }
-.badge-ok { background: #f6ffed; color: #52c41a; }
-.badge-warn { background: #fff7e6; color: #fa8c16; }
-.badge-loading { background: #f5f5f5; color: #999; }
-
-/* Version Compare */
-.version-compare {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 20px 0;
-}
-
-.version-block {
-  text-align: center;
-  padding: 16px 32px;
-  border-radius: 10px;
-  background: #fafafa;
-}
-
-.version-block.current {
-  border: 1px solid #e8e8e8;
-}
-
-.version-block.has-update {
-  border: 2px solid #52c41a;
-  background: #f6ffed;
-}
-
-.version-label {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 6px;
-}
-
-.version-number {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333;
-}
-
-.version-number.unknown {
-  color: #ccc;
-}
-
-.version-arrow {
-  color: #bbb;
-}
-
-/* Release Notes */
-.release-notes-block {
-  margin-top: 16px;
-}
-
-.block-label {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.release-notes-content {
-  background: #f9f9f9;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 13px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-/* Status Bar */
-.status-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-top: 12px;
-}
-.status-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
-
-/* Release Link */
-.release-link {
-  margin-top: 12px;
-}
-.release-link a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #1890ff;
-  font-size: 13px;
-  text-decoration: none;
-}
+.upgrade-page { padding: 20px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.page-header h2 { margin: 0; font-size: 18px; color: var(--text-primary); }
+.header-actions { display: flex; gap: 8px; }
+.card { background: var(--bg-card); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border-color); }
+.card-header { display: flex; align-items: center; gap: 10px; padding: 16px 24px; border-bottom: 1px solid var(--border-color); }
+.card-header h3 { margin: 0; font-size: 15px; color: var(--text-primary); flex: 1; }
+.card-icon { color: var(--text-muted); flex-shrink: 0; }
+.card-body { padding: 24px; }
+.upload-hint { margin: 0 0 16px; color: var(--text-secondary); font-size: 13px; }
+.upload-hint code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.upload-zone { border: 2px dashed var(--border-color); border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.upload-zone:hover, .upload-zone.drag-over { border-color: #1890ff; background: rgba(24, 144, 255, 0.04); }
+.upload-zone.uploading { cursor: not-allowed; opacity: 0.7; }
+.upload-content p { margin: 8px 0 0; color: var(--text-primary); font-size: 14px; }
+.upload-content p.upload-sub { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+.upload-content p.upload-sub a { color: #1890ff; text-decoration: none; }
+.upload-content p.upload-sub a:hover { text-decoration: underline; }
+.upload-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-secondary); font-size: 14px; }
+.badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.badge-update { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
+.badge-warn { background: rgba(250, 140, 22, 0.12); color: #fa8c16; }
+.badge-ok { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
+.badge-loading { background: rgba(24, 144, 255, 0.12); color: #1890ff; }
+.skeleton-line { height: 16px; background: var(--border-color); border-radius: 4px; margin-bottom: 12px; animation: shimmer 1.5s ease-in-out infinite; }
+@keyframes shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.version-compare { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; padding: 20px; background: var(--bg-primary); border-radius: 8px; }
+.version-block { text-align: center; }
+.version-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.version-number { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.version-block.current .version-number { color: var(--text-primary); }
+.version-block.latest .version-number { color: var(--text-muted); }
+.version-block.latest.has-update .version-number { color: #52c41a; }
+.version-block .version-number.unknown { color: var(--text-muted); font-weight: 400; }
+.version-arrow { color: var(--text-muted); display: flex; align-items: center; }
+.release-notes-block { margin-bottom: 16px; }
+.block-label { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.release-notes-content { font-size: 13px; line-height: 1.6; color: var(--text-primary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-family: inherit; margin: 0; padding: 12px; background: var(--bg-primary); border-radius: 6px; border: 1px solid var(--border-color); }
+.status-bar { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+.status-error { background: rgba(245, 34, 45, 0.06); border: 1px solid rgba(245, 34, 45, 0.15); color: #f5222d; }
+.release-link { margin-top: 12px; }
+.release-link a { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #1890ff; text-decoration: none; }
 .release-link a:hover { text-decoration: underline; }
-
-/* Info Grid */
-.info-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  color: #666;
-  font-size: 14px;
-  min-width: 90px;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.info-value.mono {
-  font-family: 'SF Mono', monospace;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.info-value.small {
-  font-size: 12px;
-}
-
+.info-grid { display: flex; flex-direction: column; gap: 0; }
+.info-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+.info-item:last-child { border-bottom: none; }
+.info-label { width: 110px; flex-shrink: 0; font-size: 13px; color: var(--text-muted); }
+.info-value { font-size: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+.mono { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 13px; }
+.small { font-size: 12px; word-break: break-all; }
 .text-ok { color: #52c41a; }
 .text-warn { color: #fa8c16; }
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot-ok { background: #52c41a; }
 .dot-warn { background: #fa8c16; }
-
-/* Upload Zone */
-.upload-hint {
-  color: #666;
-  font-size: 13px;
-  margin-bottom: 16px;
-}
-
-.upload-zone {
-  border: 2px dashed #d9d9d9;
-  border-radius: 10px;
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.upload-zone:hover, .upload-zone.drag-over {
-  border-color: #1890ff;
-  background: #f0f5ff;
-}
-
-.upload-zone.uploading {
-  cursor: default;
-  border-color: #1890ff;
-  background: #f0f5ff;
-}
-
-.upload-content p {
-  margin: 8px 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.upload-sub {
-  font-size: 12px !important;
-  color: #999 !important;
-}
-
-.upload-sub a {
-  color: #1890ff;
-  text-decoration: none;
-}
-
-.upload-sub a:hover {
-  text-decoration: underline;
-}
-
-.upload-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: #1890ff;
-  font-size: 14px;
-}
-
-/* Buttons */
-.btn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.btn-outline {
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  color: #666;
-}
-
-.btn-outline:hover {
-  border-color: #1890ff;
-  color: #1890ff;
-}
-
-.btn-upgrade {
-  background: #1890ff;
-  color: #fff;
-  margin-top: 16px;
-}
-
-.btn-upgrade:hover {
-  background: #40a9ff;
-}
-
-.btn-upgrade:disabled {
-  background: #d9d9d9;
-  cursor: not-allowed;
-}
-
-/* Upgrade Steps */
-.upgrade-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 16px 0;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: #fafafa;
-  border: 1px solid #eee;
-  min-width: 160px;
-}
-
-.step-active {
-  background: #e6f7ff;
-  border-color: #91d5ff;
-}
-
-.step-completed {
-  background: #f6ffed;
-  border-color: #b7eb8f;
-}
-
-.step-indicator {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #d9d9d9;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.step-active .step-indicator {
-  background: #1890ff;
-}
-
-.step-completed .step-indicator {
-  background: #52c41a;
-}
-
-.step-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.step-desc {
-  font-size: 12px;
-  color: #999;
-}
-
-.step-connector {
-  width: 30px;
-  height: 2px;
-  background: #eee;
-  flex-shrink: 0;
-}
-
-.step-connector.active {
-  background: #52c41a;
-}
-
-/* Warning */
-.upgrade-warning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
-  border-radius: 8px;
-  margin-top: 16px;
-  font-size: 13px;
-  color: #ad6800;
-}
-
-/* Log Panel */
-.log-panel {
-  margin-top: 16px;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.log-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: #fafafa;
-  border-bottom: 1px solid #eee;
-  font-size: 13px;
-}
-
-.log-status {
-  color: #52c41a;
-  font-weight: 500;
-}
-
-.log-status-fail {
-  color: #ff4d4f;
-}
-
-.log-content {
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 10px 14px;
-  font-family: 'SF Mono', monospace;
-  font-size: 12px;
-  line-height: 1.8;
-  background: #1e1e1e;
-  color: #d4d4d4;
-}
-
-.log-line {
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.log-success { color: #4ec9b0; }
-.log-error { color: #f44747; }
-.log-info { color: #dcdcaa; }
-
-/* Skeleton */
-.skeleton-line {
-  height: 16px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-  border-radius: 4px;
-  margin-bottom: 12px;
-}
-
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* Spinner */
-.spinner-sm {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.btn-outline .spinner-sm {
-  border-color: rgba(0,0,0,0.1);
-  border-top-color: #1890ff;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.upgrade-steps { display: flex; align-items: flex-start; margin-bottom: 24px; padding: 20px; background: var(--bg-primary); border-radius: 8px; }
+.step { display: flex; align-items: flex-start; gap: 12px; flex: 1; }
+.step-indicator { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; background: var(--border-color); color: var(--text-muted); transition: all 0.3s; }
+.step-completed .step-indicator { background: #52c41a; color: #fff; }
+.step-active .step-indicator { background: #1890ff; color: #fff; box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); } 50% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0.1); } }
+.step-title { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+.step-desc { font-size: 12px; color: var(--text-muted); }
+.step-connector { width: 24px; height: 2px; background: var(--border-color); margin-top: 15px; flex-shrink: 0; transition: background 0.3s; }
+.step-connector.active { background: #52c41a; }
+.step-completed .step-title { color: #52c41a; }
+.btn { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
+.btn-outline:hover:not(:disabled) { border-color: #1890ff; color: #1890ff; }
+.btn-upgrade { background: linear-gradient(135deg, #52c41a, #389e0d); color: #fff; font-weight: 500; padding: 10px 28px; font-size: 15px; }
+.btn-upgrade:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(82, 196, 26, 0.4); transform: translateY(-1px); }
+.spinner-sm { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.upgrade-warning { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(250, 140, 22, 0.08); border: 1px solid rgba(250, 140, 22, 0.2); border-radius: 8px; color: #d46b08; font-size: 13px; margin-bottom: 16px; }
+.log-panel { margin-top: 16px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+.log-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--bg-primary); font-size: 13px; font-weight: 500; color: var(--text-primary); border-bottom: 1px solid var(--border-color); }
+.log-status { font-weight: 600; color: #52c41a; font-size: 12px; }
+.log-status-fail { color: #f5222d; }
+.log-content { padding: 12px 16px; max-height: 320px; overflow-y: auto; background: #1a1a2e; color: #d4d4d4; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 12px; line-height: 1.8; }
+.log-line.log-success { color: #4ecb71; }
+.log-line.log-error { color: #f44747; }
+.log-line.log-info { color: #d4d4d4; }
+[data-theme='dark'] .version-compare { background: #0f172a; }
+[data-theme='dark'] .release-notes-content { background: #0f172a; }
+[data-theme='dark'] .upgrade-steps { background: #0f172a; }
 </style>
