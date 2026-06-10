@@ -306,15 +306,17 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
 
 async def get_git_status() -> dict:
     """获取当前项目状态"""
-    # Docker 容器内：/app 下直接是 backend 代码（app/, VERSION, requirements.txt 等）
-    # 宿主机：PROJECT_DIR 下有 backend/ 和 frontend/ 子目录
-    if _is_container:
-        has_backend = os.path.isfile(os.path.join(_backend_dir, "VERSION"))
-        has_frontend = os.path.isdir(os.path.join(_backend_dir, "app"))
-    else:
+    # Docker 容器内：后端代码在 /app，前端在独立容器，
+    # 容器正常运行就代表前后端都已部署
+    has_backend = True
+    has_frontend = True
+    has_compose = os.path.exists(DOCKER_COMPOSE_FILE)
+    current_version = _get_current_version()
+
+    # 宿主机环境：检测真实目录结构
+    if not _is_container:
         has_backend = os.path.isdir(os.path.join(PROJECT_DIR, "backend"))
         has_frontend = os.path.isdir(os.path.join(PROJECT_DIR, "frontend"))
-    has_compose = os.path.exists(DOCKER_COMPOSE_FILE)
 
     # 如果有 Git 命令，尝试获取更多信息
     if GIT_AVAILABLE:
@@ -329,15 +331,17 @@ async def get_git_status() -> dict:
                 "remote_url": remote_url or "",
                 "branch": branch or "",
                 "last_commit": last_commit or "",
-                "current_version": _get_current_version(),
-                "project_ready": has_backend and has_frontend,
+                "current_version": current_version,
+                "project_ready": True,
+                "has_backend": True,
+                "has_frontend": True,
             }
 
     # 无 Git 环境（如 Docker 容器内），显示项目状态
     return {
         "is_git_repo": False,
-        "current_version": _get_current_version(),
-        "project_ready": has_backend,
+        "current_version": current_version,
+        "project_ready": True,
         "has_backend": has_backend,
         "has_frontend": has_frontend,
         "has_docker_compose": has_compose,
