@@ -41,6 +41,11 @@ class GitStatusResponse(BaseModel):
     """Git 仓库状态响应"""
 
     is_git_repo: bool
+    current_version: str = ""
+    project_ready: bool = True
+    has_backend: bool = True
+    has_frontend: bool = True
+    has_docker_compose: bool = False
     remote_url: str = ""
     branch: str = ""
     last_commit: str = ""
