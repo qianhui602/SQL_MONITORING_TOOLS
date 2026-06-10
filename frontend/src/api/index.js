@@ -151,7 +151,7 @@ export function getBlockingRealtime() { return request.get('/blocking/realtime')
 export function getBlockingHistory(params) { return request.get('/blocking/history', { params }) }
 
 // ===== 磁盘监控 =====
-export function getDiskSpace() { return request.get('/disk/space') }
+export function getDiskSpace(params) { return request.get('/disk/space', { params }) }
 export function getDiskHistory(params) { return request.get('/disk/history', { params }) }
 
 // ===== 索引分析 =====

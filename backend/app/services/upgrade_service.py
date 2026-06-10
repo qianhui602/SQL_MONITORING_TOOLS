@@ -19,10 +19,13 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# 项目路径
-PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DOCKER_COMPOSE_FILE = os.path.join(PROJECT_DIR, "..", "docker-compose.yml")
-VERSION_FILE = os.path.join(PROJECT_DIR, "VERSION")
+# 项目路径 - 从 backend/app/services/ 向上三级到项目根目录
+_backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # backend/
+PROJECT_DIR = os.path.dirname(_backend_dir)  # 项目根目录
+DOCKER_COMPOSE_FILE = os.path.join(PROJECT_DIR, "docker-compose.yml")
+VERSION_FILE = os.path.join(_backend_dir, "VERSION")
+
+logger.info("Upgrade service initialized: PROJECT_DIR=%s, VERSION_FILE=%s", PROJECT_DIR, VERSION_FILE)
 
 # 运行模式检测
 IS_DOCKER = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
@@ -177,43 +180,39 @@ def _compare_versions(v1: str, v2: str) -> int:
 
 
 async def get_git_status() -> dict:
-    """获取当前 Git 仓库状态"""
-    if not GIT_AVAILABLE:
-        return {
-            "is_git_repo": False,
-            "error": "服务器上未安装 Git 命令",
-        }
+    """获取当前项目状态"""
+    # 检查关键文件是否存在
+    has_backend = os.path.isdir(os.path.join(PROJECT_DIR, "backend"))
+    has_frontend = os.path.isdir(os.path.join(PROJECT_DIR, "frontend"))
+    has_compose = os.path.exists(DOCKER_COMPOSE_FILE)
+    has_version = os.path.exists(VERSION_FILE)
 
-    code, _, _ = _run_cmd(["git", "rev-parse", "--git-dir"])
-    if code != 0:
-        return {
-            "is_git_repo": False,
-            "error": "当前目录不是 Git 仓库",
-            "hint": "请在服务器上执行: git clone <仓库地址> 并重新部署",
-        }
+    # 如果有 Git 命令，尝试获取更多信息
+    if GIT_AVAILABLE:
+        code, _, _ = _run_cmd(["git", "rev-parse", "--git-dir"])
+        if code == 0:
+            # 有 Git 仓库
+            _, remote_url, _ = _run_cmd(["git", "remote", "get-url", "origin"])
+            _, branch, _ = _run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+            _, last_commit, _ = _run_cmd(["git", "log", "-1", "--format=%H %s"])
+            return {
+                "is_git_repo": True,
+                "remote_url": remote_url or "",
+                "branch": branch or "",
+                "last_commit": last_commit or "",
+                "current_version": _get_current_version(),
+                "project_ready": has_backend and has_frontend,
+            }
 
-    # 获取远程仓库地址
-    ret, remote_url, _ = _run_cmd(["git", "remote", "get-url", "origin"])
-    # 获取当前分支
-    _, branch, _ = _run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-    # 获取最近提交
-    _, last_commit, _ = _run_cmd(["git", "log", "-1", "--format=%H %s"])
-    # 检查是否有未提交的更改
-    _, has_changes, _ = _run_cmd(["git", "status", "--porcelain"])
-    # 检查与远程的差异
-    behind_count = "0"
-    if branch:
-        _, behind_count, _ = _run_cmd(
-            ["git", "rev-list", "--count", f"HEAD..origin/{branch}"]
-        )
-
+    # 无 Git 环境（如 Docker 容器内），显示项目状态
     return {
-        "is_git_repo": True,
-        "remote_url": remote_url or "",
-        "branch": branch or "",
-        "last_commit": last_commit or "",
-        "has_uncommitted": bool(has_changes),
-        "behind_remote": int(behind_count) if behind_count.isdigit() else 0,
+        "is_git_repo": False,
+        "current_version": _get_current_version(),
+        "project_ready": has_backend and has_frontend,
+        "has_backend": has_backend,
+        "has_frontend": has_frontend,
+        "has_docker_compose": has_compose,
+        "hint": "在线升级将通过下载 Release ZIP 方式更新代码",
     }
 
 
@@ -270,7 +269,6 @@ async def apply_upgrade() -> dict:
         # 保存到临时文件并解压
         import io
         import zipfile
-        import shutil
 
         zip_bytes = io.BytesIO(resp.content)
         if not zipfile.is_zipfile(zip_bytes):
@@ -399,17 +397,6 @@ async def apply_upgrade() -> dict:
         }
     except Exception as e:
         logger.exception("升级失败")
-        return {
-            "success": False,
-            "error": f"升级异常: {str(e)}",
-            "logs": logs,
-        }
-            "error": "",
-            "logs": logs,
-        }
-
-    except Exception as e:
-        logger.exception("升级过程异常")
         return {
             "success": False,
             "error": f"升级异常: {str(e)}",

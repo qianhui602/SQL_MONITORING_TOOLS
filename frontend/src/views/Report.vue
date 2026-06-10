@@ -513,6 +513,8 @@ async function generateReport() {
       })
     } catch { /* ignore save errors */ }
 
+    // 等待 DOM 更新后再渲染图表
+    await nextTick()
     await nextTick()
     renderCharts()
   } catch (e) {

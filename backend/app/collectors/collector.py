@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from app.collectors.deadlock import DeadlockDetector
+from app.collectors.disk import DiskCollector
 from app.collectors.performance import PerformanceCollector
 from app.collectors.slow_query import SlowQueryCollector
 from app.collectors.sqlserver import MSSQLConnectionManager
@@ -27,6 +28,7 @@ class MetricsCollector:
         self.performance_collector = PerformanceCollector()
         self.deadlock_detector = DeadlockDetector()
         self.slow_query_collector = SlowQueryCollector()
+        self.disk_collector = DiskCollector()
 
     def collect_all_metrics(self) -> Dict[str, Any]:
         """执行一次完整的采集
@@ -45,6 +47,7 @@ class MetricsCollector:
             "metrics": [],
             "deadlocks": [],
             "slow_queries": [],
+            "disk_space": [],
         }
 
         try:
@@ -91,5 +94,14 @@ class MetricsCollector:
                 logger.error("Slow query collection error: %s", slow_query_data["error"])
         except Exception as e:
             logger.error("Unexpected error during slow query collection: %s", e)
+
+        # 采集磁盘空间
+        try:
+            disk_data = self.disk_collector.collect_disk_space(connection)
+            result["disk_space"] = disk_data.get("disk_info", [])
+            if disk_data.get("error"):
+                logger.error("Disk space collection error: %s", disk_data["error"])
+        except Exception as e:
+            logger.error("Unexpected error during disk space collection: %s", e)
 
         return result

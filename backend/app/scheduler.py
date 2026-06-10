@@ -162,12 +162,14 @@ class SchedulerManager:
                 await self._store_metrics(session, data["metrics"], server_address)
                 await self._store_deadlocks(session, data["deadlocks"], server_address)
                 await self._store_slow_queries(session, data["slow_queries"], server_address)
+                await self._store_disk_space(session, data["disk_space"], server_address)
                 await session.commit()
                 logger.info(
-                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries",
+                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries, %d disk records",
                     len(data["metrics"]),
                     len(data["deadlocks"]),
                     len(data["slow_queries"]),
+                    len(data["disk_space"]),
                 )
             except Exception as e:
                 await session.rollback()
@@ -223,13 +225,17 @@ class SchedulerManager:
                         await self._store_slow_queries(
                             session, data.get("slow_queries", []), server_address
                         )
+                        await self._store_disk_space(
+                            session, data.get("disk_space", []), server_address
+                        )
                         await session.commit()
                         logger.info(
-                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries",
+                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries, %d disk records",
                             server_address,
                             len(instance_metrics),
                             len(instance_deadlocks),
                             len(data.get("slow_queries", [])),
+                            len(data.get("disk_space", [])),
                         )
                     except Exception as e:
                         await session.rollback()
@@ -308,6 +314,41 @@ class SchedulerManager:
                 )
             except Exception as e:
                 logger.warning("Failed to store slow query record: %s", e)
+
+    async def _store_disk_space(
+        self, session, disk_space: list[Dict[str, Any]], server_address: str
+    ) -> None:
+        """将磁盘空间数据写入 PostgreSQL"""
+        now = datetime.now(timezone.utc)
+        for disk in disk_space:
+            try:
+                stmt = text("""
+                    INSERT INTO disk_space_records (
+                        database_name, data_file_mb, log_file_mb,
+                        total_mb, used_mb, free_mb, usage_pct,
+                        collected_at, server_address
+                    ) VALUES (
+                        :database_name, :data_file_mb, :log_file_mb,
+                        :total_mb, :used_mb, :free_mb, :usage_pct,
+                        :collected_at, :server_address
+                    )
+                """)
+                await session.execute(
+                    stmt,
+                    {
+                        "database_name": disk.get("database_name", ""),
+                        "data_file_mb": disk.get("data_file_mb", 0.0),
+                        "log_file_mb": disk.get("log_file_mb", 0.0),
+                        "total_mb": disk.get("total_mb", 0.0),
+                        "used_mb": disk.get("used_mb", 0.0),
+                        "free_mb": disk.get("free_mb", 0.0),
+                        "usage_pct": disk.get("usage_pct", 0.0),
+                        "collected_at": now,
+                        "server_address": server_address,
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed to store disk space record: %s", e)
 
     async def _run_alert_checks(self, metrics_data: Dict[str, Any]) -> None:
         """执行告警规则检查"""

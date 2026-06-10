@@ -128,9 +128,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getSlowQueries } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
 const timeRangeOptions = [
   { label: '最近1小时', value: '1h' },

@@ -97,17 +97,39 @@
         <div class="skeleton-line" style="width:30%"></div>
       </div>
 
-      <!-- 未检测到 Git 仓库 -->
+      <!-- 未检测到 Git 仓库但项目正常 -->
       <div v-else-if="!gitStatus.is_git_repo" class="card-body">
-        <div class="empty-state-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">项目状态</span>
+            <span class="info-value" :class="gitStatus.project_ready ? 'text-ok' : 'text-warn'">
+              <span class="status-dot" :class="gitStatus.project_ready ? 'dot-ok' : 'dot-warn'"></span>
+              {{ gitStatus.project_ready ? '项目文件完整' : '项目文件不完整' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">当前版本</span>
+            <span class="info-value">v{{ gitStatus.current_version }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">后端服务</span>
+            <span class="info-value" :class="gitStatus.has_backend ? 'text-ok' : 'text-warn'">
+              <span class="status-dot" :class="gitStatus.has_backend ? 'dot-ok' : 'dot-warn'"></span>
+              {{ gitStatus.has_backend ? '已部署' : '未找到' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">前端服务</span>
+            <span class="info-value" :class="gitStatus.has_frontend ? 'text-ok' : 'text-warn'">
+              <span class="status-dot" :class="gitStatus.has_frontend ? 'dot-ok' : 'dot-warn'"></span>
+              {{ gitStatus.has_frontend ? '已部署' : '未找到' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">升级方式</span>
+            <span class="info-value">{{ gitStatus.hint || '通过 Release ZIP 更新' }}</span>
+          </div>
         </div>
-        <p class="empty-title">未检测到 Git 仓库</p>
-        <p class="empty-desc">{{ gitStatus.error }}</p>
-        <p v-if="gitStatus.hint" class="empty-hint">{{ gitStatus.hint }}</p>
       </div>
 
       <div v-else class="card-body">
