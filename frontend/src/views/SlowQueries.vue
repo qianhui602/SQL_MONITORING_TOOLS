@@ -29,12 +29,36 @@
           <tr>
             <th class="col-expand"></th>
             <th>查询文本</th>
-            <th>执行次数</th>
-            <th>总CPU时间(ms)</th>
-            <th>总逻辑读</th>
-            <th>平均耗时(ms)</th>
-            <th>最后执行时间</th>
-            <th>采集时间</th>
+            <th class="sortable" :class="{ active: sortField === 'execution_count' }" @click="toggleSort('execution_count')">
+              执行次数
+              <span class="sort-icon" v-if="sortField === 'execution_count'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
+            <th class="sortable" :class="{ active: sortField === 'total_cpu_time_ms' }" @click="toggleSort('total_cpu_time_ms')">
+              总CPU时间(ms)
+              <span class="sort-icon" v-if="sortField === 'total_cpu_time_ms'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
+            <th class="sortable" :class="{ active: sortField === 'total_logical_reads' }" @click="toggleSort('total_logical_reads')">
+              总逻辑读
+              <span class="sort-icon" v-if="sortField === 'total_logical_reads'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
+            <th class="sortable" :class="{ active: sortField === 'avg_duration_ms' }" @click="toggleSort('avg_duration_ms')">
+              平均耗时(ms)
+              <span class="sort-icon" v-if="sortField === 'avg_duration_ms'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
+            <th class="sortable" :class="{ active: sortField === 'last_execution_time' }" @click="toggleSort('last_execution_time')">
+              最后执行时间
+              <span class="sort-icon" v-if="sortField === 'last_execution_time'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
+            <th class="sortable" :class="{ active: sortField === 'collected_at' }" @click="toggleSort('collected_at')">
+              采集时间
+              <span class="sort-icon" v-if="sortField === 'collected_at'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+              <span class="sort-icon placeholder" v-else>↕</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -149,6 +173,8 @@ const page = ref(1)
 const pageSize = ref(10)
 const expandedId = ref(null)
 const expandedQuery = ref('')
+const sortField = ref('total_elapsed_ms')
+const sortOrder = ref('desc')
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
@@ -167,7 +193,9 @@ async function fetchList() {
       page: page.value,
       page_size: pageSize.value,
       start_time: range.start_time,
-      end_time: range.end_time
+      end_time: range.end_time,
+      sort_by: sortField.value,
+      sort_order: sortOrder.value
     }
     const serverAddress = getServerAddress()
     if (serverAddress) params.server_address = serverAddress
@@ -217,6 +245,19 @@ function toggleExpand(row) {
   }
   expandedId.value = row.id
   expandedQuery.value = row.query_text || ''
+}
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortOrder.value = 'desc'
+  }
+  page.value = 1
+  expandedId.value = null
+  expandedQuery.value = ''
+  fetchList()
 }
 
 function truncateText(text, maxLen) {
@@ -356,6 +397,32 @@ onMounted(() => {
   color: var(--text-primary, #333);
   border-bottom: 1px solid var(--border-color, #f0f0f0);
   white-space: nowrap;
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.data-table th.sortable:hover {
+  color: #1890ff;
+}
+
+.data-table th.sortable.active {
+  color: #1890ff;
+}
+
+.sort-icon {
+  font-size: 12px;
+  margin-left: 2px;
+  vertical-align: middle;
+  color: #1890ff;
+}
+
+.sort-icon.placeholder {
+  color: #d9d9d9;
+  font-size: 11px;
 }
 
 .col-expand {
