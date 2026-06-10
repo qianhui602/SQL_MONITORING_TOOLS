@@ -31,7 +31,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span class="version-text">v1.0.0</span>
+        <span class="version-text">v{{ currentVersion }}</span>
       </div>
     </aside>
 
@@ -136,6 +136,7 @@ const notifPanelOpen = ref(false)
 const notifRef = ref(null)
 const notifList = ref([])
 const notifUnread = ref(0)
+const currentVersion = ref('1.0.0')
 
 function severityClass(sev) {
   return { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium', low: 'sev-low' }[sev] || 'sev-medium'
