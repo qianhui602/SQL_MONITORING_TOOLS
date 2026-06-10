@@ -20,24 +20,28 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # 项目路径 - 使用多种方式探测，确保找到正确的项目根目录
-_current_file_dir = os.path.dirname(os.path.abspath(__file__))  # backend/app/services/
-_backend_dir_by_file = os.path.dirname(os.path.dirname(_current_file_dir))  # backend/
 _cwd = os.getcwd()  # 当前工作目录
+_is_container = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
 
-# 可能的项目根目录：从 backend/ 上级，或当前工作目录
-_possible_backend = _backend_dir_by_file
-if not os.path.isfile(os.path.join(_possible_backend, "VERSION")):
-    # 如果文件路径不对，尝试 cwd 的上级
-    _possible_backend = os.path.join(_cwd, "backend") if os.path.basename(_cwd) != "backend" else _cwd
+# Docker 容器内：WORKDIR=/app，backend 代码在 /app，VERSION 在 /app/VERSION
+# 宿主机：backend 代码在 C:\Source\SQL监控平台\backend\，VERSION 在 backend/VERSION
+if _is_container or os.path.isfile(os.path.join(_cwd, "VERSION")):
+    # 容器内或 cwd 就是 backend 目录
+    _backend_dir = _cwd
+    # 项目根目录 = backend 的上级（容器内没有上级，用 backend 本身）
+    PROJECT_DIR = os.path.dirname(_cwd) if os.path.basename(_cwd) == "backend" else _cwd
+else:
+    # 宿主机：从 __file__ 推算
+    _current_file_dir = os.path.dirname(os.path.abspath(__file__))  # backend/app/services/
+    _backend_dir = os.path.dirname(os.path.dirname(_current_file_dir))  # backend/
+    PROJECT_DIR = os.path.dirname(_backend_dir)
 
-_backend_dir = _possible_backend
-PROJECT_DIR = os.path.dirname(_backend_dir)
 DOCKER_COMPOSE_FILE = os.path.join(PROJECT_DIR, "docker-compose.yml")
 VERSION_FILE = os.path.join(_backend_dir, "VERSION")
 
 logger.info(
-    "Upgrade service paths: __file__=%s, _backend_dir=%s, PROJECT_DIR=%s, VERSION_FILE=%s, cwd=%s, VERSION exists=%s",
-    __file__, _backend_dir, PROJECT_DIR, VERSION_FILE, _cwd, os.path.exists(VERSION_FILE),
+    "Upgrade service paths: __file__=%s, _backend_dir=%s, PROJECT_DIR=%s, VERSION_FILE=%s, cwd=%s, is_container=%s, VERSION exists=%s",
+    __file__, _backend_dir, PROJECT_DIR, VERSION_FILE, _cwd, _is_container, os.path.exists(VERSION_FILE),
 )
 
 # 运行模式检测
@@ -302,11 +306,15 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
 
 async def get_git_status() -> dict:
     """获取当前项目状态"""
-    # 检查关键文件是否存在
-    has_backend = os.path.isdir(os.path.join(PROJECT_DIR, "backend"))
-    has_frontend = os.path.isdir(os.path.join(PROJECT_DIR, "frontend"))
+    # Docker 容器内：/app 下直接是 backend 代码（app/, VERSION, requirements.txt 等）
+    # 宿主机：PROJECT_DIR 下有 backend/ 和 frontend/ 子目录
+    if _is_container:
+        has_backend = os.path.isfile(os.path.join(_backend_dir, "VERSION"))
+        has_frontend = os.path.isdir(os.path.join(_backend_dir, "app"))
+    else:
+        has_backend = os.path.isdir(os.path.join(PROJECT_DIR, "backend"))
+        has_frontend = os.path.isdir(os.path.join(PROJECT_DIR, "frontend"))
     has_compose = os.path.exists(DOCKER_COMPOSE_FILE)
-    has_version = os.path.exists(VERSION_FILE)
 
     # 如果有 Git 命令，尝试获取更多信息
     if GIT_AVAILABLE:
@@ -329,7 +337,7 @@ async def get_git_status() -> dict:
     return {
         "is_git_repo": False,
         "current_version": _get_current_version(),
-        "project_ready": has_backend and has_frontend,
+        "project_ready": has_backend,
         "has_backend": has_backend,
         "has_frontend": has_frontend,
         "has_docker_compose": has_compose,
