@@ -72,25 +72,24 @@
       </div>
     </div>
 
-    <!-- Git 仓库状态 -->
+    <!-- 系统状态 -->
     <div class="card">
       <div class="card-header">
         <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10z"/><path d="M12 6v6l4 2"/>
+          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
         </svg>
-        <h3>Git 仓库状态</h3>
+        <h3>系统状态</h3>
         <div v-if="loadingGit" class="badge badge-loading">检测中...</div>
-        <div v-else-if="gitStatus.is_git_repo" class="badge badge-ok">就绪</div>
-        <div v-else class="badge badge-warn">未就绪</div>
+        <div v-else-if="gitStatus.project_ready" class="badge badge-ok">正常</div>
+        <div v-else class="badge badge-warn">异常</div>
       </div>
 
       <div v-if="loadingGit" class="card-body">
         <div class="skeleton-line" style="width:70%"></div>
         <div class="skeleton-line" style="width:50%"></div>
-        <div class="skeleton-line" style="width:30%"></div>
       </div>
 
-      <div v-else-if="!gitStatus.is_git_repo" class="card-body">
+      <div v-else class="card-body">
         <div class="info-grid">
           <div class="info-item">
             <span class="info-label">项目状态</span>
@@ -123,140 +122,112 @@
           </div>
         </div>
       </div>
-
-      <div v-else class="card-body">
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">远程仓库</span>
-            <span class="info-value mono">{{ gitStatus.remote_url || '未设置' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">当前分支</span>
-            <span class="info-value">{{ gitStatus.branch }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">最近提交</span>
-            <span class="info-value mono small">{{ gitStatus.last_commit }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">工作区状态</span>
-            <span class="info-value" :class="gitStatus.has_uncommitted ? 'text-warn' : 'text-ok'">
-              <span class="status-dot" :class="gitStatus.has_uncommitted ? 'dot-warn' : 'dot-ok'"></span>
-              {{ gitStatus.has_uncommitted ? '存在未提交变更' : '工作区干净' }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">落后远程</span>
-            <span class="info-value">{{ gitStatus.behind_remote }} 个提交</span>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- ZIP 文件上传升级 -->
-    <div class="card">
-      <div class="card-header">
-        <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <h3>ZIP 上传升级</h3>
-      </div>
-
-      <div class="card-body">
-        <p class="upload-hint">从 GitHub Release 下载 ZIP 文件后，手动上传进行升级。支持 <code>.zip</code> 格式，最大 100MB。</p>
-
-        <div
-          class="upload-zone"
-          :class="{ 'drag-over': isDragging, 'uploading': zipUploading }"
-          @dragover.prevent="isDragging = true"
-          @dragleave="isDragging = false"
-          @drop.prevent="onDropZip"
-          @click="triggerFileInput"
-        >
-          <input ref="zipFileInput" type="file" accept=".zip" style="display:none" @change="onZipFileSelect" />
-          <div v-if="zipUploading" class="upload-loading">
-            <div class="spinner-sm"></div>
-            <span>上传并升级中...</span>
-          </div>
-          <div v-else class="upload-content">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <p v-if="zipFile">{{ zipFile.name }} ({{ formatFileSize(zipFile.size) }})</p>
-            <p v-else>点击或拖拽 ZIP 文件到此处</p>
-            <p class="upload-sub">从 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank" @click.stop>GitHub Releases</a> 下载最新版本</p>
-          </div>
-        </div>
-
-        <button v-if="zipFile && !zipUploading" class="btn btn-upgrade" @click="onUploadZip" :disabled="zipUploading">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-          开始上传升级
-        </button>
-
-        <div v-if="zipLogs.length > 0" class="log-panel">
-          <div class="log-header">
-            <span>升级日志</span>
-            <span class="log-status" v-if="zipSuccess === true">✓ 完成</span>
-            <span class="log-status log-status-fail" v-else-if="zipSuccess === false">✗ 失败</span>
-          </div>
-          <div class="log-content">
-            <div v-for="(line, i) in zipLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗'), 'log-info': line.includes('!') }">{{ line }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 执行升级 -->
+    <!-- 升级 -->
     <div class="card">
       <div class="card-header">
         <svg class="card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
         <h3>执行升级</h3>
-        <div v-if="upgrading" class="badge badge-loading">升级中...</div>
+        <div v-if="upgrading || zipUploading" class="badge badge-loading">升级中...</div>
       </div>
 
       <div class="card-body">
-        <div class="upgrade-steps">
-          <div class="step" :class="stepState(0)">
-            <div class="step-indicator"><span v-if="upgradeStep > 0">✓</span><span v-else>1</span></div>
-            <div class="step-content"><div class="step-title">拉取代码</div><div class="step-desc">从 Git 远程仓库拉取最新代码</div></div>
-          </div>
-          <div class="step-connector" :class="{ active: upgradeStep > 1 }"></div>
-          <div class="step" :class="stepState(1)">
-            <div class="step-indicator"><span v-if="upgradeStep > 1">✓</span><span v-else>2</span></div>
-            <div class="step-content"><div class="step-title">构建镜像</div><div class="step-desc">使用最新代码构建 Docker 镜像</div></div>
-          </div>
-          <div class="step-connector" :class="{ active: upgradeStep > 2 }"></div>
-          <div class="step" :class="stepState(2)">
-            <div class="step-indicator"><span v-if="upgradeStep > 2">✓</span><span v-else>3</span></div>
-            <div class="step-content"><div class="step-title">重启服务</div><div class="step-desc">使用新镜像重新启动所有服务</div></div>
-          </div>
+        <!-- 升级方式切换 -->
+        <div class="upgrade-tabs">
+          <button class="upgrade-tab" :class="{ active: upgradeMode === 'online' }" @click="upgradeMode = 'online'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            在线升级
+          </button>
+          <button class="upgrade-tab" :class="{ active: upgradeMode === 'zip' }" @click="upgradeMode = 'zip'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            ZIP 上传升级
+          </button>
         </div>
 
-        <div class="upgrade-warning">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          <span>升级期间服务可能短暂不可用，建议在业务低峰期执行。</span>
+        <!-- 在线升级 -->
+        <div v-if="upgradeMode === 'online'">
+          <div class="upgrade-steps">
+            <div class="step" :class="stepState(0)">
+              <div class="step-indicator"><span v-if="upgradeStep > 0">✓</span><span v-else>1</span></div>
+              <div class="step-content"><div class="step-title">拉取代码</div><div class="step-desc">从 GitHub 下载最新代码</div></div>
+            </div>
+            <div class="step-connector" :class="{ active: upgradeStep > 1 }"></div>
+            <div class="step" :class="stepState(1)">
+              <div class="step-indicator"><span v-if="upgradeStep > 1">✓</span><span v-else>2</span></div>
+              <div class="step-content"><div class="step-title">更新文件</div><div class="step-desc">替换项目文件为最新版本</div></div>
+            </div>
+            <div class="step-connector" :class="{ active: upgradeStep > 2 }"></div>
+            <div class="step" :class="stepState(2)">
+              <div class="step-indicator"><span v-if="upgradeStep > 2">✓</span><span v-else>3</span></div>
+              <div class="step-content"><div class="step-title">完成</div><div class="step-desc">升级完成</div></div>
+            </div>
+          </div>
+
+          <div class="upgrade-warning">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>升级期间服务可能短暂不可用，建议在业务低峰期执行。</span>
+          </div>
+
+          <button class="btn btn-upgrade" @click="onApplyUpgrade" :disabled="upgrading">
+            <span v-if="upgrading" class="spinner-sm"></span>
+            {{ upgrading ? '升级中...' : '开始升级' }}
+          </button>
         </div>
 
-        <button class="btn btn-upgrade" @click="onApplyUpgrade" :disabled="upgrading">
-          <span v-if="upgrading" class="spinner-sm"></span>
-          {{ upgrading ? '升级中...' : '开始升级' }}
-        </button>
+        <!-- ZIP 上传升级 -->
+        <div v-if="upgradeMode === 'zip'">
+          <p class="upload-hint">从 GitHub Release 下载 ZIP 文件后，手动上传进行升级。支持 <code>.zip</code> 格式，最大 100MB。</p>
 
-        <div v-if="upgradeLogs.length > 0" class="log-panel">
+          <div
+            class="upload-zone"
+            :class="{ 'drag-over': isDragging, 'uploading': zipUploading }"
+            @dragover.prevent="isDragging = true"
+            @dragleave="isDragging = false"
+            @drop.prevent="onDropZip"
+            @click="triggerFileInput"
+          >
+            <input ref="zipFileInput" type="file" accept=".zip" style="display:none" @change="onZipFileSelect" />
+            <div v-if="zipUploading" class="upload-loading">
+              <div class="spinner-sm"></div>
+              <span>上传并升级中...</span>
+            </div>
+            <div v-else class="upload-content">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p v-if="zipFile">{{ zipFile.name }} ({{ formatFileSize(zipFile.size) }})</p>
+              <p v-else>点击或拖拽 ZIP 文件到此处</p>
+              <p class="upload-sub">从 <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS/releases" target="_blank" @click.stop>GitHub Releases</a> 下载最新版本</p>
+            </div>
+          </div>
+
+          <button v-if="zipFile && !zipUploading" class="btn btn-upgrade" @click="onUploadZip" :disabled="zipUploading">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            开始上传升级
+          </button>
+        </div>
+
+        <!-- 升级日志 (共用) -->
+        <div v-if="currentLogs.length > 0" class="log-panel">
           <div class="log-header">
             <span>升级日志</span>
-            <span class="log-status" v-if="upgradeSuccess === true">✓ 完成</span>
-            <span class="log-status log-status-fail" v-else-if="upgradeSuccess === false">✗ 失败</span>
+            <span class="log-status" v-if="currentSuccess === true">✓ 完成</span>
+            <span class="log-status log-status-fail" v-else-if="currentSuccess === false">✗ 失败</span>
           </div>
           <div class="log-content" ref="logRef">
-            <div v-for="(line, i) in upgradeLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗'), 'log-info': line.includes('!') }">{{ line }}</div>
+            <div v-for="(line, i) in currentLogs" :key="i" class="log-line" :class="{ 'log-success': line.includes('✓'), 'log-error': line.includes('✗'), 'log-info': line.includes('!') }">{{ line }}</div>
           </div>
         </div>
       </div>
@@ -265,7 +236,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { checkUpgrade, getUpgradeGitStatus, applyUpgrade, uploadZipUpgrade } from '@/api'
 
 const checking = ref(false)
@@ -276,6 +247,7 @@ const upgrading = ref(false)
 const upgradeStep = ref(0)
 const upgradeSuccess = ref(null)
 const logRef = ref(null)
+const upgradeMode = ref('online')
 
 const zipFileInput = ref(null)
 const zipFile = ref(null)
@@ -301,16 +273,13 @@ const gitStatus = ref({
   has_backend: false,
   has_frontend: false,
   has_docker_compose: false,
-  remote_url: '',
-  branch: '',
-  last_commit: '',
-  has_uncommitted: false,
-  behind_remote: 0,
-  error: '',
   hint: '',
 })
 
 const upgradeLogs = ref([])
+
+const currentLogs = computed(() => upgradeMode.value === 'zip' ? zipLogs.value : upgradeLogs.value)
+const currentSuccess = computed(() => upgradeMode.value === 'zip' ? zipSuccess.value : upgradeSuccess.value)
 
 function stepState(index) {
   if (upgradeStep > index + 1) return 'step-completed'
@@ -414,7 +383,7 @@ async function onUploadZip() {
     zipLogs.value.push(`[错误] ${e.message}`)
   } finally {
     zipUploading.value = false
-    nextTick(() => { const logEl = document.querySelector('.log-content'); if (logEl) logEl.scrollTop = logEl.scrollHeight })
+    nextTick(() => { if (logRef.value) logRef.value.scrollTop = logRef.value.scrollHeight })
     onCheckVersion()
     onCheckGitStatus()
   }
@@ -431,6 +400,14 @@ async function onUploadZip() {
 .card-header h3 { margin: 0; font-size: 15px; color: var(--text-primary); flex: 1; }
 .card-icon { color: var(--text-muted); flex-shrink: 0; }
 .card-body { padding: 24px; }
+
+/* Tabs */
+.upgrade-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+.upgrade-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; background: var(--bg-primary); border: none; font-size: 14px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.upgrade-tab + .upgrade-tab { border-left: 1px solid var(--border-color); }
+.upgrade-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.upgrade-tab.active { color: #1890ff; background: rgba(24, 144, 255, 0.06); font-weight: 500; }
+
 .upload-hint { margin: 0 0 16px; color: var(--text-secondary); font-size: 13px; }
 .upload-hint code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 .upload-zone { border: 2px dashed var(--border-color); border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
@@ -441,6 +418,7 @@ async function onUploadZip() {
 .upload-content p.upload-sub a { color: #1890ff; text-decoration: none; }
 .upload-content p.upload-sub a:hover { text-decoration: underline; }
 .upload-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-secondary); font-size: 14px; }
+
 .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
 .badge-update { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
 .badge-warn { background: rgba(250, 140, 22, 0.12); color: #fa8c16; }
@@ -470,8 +448,6 @@ async function onUploadZip() {
 .info-item:last-child { border-bottom: none; }
 .info-label { width: 110px; flex-shrink: 0; font-size: 13px; color: var(--text-muted); }
 .info-value { font-size: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
-.mono { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 13px; }
-.small { font-size: 12px; word-break: break-all; }
 .text-ok { color: #52c41a; }
 .text-warn { color: #fa8c16; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
