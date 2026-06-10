@@ -361,6 +361,11 @@ const versionData = ref({
 
 const gitStatus = ref({
   is_git_repo: false,
+  current_version: '0.0.0',
+  project_ready: false,
+  has_backend: false,
+  has_frontend: false,
+  has_docker_compose: false,
   remote_url: '',
   branch: '',
   last_commit: '',
@@ -424,69 +429,58 @@ async function onApplyUpgrade() {
       // 根据日志推断当前步骤
       if (data.logs.some(l => l.includes('步骤 2'))) upgradeStep.value = 1
       if (data.logs.some(l => l.includes('步骤 3'))) upgradeStep.value = 2
-      if (data.logs.some(l => l.includes('步骤 4') || l.includes('升级完成'))) upgradeStep.value = 3
+      if (data.logs.some(l => l.includes('步骤 4'))) upgradeStep.value = 3
     }
     upgradeSuccess.value = data.success
-    if (!data.success) {
-      upgradeLogs.value.push(`[错误] ${data.error}`)
+    if (data.success) {
+      upgradeStep.value = 4
+    }
+    await nextTick()
+    if (logRef.value) {
+      logRef.value.scrollTop = logRef.value.scrollHeight
     }
   } catch (e) {
     upgradeSuccess.value = false
-    upgradeLogs.value.push(`[错误] ${e.message}`)
+    upgradeLogs.value.push(`[${new Date().toLocaleTimeString()}] ✗ 升级请求失败: ${e.message}`)
   } finally {
     upgrading.value = false
-    // 升级完成后重新检查状态
-    nextTick(() => {
-      if (logRef.value) {
-        logRef.value.scrollTop = logRef.value.scrollHeight
-      }
-    })
-    onCheckVersion()
-    onCheckGitStatus()
   }
 }
 
-// 页面加载时自动检查
-onCheckVersion()
-onCheckGitStatus()
-
-// ---- ZIP 上传升级 ----
+// ZIP 上传相关
 function triggerFileInput() {
-  if (zipUploading.value) return
-  zipFileInput.value.click()
+  if (!zipUploading.value) {
+    zipFileInput.value?.click()
+  }
 }
 
 function onZipFileSelect(e) {
-  const file = e.target.files[0]
-  if (file && file.name.endsWith('.zip')) {
+  const file = e.target.files?.[0]
+  if (file) {
     zipFile.value = file
   }
 }
 
 function onDropZip(e) {
   isDragging.value = false
-  const file = e.dataTransfer.files[0]
+  const file = e.dataTransfer.files?.[0]
   if (file && file.name.endsWith('.zip')) {
     zipFile.value = file
   }
 }
 
 function formatFileSize(bytes) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let size = bytes
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++ }
-  return `${size.toFixed(1)} ${units[i]}`
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
 async function onUploadZip() {
   if (!zipFile.value) return
-  if (!confirm('确定要上传 ZIP 文件进行升级吗？升级期间服务可能短暂不可用。')) return
 
   zipUploading.value = true
-  zipSuccess.value = null
   zipLogs.value = []
+  zipSuccess.value = null
 
   try {
     const data = await uploadZipUpgrade(zipFile.value)
@@ -494,312 +488,192 @@ async function onUploadZip() {
       zipLogs.value = data.logs
     }
     zipSuccess.value = data.success
-    if (!data.success) {
-      zipLogs.value.push(`[错误] ${data.error}`)
-    }
   } catch (e) {
     zipSuccess.value = false
-    zipLogs.value.push(`[错误] ${e.message}`)
+    zipLogs.value.push(`[${new Date().toLocaleTimeString()}] ✗ 上传失败: ${e.message}`)
   } finally {
     zipUploading.value = false
-    nextTick(() => {
-      const logEl = document.querySelector('.log-content')
-      if (logEl) logEl.scrollTop = logEl.scrollHeight
-    })
-    onCheckVersion()
-    onCheckGitStatus()
   }
 }
+
+// 初始化加载
+onCheckVersion()
+onCheckGitStatus()
 </script>
 
 <style scoped>
 .upgrade-page {
   padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: var(--text-primary);
+  font-size: 22px;
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
-/* ========== Card ========== */
 .card {
-  background: var(--bg-card);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   margin-bottom: 20px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .card-header h3 {
   margin: 0;
-  font-size: 15px;
-  color: var(--text-primary);
+  font-size: 16px;
   flex: 1;
 }
 
 .card-icon {
-  color: var(--text-muted);
-  flex-shrink: 0;
+  color: #666;
 }
 
 .card-body {
-  padding: 24px;
+  padding: 20px;
 }
 
-/* ========== ZIP Upload ========== */
-.upload-hint {
-  margin: 0 0 16px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.upload-hint code {
-  background: var(--bg-hover);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.upload-zone {
-  border: 2px dashed var(--border-color);
-  border-radius: 10px;
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.upload-zone:hover,
-.upload-zone.drag-over {
-  border-color: #1890ff;
-  background: rgba(24, 144, 255, 0.04);
-}
-
-.upload-zone.uploading {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.upload-content p {
-  margin: 8px 0 0;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.upload-content p.upload-sub {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.upload-content p.upload-sub a {
-  color: #1890ff;
-  text-decoration: none;
-}
-
-.upload-content p.upload-sub a:hover {
-  text-decoration: underline;
-}
-
-.upload-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-/* ========== Badges ========== */
+/* Badge */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 12px;
   font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
   font-weight: 500;
 }
+.badge-update { background: #e6f7ff; color: #1890ff; }
+.badge-ok { background: #f6ffed; color: #52c41a; }
+.badge-warn { background: #fff7e6; color: #fa8c16; }
+.badge-loading { background: #f5f5f5; color: #999; }
 
-.badge-update {
-  background: rgba(82, 196, 26, 0.12);
-  color: #52c41a;
-}
-
-.badge-warn {
-  background: rgba(250, 140, 22, 0.12);
-  color: #fa8c16;
-}
-
-.badge-ok {
-  background: rgba(82, 196, 26, 0.12);
-  color: #52c41a;
-}
-
-.badge-loading {
-  background: rgba(24, 144, 255, 0.12);
-  color: #1890ff;
-}
-
-/* ========== Skeleton ========== */
-.skeleton-line {
-  height: 16px;
-  background: var(--border-color);
-  border-radius: 4px;
-  margin-bottom: 12px;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* ========== Version Compare ========== */
+/* Version Compare */
 .version-compare {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: var(--bg-primary);
-  border-radius: 8px;
+  gap: 24px;
+  padding: 20px 0;
 }
 
 .version-block {
   text-align: center;
+  padding: 16px 32px;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.version-block.current {
+  border: 1px solid #e8e8e8;
+}
+
+.version-block.has-update {
+  border: 2px solid #52c41a;
+  background: #f6ffed;
 }
 
 .version-label {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: #999;
   margin-bottom: 6px;
 }
 
 .version-number {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  color: #333;
 }
 
-.version-block.current .version-number {
-  color: var(--text-primary);
-}
-
-.version-block.latest .version-number {
-  color: var(--text-muted);
-}
-
-.version-block.latest.has-update .version-number {
-  color: #52c41a;
-}
-
-.version-block .version-number.unknown {
-  color: var(--text-muted);
-  font-weight: 400;
+.version-number.unknown {
+  color: #ccc;
 }
 
 .version-arrow {
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
+  color: #bbb;
 }
 
-/* ========== Release Notes ========== */
+/* Release Notes */
 .release-notes-block {
-  margin-bottom: 16px;
+  margin-top: 16px;
 }
 
 .block-label {
   font-size: 13px;
-  color: var(--text-muted);
+  color: #999;
   margin-bottom: 8px;
 }
 
 .release-notes-content {
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 12px 16px;
   font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  max-height: 100px;
-  overflow-y: auto;
+  line-height: 1.7;
   white-space: pre-wrap;
-  font-family: inherit;
-  margin: 0;
-  padding: 12px;
-  background: var(--bg-primary);
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
+  max-height: 200px;
+  overflow-y: auto;
 }
 
-/* ========== Status Bar ========== */
+/* Status Bar */
 .status-bar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
-  line-height: 1.5;
+  margin-top: 12px;
 }
+.status-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
 
-.status-error {
-  background: rgba(245, 34, 45, 0.06);
-  border: 1px solid rgba(245, 34, 45, 0.15);
-  color: #f5222d;
-}
-
+/* Release Link */
 .release-link {
   margin-top: 12px;
 }
-
 .release-link a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
   color: #1890ff;
+  font-size: 13px;
   text-decoration: none;
 }
+.release-link a:hover { text-decoration: underline; }
 
-.release-link a:hover {
-  text-decoration: underline;
-}
-
-/* ========== Info Grid ========== */
+/* Info Grid */
 .info-grid {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 14px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color);
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .info-item:last-child {
@@ -807,159 +681,102 @@ async function onUploadZip() {
 }
 
 .info-label {
-  width: 110px;
-  flex-shrink: 0;
-  font-size: 13px;
-  color: var(--text-muted);
+  color: #666;
+  font-size: 14px;
+  min-width: 90px;
 }
 
 .info-value {
   font-size: 14px;
-  color: var(--text-primary);
+  color: #333;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.mono {
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  font-size: 13px;
-}
-
-.small {
+.info-value.mono {
+  font-family: 'SF Mono', monospace;
   font-size: 12px;
   word-break: break-all;
+}
+
+.info-value.small {
+  font-size: 12px;
 }
 
 .text-ok { color: #52c41a; }
 .text-warn { color: #fa8c16; }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
 }
-
 .dot-ok { background: #52c41a; }
 .dot-warn { background: #fa8c16; }
 
-/* ========== Empty State ========== */
-.empty-state-icon {
-  text-align: center;
-  color: var(--text-muted);
-  opacity: 0.5;
-  margin-bottom: 12px;
-}
-
-.empty-title {
-  text-align: center;
-  margin: 0 0 6px;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.empty-desc {
-  text-align: center;
-  margin: 0 0 4px;
+/* Upload Zone */
+.upload-hint {
+  color: #666;
   font-size: 13px;
-  color: var(--text-muted);
+  margin-bottom: 16px;
 }
 
-.empty-hint {
+.upload-zone {
+  border: 2px dashed #d9d9d9;
+  border-radius: 10px;
+  padding: 40px 20px;
   text-align: center;
-  margin: 8px 0 0;
-  font-size: 13px;
-  color: #fa8c16;
-  padding: 8px 12px;
-  background: rgba(250, 140, 22, 0.08);
-  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* ========== Upgrade Steps ========== */
-.upgrade-steps {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: var(--bg-primary);
-  border-radius: 8px;
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: #1890ff;
+  background: #f0f5ff;
 }
 
-.step {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex: 1;
+.upload-zone.uploading {
+  cursor: default;
+  border-color: #1890ff;
+  background: #f0f5ff;
 }
 
-.step-indicator {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.upload-content p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.upload-sub {
+  font-size: 12px !important;
+  color: #999 !important;
+}
+
+.upload-sub a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.upload-sub a:hover {
+  text-decoration: underline;
+}
+
+.upload-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-  background: var(--border-color);
-  color: var(--text-muted);
-  transition: all 0.3s;
-}
-
-.step-completed .step-indicator {
-  background: #52c41a;
-  color: #fff;
-}
-
-.step-active .step-indicator {
-  background: #1890ff;
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); }
-  50% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0.1); }
-}
-
-.step-title {
+  gap: 10px;
+  color: #1890ff;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 2px;
 }
 
-.step-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.step-connector {
-  width: 24px;
-  height: 2px;
-  background: var(--border-color);
-  margin-top: 15px;
-  flex-shrink: 0;
-  transition: background 0.3s;
-}
-
-.step-connector.active {
-  background: #52c41a;
-}
-
-.step-completed .step-title {
-  color: #52c41a;
-}
-
-/* ========== Buttons ========== */
+/* Buttons */
 .btn {
   padding: 8px 20px;
+  border-radius: 8px;
   border: none;
-  border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
   display: inline-flex;
@@ -968,67 +785,124 @@ async function onUploadZip() {
   transition: all 0.2s;
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .btn-outline {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  color: #666;
 }
 
-.btn-outline:hover:not(:disabled) {
+.btn-outline:hover {
   border-color: #1890ff;
   color: #1890ff;
 }
 
 .btn-upgrade {
-  background: linear-gradient(135deg, #52c41a, #389e0d);
+  background: #1890ff;
   color: #fff;
-  font-weight: 500;
-  padding: 10px 28px;
-  font-size: 15px;
+  margin-top: 16px;
 }
 
-.btn-upgrade:hover:not(:disabled) {
-  box-shadow: 0 4px 14px rgba(82, 196, 26, 0.4);
-  transform: translateY(-1px);
+.btn-upgrade:hover {
+  background: #40a9ff;
 }
 
-.spinner-sm {
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
+.btn-upgrade:disabled {
+  background: #d9d9d9;
+  cursor: not-allowed;
+}
+
+/* Upgrade Steps */
+.upgrade-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 16px 0;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  min-width: 160px;
+}
+
+.step-active {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.step-completed {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+.step-indicator {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  display: inline-block;
+  background: #d9d9d9;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.step-active .step-indicator {
+  background: #1890ff;
 }
 
-/* ========== Warning ========== */
+.step-completed .step-indicator {
+  background: #52c41a;
+}
+
+.step-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.step-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+.step-connector {
+  width: 30px;
+  height: 2px;
+  background: #eee;
+  flex-shrink: 0;
+}
+
+.step-connector.active {
+  background: #52c41a;
+}
+
+/* Warning */
 .upgrade-warning {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: rgba(250, 140, 22, 0.08);
-  border: 1px solid rgba(250, 140, 22, 0.2);
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
   border-radius: 8px;
-  color: #d46b08;
+  margin-top: 16px;
   font-size: 13px;
-  margin-bottom: 16px;
+  color: #ad6800;
 }
 
-/* ========== Log Panel ========== */
+/* Log Panel */
 .log-panel {
   margin-top: 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #eee;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -1037,53 +911,73 @@ async function onUploadZip() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  background: var(--bg-primary);
+  padding: 10px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
 }
 
 .log-status {
-  font-weight: 600;
   color: #52c41a;
-  font-size: 12px;
+  font-weight: 500;
 }
 
 .log-status-fail {
-  color: #f5222d;
+  color: #ff4d4f;
 }
 
 .log-content {
-  padding: 12px 16px;
-  max-height: 320px;
+  max-height: 300px;
   overflow-y: auto;
-  background: #1a1a2e;
-  color: #d4d4d4;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  padding: 10px 14px;
+  font-family: 'SF Mono', monospace;
   font-size: 12px;
   line-height: 1.8;
+  background: #1e1e1e;
+  color: #d4d4d4;
 }
 
-.log-line.log-success { color: #4ecb71; }
-.log-line.log-error { color: #f44747; }
-.log-line.log-info { color: #d4d4d4; }
-
-/* ========== Dark Theme ========== */
-[data-theme='dark'] .version-compare {
-  background: #0f172a;
+.log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
-[data-theme='dark'] .release-notes-content {
-  background: #0f172a;
+.log-success { color: #4ec9b0; }
+.log-error { color: #f44747; }
+.log-info { color: #dcdcaa; }
+
+/* Skeleton */
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 12px;
 }
 
-[data-theme='dark'] .upgrade-steps {
-  background: #0f172a;
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-[data-theme='dark'] .empty-state-icon {
-  opacity: 0.3;
+/* Spinner */
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.btn-outline .spinner-sm {
+  border-color: rgba(0,0,0,0.1);
+  border-top-color: #1890ff;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
