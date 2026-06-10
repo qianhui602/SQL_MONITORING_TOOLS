@@ -94,10 +94,11 @@ def _run_cmd(cmd: list[str], cwd: str = PROJECT_DIR, timeout: int = 120) -> tupl
 
 
 def _container_volume_sync(extracted_dir: str, log_fn=None):
-    """在容器模式下，将更新的代码同步到 volume mount 挂载点，使更改立即生效。
+    """在容器模式下，将更新的代码同步到 volume mount 挂载点。
 
     容器内 volume mount: ./backend/app -> /app/app
-    标准复制已将文件放到 /app/backend/，这里额外同步到 /app/app/（运行中的代码位置）。
+    同步到 /app/app/（运行中的代码位置）。
+    注意：不删除运行中的文件，只覆盖，避免 Python 进程崩溃。
     """
     def _log(msg):
         if log_fn:
@@ -108,14 +109,6 @@ def _container_volume_sync(extracted_dir: str, log_fn=None):
     src_app = os.path.join(extracted_dir, "backend", "app")
     dst_app = os.path.join(_backend_dir, "app")  # /app/app/
     if os.path.exists(src_app):
-        if os.path.exists(dst_app):
-            # 清除旧文件，保留目录本身（volume mount 不能删除挂载点）
-            for item in os.listdir(dst_app):
-                item_path = os.path.join(dst_app, item)
-                if os.path.isdir(item_path) and not os.path.islink(item_path):
-                    shutil.rmtree(item_path)
-                else:
-                    os.remove(item_path)
         shutil.copytree(src_app, dst_app, dirs_exist_ok=True)
         _log(f"✓ 已同步 backend/app/ → {dst_app}/ (volume mount)")
 
