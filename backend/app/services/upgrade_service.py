@@ -34,6 +34,15 @@ else:
     PROJECT_DIR = os.path.dirname(_backend_dir)
 
 DOCKER_COMPOSE_FILE = os.path.join(PROJECT_DIR, "docker-compose.yml")
+
+
+def _get_docker_compose_cmd() -> list[str]:
+    """检测可用的 docker-compose 命令，优先使用 docker-compose，否则回退到 docker compose"""
+    if shutil.which("docker-compose") is not None:
+        return ["docker-compose"]
+    return ["docker", "compose"]
+
+
 VERSION_FILE = os.path.join(_backend_dir, "VERSION")
 
 logger.info(
@@ -209,18 +218,22 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
 
         compose_file = DOCKER_COMPOSE_FILE
         if os.path.exists(compose_file):
-            log("步骤 3/3: 构建 Docker 镜像...")
-            compose_dir = os.path.dirname(compose_file)
-            code, out, err = _run_cmd(["docker-compose", "build", "--no-cache"], cwd=compose_dir, timeout=600)
-            if code != 0:
-                return {"success": False, "error": f"Docker 构建失败: {err[:300] if err else out[:300]}", "logs": logs}
-            log("✓ Docker 镜像构建完成")
+            if _is_container:
+                log("步骤 3/3: 容器环境 - volume mount 已同步代码，无需重建镜像")
+            else:
+                log("步骤 3/3: 构建 Docker 镜像...")
+                compose_dir = os.path.dirname(compose_file)
+                dc_cmd = _get_docker_compose_cmd()
+                code, out, err = _run_cmd(dc_cmd + ["build", "--no-cache"], cwd=compose_dir, timeout=600)
+                if code != 0:
+                    return {"success": False, "error": f"Docker 构建失败: {err[:300] if err else out[:300]}", "logs": logs}
+                log("✓ Docker 镜像构建完成")
 
-            log("重启服务...")
-            code, out, err = _run_cmd(["docker-compose", "up", "-d"], cwd=compose_dir, timeout=120)
-            if code != 0:
-                return {"success": False, "error": f"重启服务失败: {err or out}", "logs": logs}
-            log("✓ 服务已重启")
+                log("重启服务...")
+                code, out, err = _run_cmd(dc_cmd + ["up", "-d"], cwd=compose_dir, timeout=120)
+                if code != 0:
+                    return {"success": False, "error": f"重启服务失败: {err or out}", "logs": logs}
+                log("✓ 服务已重启")
         else:
             log("步骤 3/3: 未检测到 docker-compose.yml，跳过 Docker 构建")
 
@@ -373,17 +386,21 @@ async def apply_upgrade() -> dict:
         log("步骤 4/4: 构建 Docker 镜像...")
         compose_file = DOCKER_COMPOSE_FILE
         if os.path.exists(compose_file):
-            compose_dir = os.path.dirname(compose_file)
-            code, out, err = _run_cmd(["docker-compose", "build", "--no-cache"], cwd=compose_dir, timeout=600)
-            if code != 0:
-                return {"success": False, "error": f"Docker 构建失败: {err[:300] if err else out[:300]}", "logs": logs}
-            log("✓ Docker 镜像构建完成")
+            if _is_container:
+                log("步骤 4/4: 容器环境 - volume mount 已同步代码，无需重建镜像")
+            else:
+                compose_dir = os.path.dirname(compose_file)
+                dc_cmd = _get_docker_compose_cmd()
+                code, out, err = _run_cmd(dc_cmd + ["build", "--no-cache"], cwd=compose_dir, timeout=600)
+                if code != 0:
+                    return {"success": False, "error": f"Docker 构建失败: {err[:300] if err else out[:300]}", "logs": logs}
+                log("✓ Docker 镜像构建完成")
 
-            log("重启服务...")
-            code, out, err = _run_cmd(["docker-compose", "up", "-d"], cwd=compose_dir, timeout=120)
-            if code != 0:
-                return {"success": False, "error": f"重启服务失败: {err or out}", "logs": logs}
-            log("✓ 服务已重启")
+                log("重启服务...")
+                code, out, err = _run_cmd(dc_cmd + ["up", "-d"], cwd=compose_dir, timeout=120)
+                if code != 0:
+                    return {"success": False, "error": f"重启服务失败: {err or out}", "logs": logs}
+                log("✓ 服务已重启")
         else:
             log("! 未检测到 docker-compose.yml，跳过 Docker 构建步骤")
 
