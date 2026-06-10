@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # ---------- 项目基础信息 ----------
     PROJECT_NAME: str = "SQL 监控平台"
-    VERSION: str = "1.0.3"
+    VERSION: str = "1.0.4"
     DEBUG: bool = False
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 
@@ -46,7 +46,6 @@ class Settings(BaseSettings):
         )
 
     # ---------- SQL Server（被监控的目标数据库） ----------
-    # 为了灵活性，支持多个 SQL Server 实例，这里定义默认连接
     MSSQL_HOST: str = "127.0.0.1"
     MSSQL_PORT: int = 1433
     MSSQL_USER: str = "sa"
@@ -54,7 +53,7 @@ class Settings(BaseSettings):
     MSSQL_DATABASE: str = "master"
 
     # ---------- 定时任务 ----------
-    SCHEDULER_INTERVAL_SECONDS: int = 60  # 采集间隔，默认 60 秒
+    SCHEDULER_INTERVAL_SECONDS: int = 60
 
     # ---------- 告警通知配置 ----------
     SMTP_SERVER: str = "smtp.example.com"
@@ -77,7 +76,6 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 24
 
-    # 默认超级管理员账号（首次启动时自动创建）
     DEFAULT_ADMIN_USERNAME: str = "Admin"
     DEFAULT_ADMIN_PASSWORD: str = "Chuz0001"
 
