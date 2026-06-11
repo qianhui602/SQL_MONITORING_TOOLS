@@ -145,28 +145,48 @@ async def get_metric_history(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> List[MetricHistoryItem]:
-    """按时间范围和分类查询历史指标数据。"""
-    conditions = [
-        MetricRecord.category == category,
-        MetricRecord.collected_at >= start_time,
-        MetricRecord.collected_at <= end_time,
+    """按时间范围和分类查询历史指标数据，大数据范围自动均匀采样。"""
+    from sqlalchemy import text
+
+    base_conditions = [
+        "category = :category",
+        "collected_at >= :start_time",
+        "collected_at <= :end_time",
     ]
+    params: Dict[str, Any] = {
+        "category": category,
+        "start_time": start_time,
+        "end_time": end_time,
+        "limit": limit,
+    }
 
     if metric_name:
-        conditions.append(MetricRecord.metric_name == metric_name)
+        base_conditions.append("metric_name = :metric_name")
+        params["metric_name"] = metric_name
     if server_address:
-        conditions.append(MetricRecord.server_address == server_address)
+        base_conditions.append("server_address = :server_address")
+        params["server_address"] = server_address
 
-    stmt = (
-        select(MetricRecord)
-        .where(*conditions)
-        .order_by(MetricRecord.collected_at.asc())
-        .limit(limit)
-    )
+    where_clause = " AND ".join(base_conditions)
+
+    stmt = text(f"""
+        WITH base AS (
+            SELECT collected_at, metric_value, metric_name,
+                   ROW_NUMBER() OVER (ORDER BY collected_at ASC) AS rn,
+                   COUNT(*) OVER () AS total
+            FROM metrics
+            WHERE {where_clause}
+        )
+        SELECT collected_at, metric_value, metric_name
+        FROM base
+        WHERE rn = 1 OR rn % GREATEST(CEIL(total::numeric / :limit), 1) = 1
+        ORDER BY collected_at ASC
+        LIMIT :limit
+    """)
 
     try:
-        result = await db.execute(stmt)
-        records = result.scalars().all()
+        result = await db.execute(stmt, params)
+        rows = result.fetchall()
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"查询历史指标数据失败: {str(e)}"
@@ -174,11 +194,11 @@ async def get_metric_history(
 
     return [
         MetricHistoryItem(
-            collected_at=record.collected_at,
-            metric_value=record.metric_value,
-            metric_name=record.metric_name,
+            collected_at=row[0],
+            metric_value=float(row[1]),
+            metric_name=row[2],
         )
-        for record in records
+        for row in rows
     ]
 
 

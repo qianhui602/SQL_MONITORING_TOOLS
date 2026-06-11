@@ -318,10 +318,10 @@ const chartRefInstances = {
 }
 
 const rangeOptions = [
-  { label: '最近 1 小时', value: '1h', hours: 1 },
-  { label: '最近 6 小时', value: '6h', hours: 6 },
-  { label: '最近 24 小时', value: '24h', hours: 24 },
-  { label: '最近 7 天', value: '7d', hours: 168 }
+  { label: '最近 1 小时', value: '1h', hours: 1, limit: 420, refreshMs: 10000 },
+  { label: '最近 6 小时', value: '6h', hours: 6, limit: 500, refreshMs: 30000 },
+  { label: '最近 24 小时', value: '24h', hours: 24, limit: 500, refreshMs: 60000 },
+  { label: '最近 7 天', value: '7d', hours: 168, limit: 500, refreshMs: 120000 }
 ]
 
 const rangeLabelMap = { '1h': '（最近 1 小时）', '6h': '（最近 6 小时）', '24h': '（最近 24 小时）', '7d': '（最近 7 天）' }
@@ -368,8 +368,12 @@ function getCompareTimeRange() {
 
 function getHistoryLimit() {
   const opt = rangeOptions.find(o => o.value === timeRange.value)
-  const hours = opt ? opt.hours : 1
-  return Math.max(60, hours * 60)
+  return opt ? opt.limit : 420
+}
+
+function getRefreshInterval() {
+  const opt = rangeOptions.find(o => o.value === timeRange.value)
+  return opt ? opt.refreshMs : 10000
 }
 
 function createOption(title, data, timeLabels, color, unit, extraSeries = null) {
@@ -379,6 +383,7 @@ function createOption(title, data, timeLabels, color, unit, extraSeries = null) 
     data: data,
     smooth: true,
     symbol: 'none',
+    sampling: 'lttb',
     lineStyle: { color: color, width: 2 },
     areaStyle: {
       color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -388,7 +393,7 @@ function createOption(title, data, timeLabels, color, unit, extraSeries = null) 
     }
   }]
   if (extraSeries) {
-    series.push(extraSeries)
+    series.push({ sampling: 'lttb', ...extraSeries })
   }
   return {
     tooltip: {
@@ -433,6 +438,7 @@ function createDualOption(title1, data1, title2, data2, timeLabels, color1, colo
       data: data1,
       smooth: true,
       symbol: 'none',
+      sampling: 'lttb',
       lineStyle: { color: color1, width: 2 }
     },
     {
@@ -441,11 +447,12 @@ function createDualOption(title1, data1, title2, data2, timeLabels, color1, colo
       data: data2,
       smooth: true,
       symbol: 'none',
+      sampling: 'lttb',
       lineStyle: { color: color2, width: 2 }
     }
   ]
-  if (extraSeries1) series.push(extraSeries1)
-  if (extraSeries2) series.push(extraSeries2)
+  if (extraSeries1) series.push({ sampling: 'lttb', ...extraSeries1 })
+  if (extraSeries2) series.push({ sampling: 'lttb', ...extraSeries2 })
 
   const legendData = [title1, title2]
   if (extraSeries1) legendData.push(extraSeries1.name)
@@ -775,25 +782,8 @@ function openModal(type) {
             start: 0,
             end: 100,
             zoomLock: false
-          },
-          {
-            type: 'slider',
-            start: 0,
-            end: 100,
-            height: 24,
-            bottom: 10,
-            borderColor: 'transparent',
-            backgroundColor: 'rgba(240,240,240,0.3)',
-            fillerColor: 'rgba(24,144,255,0.15)',
-            handleStyle: { color: '#1890ff' },
-            textStyle: { fontSize: 11 },
-            dataBackground: {
-              lineStyle: { color: '#1890ff', opacity: 0.3 },
-              areaStyle: { color: '#1890ff', opacity: 0.08 }
-            }
           }
         ]
-        option.grid.bottom = 50
         modalChart.setOption(option, true)
       }
     }
@@ -816,9 +806,18 @@ watch(modalVisible, (val) => {
   }
 })
 
+function restartTimer() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+  timer = setInterval(fetchData, getRefreshInterval())
+}
+
 function onTimeRangeChange(val) {
   timeRange.value = val
   fetchData()
+  restartTimer()
 }
 
 function onCompareModeChange() {
@@ -866,7 +865,7 @@ onMounted(async () => {
   window.addEventListener('resize', resizeCharts)
   document.addEventListener('click', handleClickOutside)
   await fetchData()
-  timer = setInterval(fetchData, 10000)
+  timer = setInterval(fetchData, getRefreshInterval())
 })
 
 onUnmounted(() => {
