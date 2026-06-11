@@ -1,55 +1,84 @@
 <template>
   <div class="dashboard">
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-label">CPU 使用率</div>
-        <div class="stat-value" :style="{ color: cpuColor }">{{ cpuUsage }}%</div>
+    <div class="stat-grid">
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">CPU 使用率</div>
+          <div class="stat-value">{{ cpuUsage }}%</div>
+        </div>
+        <div class="stat-mini-chart" :style="{ background: cpuColor }"></div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">内存使用量</div>
-        <div class="stat-value">{{ memoryUsage }} GB</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">活跃连接数</div>
-        <div class="stat-value">{{ activeConnections }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">缓存命中率</div>
-        <div class="stat-value" :style="{ color: cacheColor }">{{ cacheHitRate }}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">页生命周期</div>
-        <div class="stat-value">{{ pageLifeExpectancy }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">锁等待数</div>
-        <div class="stat-value" :style="{ color: lockColor }">{{ lockWaits }}</div>
-      </div>
-    </div>
 
-    <div class="deadlock-bar">
-      <div class="deadlock-info">
-        <div class="deadlock-info-icon count-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M10 8l6 4-6 4V8z"></path>
-          </svg>
+      <div class="stat-card stat-green">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
         </div>
-        <div class="deadlock-info-content">
-          <span class="deadlock-label">死锁事件计数</span>
-          <span class="deadlock-value">{{ deadlockCount }}</span>
+        <div class="stat-info">
+          <div class="stat-label">内存使用量</div>
+          <div class="stat-value">{{ memoryUsage }} GB</div>
         </div>
       </div>
-      <div class="deadlock-info">
-        <div class="deadlock-info-icon time-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
+
+      <div class="stat-card stat-cyan">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div class="deadlock-info-content">
-          <span class="deadlock-label">最新死锁时间</span>
-          <span class="deadlock-value">{{ latestDeadlockTime || '暂无' }}</span>
+        <div class="stat-info">
+          <div class="stat-label">活跃连接</div>
+          <div class="stat-value">{{ activeConnections }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-purple">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">缓存命中率</div>
+          <div class="stat-value">{{ cacheHitRate }}%</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-orange">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">磁盘使用率</div>
+          <div class="stat-value" :style="{ color: diskColor }">{{ diskUsage }}%</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-magenta">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">批处理/秒</div>
+          <div class="stat-value">{{ batchRequests }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-red">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">锁等待</div>
+          <div class="stat-value" :style="{ color: lockColor }">{{ lockWaits }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-deadlock" @click="$router.push('/deadlocks')">
+        <div class="stat-icon deadlock-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">死锁事件</div>
+          <div class="stat-value deadlock-val">{{ deadlockCount }}</div>
         </div>
       </div>
     </div>
@@ -168,6 +197,8 @@ const pageLifeExpectancy = ref(0)
 const lockWaits = ref(0)
 const deadlockCount = ref(0)
 const latestDeadlockTime = ref('')
+const diskUsage = ref(0)
+const batchRequests = ref(0)
 
 // 实例相关
 const instances = ref([])
@@ -213,6 +244,7 @@ const compareTimeData = ref([])
 const cpuColor = ref('#52c41a')
 const cacheColor = ref('#52c41a')
 const lockColor = ref('#52c41a')
+const diskColor = ref('#52c41a')
 
 const modalVisible = ref(false)
 const modalTitle = ref('')
@@ -343,6 +375,12 @@ function updateLockColor(val) {
   if (val > 10) lockColor.value = '#f5222d'
   else if (val > 5) lockColor.value = '#fa8c16'
   else lockColor.value = '#52c41a'
+}
+
+function updateDiskColor(val) {
+  if (val > 90) diskColor.value = '#f5222d'
+  else if (val > 75) diskColor.value = '#fa8c16'
+  else diskColor.value = '#52c41a'
 }
 
 function getTimeRange() {
@@ -619,9 +657,12 @@ async function fetchData() {
     memoryUsage.value = Math.round(memMb / 1024 * 100) / 100
     activeConnections.value = summary.active_sessions ?? 0
     cacheHitRate.value = summary.buffer_cache_hit_ratio ?? 0
+    diskUsage.value = summary.disk_usage_pct ?? 0
+    batchRequests.value = summary.batch_requests_sec ?? 0
 
     updateCpuColor(cpuUsage.value)
     updateCacheColor(cacheHitRate.value)
+    updateDiskColor(diskUsage.value)
 
     if (deadlocksRes?.total) {
       deadlockCount.value = deadlocksRes.total
@@ -891,101 +932,101 @@ onUnmounted(() => {
   gap: 20px;
 }
 
-.stat-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .stat-grid { grid-template-columns: 1fr; }
 }
 
 .stat-card {
-  flex: 1;
-  min-width: 150px;
-  background: var(--bg-card);
-  border-radius: 8px;
-  padding: 20px 24px;
-  box-shadow: var(--shadow);
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.deadlock-bar {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  gap: 12px;
   background: var(--bg-card);
   border-radius: 10px;
-  padding: 18px 28px;
+  padding: 16px 18px;
   box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  border-left: 3px solid transparent;
+  transition: box-shadow 0.2s, transform 0.2s;
   position: relative;
   overflow: hidden;
 }
-.deadlock-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #ff6b6b, #ee5a24);
-  border-radius: 0 2px 2px 0;
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
-.deadlock-info {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 16px;
-  background: var(--bg-primary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  min-width: 200px;
-}
+.stat-card.stat-blue { border-left-color: #1890ff; }
+.stat-card.stat-green { border-left-color: #52c41a; }
+.stat-card.stat-cyan { border-left-color: #13c2c2; }
+.stat-card.stat-purple { border-left-color: #722ed1; }
+.stat-card.stat-orange { border-left-color: #fa8c16; }
+.stat-card.stat-magenta { border-left-color: #eb2f96; }
+.stat-card.stat-red { border-left-color: #f5222d; }
+.stat-card.stat-deadlock { border-left-color: #fa541c; cursor: pointer; }
 
-.deadlock-info-icon {
+.stat-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
-.deadlock-info-icon.count-icon {
-  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-  color: #f57c00;
-}
-.deadlock-info-icon.time-icon {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  color: #1976d2;
-}
 
-.deadlock-info-content {
+.stat-blue .stat-icon { background: rgba(24,144,255,0.1); color: #1890ff; }
+.stat-green .stat-icon { background: rgba(82,196,26,0.1); color: #52c41a; }
+.stat-cyan .stat-icon { background: rgba(19,194,194,0.1); color: #13c2c2; }
+.stat-purple .stat-icon { background: rgba(114,46,209,0.1); color: #722ed1; }
+.stat-orange .stat-icon { background: rgba(250,140,22,0.1); color: #fa8c16; }
+.stat-magenta .stat-icon { background: rgba(235,47,150,0.1); color: #eb2f96; }
+.stat-red .stat-icon { background: rgba(245,34,45,0.1); color: #f5222d; }
+.stat-deadlock .stat-icon { background: rgba(250,84,28,0.1); color: #fa541c; }
+
+.stat-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
-.deadlock-label {
+.stat-label {
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
-  letter-spacing: 0.3px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
 }
 
-.deadlock-value {
-  font-size: 20px;
+.stat-value {
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-mini-chart {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 48px;
+  height: 3px;
+  border-radius: 2px 0 0 0;
+  opacity: 0.5;
+}
+
+.stat-deadlock .stat-value.deadlock-val {
   font-variant-numeric: tabular-nums;
 }
 

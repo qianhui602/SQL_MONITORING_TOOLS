@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.performance import MetricRecord
+from app.models.disk import DiskSpaceRecord
 from app.models.user import User
 from app.services.auth_service import get_current_user
 
@@ -53,6 +54,8 @@ class SummaryMetricsResponse(BaseModel):
     active_sessions: Optional[int] = None
     buffer_cache_hit_ratio: Optional[float] = None
     memory_usage_pct: Optional[float] = None
+    disk_usage_pct: Optional[float] = None
+    batch_requests_sec: Optional[float] = None
     server_address: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -221,6 +224,7 @@ async def get_metrics_summary(
                 "buffer_cache_hit_ratio",
                 "active_sessions",
                 "memory_usage_pct",
+                "batch_requests_sec",
             ]
         )
     ]
@@ -249,12 +253,28 @@ async def get_metrics_summary(
 
     # 提取各指标值
     summary: Dict[str, Any] = {}
-    server_address = None
+    server_address_val = None
 
     for record in records:
         summary[record.metric_name] = record.metric_value
-        if server_address is None:
-            server_address = record.server_address
+        if server_address_val is None:
+            server_address_val = record.server_address
+
+    # 查询最新磁盘使用率
+    disk_usage = None
+    try:
+        disk_conditions = []
+        if server_address:
+            disk_conditions.append(DiskSpaceRecord.server_address == server_address)
+        disk_stmt = (
+            select(func.max(DiskSpaceRecord.usage_pct))
+            .where(*disk_conditions) if disk_conditions
+            else select(func.max(DiskSpaceRecord.usage_pct))
+        )
+        disk_result = await db.execute(disk_stmt)
+        disk_usage = disk_result.scalar()
+    except Exception:
+        pass
 
     return SummaryMetricsResponse(
         cpu_usage=summary.get("cpu_usage"),
@@ -264,5 +284,7 @@ async def get_metrics_summary(
         else None,
         buffer_cache_hit_ratio=summary.get("buffer_cache_hit_ratio"),
         memory_usage_pct=summary.get("memory_usage_pct"),
-        server_address=server_address,
+        disk_usage_pct=round(disk_usage, 1) if disk_usage is not None else None,
+        batch_requests_sec=summary.get("batch_requests_sec"),
+        server_address=server_address_val,
     )
