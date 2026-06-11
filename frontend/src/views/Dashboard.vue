@@ -318,10 +318,10 @@ const chartRefInstances = {
 }
 
 const rangeOptions = [
-  { label: '最近 1 小时', value: '1h', hours: 1, limit: 420, refreshMs: 10000 },
-  { label: '最近 6 小时', value: '6h', hours: 6, limit: 500, refreshMs: 30000 },
-  { label: '最近 24 小时', value: '24h', hours: 24, limit: 500, refreshMs: 60000 },
-  { label: '最近 7 天', value: '7d', hours: 168, limit: 500, refreshMs: 120000 }
+  { label: '最近 1 小时', value: '1h', hours: 1, refreshMs: 10000 },
+  { label: '最近 6 小时', value: '6h', hours: 6, refreshMs: 30000 },
+  { label: '最近 24 小时', value: '24h', hours: 24, refreshMs: 60000 },
+  { label: '最近 7 天', value: '7d', hours: 168, refreshMs: 120000 }
 ]
 
 const rangeLabelMap = { '1h': '（最近 1 小时）', '6h': '（最近 6 小时）', '24h': '（最近 24 小时）', '7d': '（最近 7 天）' }
@@ -367,8 +367,7 @@ function getCompareTimeRange() {
 }
 
 function getHistoryLimit() {
-  const opt = rangeOptions.find(o => o.value === timeRange.value)
-  return opt ? opt.limit : 420
+  return 5000
 }
 
 function getRefreshInterval() {

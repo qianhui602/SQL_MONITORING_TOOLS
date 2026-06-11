@@ -138,50 +138,38 @@ async def get_metric_history(
     metric_name: Optional[str] = Query(None, description="指标名称，可选筛选"),
     start_time: datetime = Query(..., description="起始时间"),
     end_time: datetime = Query(..., description="结束时间"),
-    limit: int = Query(1000, ge=1, le=10000, description="返回记录数上限"),
+    limit: int = Query(1000, ge=1, le=50000, description="返回记录数上限"),
     server_address: Optional[str] = Query(
         None, description="按实例筛选（server_address），如 生产环境(10.0.0.1:1433)"
     ),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> List[MetricHistoryItem]:
-    """按时间范围和分类查询历史指标数据，大数据范围自动均匀采样。"""
+    """按时间范围和分类查询历史指标数据。"""
     from sqlalchemy import text
 
-    base_conditions = [
-        "category = :category",
-        "collected_at >= :start_time",
-        "collected_at <= :end_time",
-    ]
-    params: Dict[str, Any] = {
-        "category": category,
-        "start_time": start_time,
-        "end_time": end_time,
-        "limit": limit,
-    }
+    conditions = ["category = :category", "collected_at >= :start_time", "collected_at <= :end_time"]
+    params: Dict[str, Any] = {"category": category, "start_time": start_time, "end_time": end_time, "limit": limit}
 
     if metric_name:
-        base_conditions.append("metric_name = :metric_name")
+        conditions.append("metric_name = :metric_name")
         params["metric_name"] = metric_name
     if server_address:
-        base_conditions.append("server_address = :server_address")
+        conditions.append("server_address = :server_address")
         params["server_address"] = server_address
 
-    where_clause = " AND ".join(base_conditions)
+    where_clause = " AND ".join(conditions)
 
     stmt = text(f"""
-        WITH base AS (
+        SELECT collected_at, metric_value, metric_name
+        FROM (
             SELECT collected_at, metric_value, metric_name,
-                   ROW_NUMBER() OVER (ORDER BY collected_at ASC) AS rn,
-                   COUNT(*) OVER () AS total
+                   ROW_NUMBER() OVER (ORDER BY collected_at DESC) AS rn
             FROM metrics
             WHERE {where_clause}
-        )
-        SELECT collected_at, metric_value, metric_name
-        FROM base
-        WHERE rn = 1 OR rn % GREATEST(CEIL(total::numeric / :limit), 1) = 1
+        ) sub
+        WHERE sub.rn <= :limit
         ORDER BY collected_at ASC
-        LIMIT :limit
     """)
 
     try:
