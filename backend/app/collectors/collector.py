@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from app.collectors.blocking import BlockingCollector
 from app.collectors.deadlock import DeadlockDetector
 from app.collectors.disk import DiskCollector
 from app.collectors.performance import PerformanceCollector
@@ -29,6 +30,7 @@ class MetricsCollector:
         self.deadlock_detector = DeadlockDetector()
         self.slow_query_collector = SlowQueryCollector()
         self.disk_collector = DiskCollector()
+        self.blocking_collector = BlockingCollector()
 
     def collect_all_metrics(self) -> Dict[str, Any]:
         """执行一次完整的采集
@@ -48,6 +50,7 @@ class MetricsCollector:
             "deadlocks": [],
             "slow_queries": [],
             "disk_space": [],
+            "blocking_events": [],
         }
 
         try:
@@ -103,5 +106,14 @@ class MetricsCollector:
                 logger.error("Disk space collection error: %s", disk_data["error"])
         except Exception as e:
             logger.error("Unexpected error during disk space collection: %s", e)
+
+        # 采集阻塞事件
+        try:
+            blocking_data = self.blocking_collector.collect_blocking_events(connection)
+            result["blocking_events"] = blocking_data.get("blocking_events", [])
+            if blocking_data.get("error"):
+                logger.error("Blocking events collection error: %s", blocking_data["error"])
+        except Exception as e:
+            logger.error("Unexpected error during blocking events collection: %s", e)
 
         return result

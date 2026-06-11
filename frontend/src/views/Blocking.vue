@@ -134,7 +134,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { getBlockingRealtime } from '@/api'
+import { getBlockingRealtime, getBlockingHistory } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
 
@@ -152,7 +152,22 @@ async function fetchData() {
     const serverAddress = getServerAddress()
     if (serverAddress) params.server_address = serverAddress
     const data = await getBlockingRealtime(params)
-    list.value = data?.items || data || []
+    const items = Array.isArray(data) ? data : (data?.items || [])
+    if (items.length > 0) {
+      list.value = items
+    } else {
+      const end = new Date()
+      const start = new Date(end.getTime() - 24 * 60 * 60 * 1000)
+      const histParams = {
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        page: 1,
+        page_size: 50,
+        ...params,
+      }
+      const histData = await getBlockingHistory(histParams)
+      list.value = histData?.items || []
+    }
   } catch (e) {
     console.error('获取阻塞进程数据失败', e)
   }

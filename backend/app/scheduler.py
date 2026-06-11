@@ -163,13 +163,15 @@ class SchedulerManager:
                 await self._store_deadlocks(session, data["deadlocks"], server_address)
                 await self._store_slow_queries(session, data["slow_queries"], server_address)
                 await self._store_disk_space(session, data["disk_space"], server_address)
+                await self._store_blocking_events(session, data.get("blocking_events", []), server_address)
                 await session.commit()
                 logger.info(
-                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries, %d disk records",
+                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events",
                     len(data["metrics"]),
                     len(data["deadlocks"]),
                     len(data["slow_queries"]),
                     len(data["disk_space"]),
+                    len(data.get("blocking_events", [])),
                 )
             except Exception as e:
                 await session.rollback()
@@ -228,14 +230,18 @@ class SchedulerManager:
                         await self._store_disk_space(
                             session, data.get("disk_space", []), server_address
                         )
+                        await self._store_blocking_events(
+                            session, data.get("blocking_events", []), server_address
+                        )
                         await session.commit()
                         logger.info(
-                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries, %d disk records",
+                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events",
                             server_address,
                             len(instance_metrics),
                             len(instance_deadlocks),
                             len(data.get("slow_queries", [])),
                             len(data.get("disk_space", [])),
+                            len(data.get("blocking_events", [])),
                         )
                     except Exception as e:
                         await session.rollback()
@@ -349,6 +355,41 @@ class SchedulerManager:
                 )
             except Exception as e:
                 logger.warning("Failed to store disk space record: %s", e)
+
+    async def _store_blocking_events(
+        self, session, blocking_events: list[Dict[str, Any]], server_address: str
+    ) -> None:
+        """将阻塞事件数据写入 PostgreSQL"""
+        now = datetime.now(timezone.utc)
+        for event in blocking_events:
+            try:
+                stmt = text("""
+                    INSERT INTO blocking_events (
+                        blocked_spid, blocking_spid, wait_type, wait_time_ms,
+                        blocked_sql, blocking_sql, blocked_db,
+                        collected_at, server_address
+                    ) VALUES (
+                        :blocked_spid, :blocking_spid, :wait_type, :wait_time_ms,
+                        :blocked_sql, :blocking_sql, :blocked_db,
+                        :collected_at, :server_address
+                    )
+                """)
+                await session.execute(
+                    stmt,
+                    {
+                        "blocked_spid": event.get("blocked_spid", 0),
+                        "blocking_spid": event.get("blocking_spid", 0),
+                        "wait_type": event.get("wait_type", ""),
+                        "wait_time_ms": event.get("wait_time_ms", 0),
+                        "blocked_sql": event.get("blocked_sql"),
+                        "blocking_sql": event.get("blocking_sql"),
+                        "blocked_db": event.get("blocked_db"),
+                        "collected_at": now,
+                        "server_address": server_address,
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed to store blocking event: %s", e)
 
     async def _run_alert_checks(self, metrics_data: Dict[str, Any]) -> None:
         """执行告警规则检查"""
