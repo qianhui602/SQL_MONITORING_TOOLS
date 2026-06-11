@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ---------- 项目基础信息 ----------
     PROJECT_NAME: str = "SQL 监控平台"
-    VERSION: str = "1.0.7"
+    VERSION: str = "1.0.6"
     DEBUG: bool = False
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 

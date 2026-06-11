@@ -8,8 +8,10 @@
 import asyncio
 import logging
 import os
+import signal
 import shutil
 import subprocess
+import threading
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -94,11 +96,10 @@ def _run_cmd(cmd: list[str], cwd: str = PROJECT_DIR, timeout: int = 120) -> tupl
 
 
 def _container_volume_sync(extracted_dir: str, log_fn=None):
-    """在容器模式下，将更新的代码同步到 volume mount 挂载点。
+    """在容器模式下，将更新的代码同步到 volume mount 挂载点，使更改立即生效。
 
     容器内 volume mount: ./backend/app -> /app/app
-    同步到 /app/app/（运行中的代码位置）。
-    注意：不删除运行中的文件，只覆盖，避免 Python 进程崩溃。
+    标准复制已将文件放到 /app/backend/，这里额外同步到 /app/app/（运行中的代码位置）。
     """
     def _log(msg):
         if log_fn:
@@ -109,7 +110,15 @@ def _container_volume_sync(extracted_dir: str, log_fn=None):
     src_app = os.path.join(extracted_dir, "backend", "app")
     dst_app = os.path.join(_backend_dir, "app")  # /app/app/
     if os.path.exists(src_app):
-        shutil.copytree(src_app, dst_app, dirs_exist_ok=True)
+        if os.path.exists(dst_app):
+            # 清除旧文件，保留目录本身（volume mount 不能删除挂载点）
+            for item in os.listdir(dst_app):
+                item_path = os.path.join(dst_app, item)
+                if os.path.isdir(item_path) and not os.path.islink(item_path):
+                    shutil.rmtree(item_path)
+                else:
+                    os.remove(item_path)
+        shutil.copytree(src_app, dst_app)
         _log(f"✓ 已同步 backend/app/ → {dst_app}/ (volume mount)")
 
     # 同步 backend/VERSION -> /app/VERSION
@@ -118,6 +127,25 @@ def _container_volume_sync(extracted_dir: str, log_fn=None):
     if os.path.exists(src_ver):
         shutil.copy2(src_ver, dst_ver)
         _log(f"✓ 已同步 VERSION → {dst_ver}")
+
+
+def _restart_backend_container(delay_seconds: int = 2):
+    """在后台线程中延迟重启后端容器，让当前 HTTP 响应先发送完毕。
+
+    容器 restart: unless-stopped 策略会自动重新启动。
+    """
+    def _do_restart():
+        try:
+            # 等待足够时间让当前 HTTP 响应发送完毕
+            import time
+            time.sleep(delay_seconds)
+            # 发送 SIGTERM 到 PID 1（容器主进程），触发容器重启
+            os.kill(1, signal.SIGTERM)
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_do_restart, daemon=True)
+    t.start()
 
 
 def _container_rebuild_frontend(log_fn=None) -> Optional[str]:
@@ -296,10 +324,11 @@ async def apply_upgrade_from_zip(zip_bytes: bytes, filename: str = "") -> dict:
         if os.path.exists(compose_file):
             if _is_container:
                 log("容器环境 - 后端代码已通过 volume mount 更新")
-                log("提示: 请在宿主机执行以下命令重启后端以加载新代码:")
-                log("  docker-compose restart backend")
-                log("  若本次更新包含前端改动，请在宿主机执行:")
-                log("    docker-compose build frontend && docker-compose up -d")
+                log("正在重启后端容器以加载新代码...")
+                _restart_backend_container(delay_seconds=3)
+                log("✓ 后端容器将在 3 秒后重启")
+                log("提示: 若本次更新包含前端改动，请在宿主机执行:")
+                log("  docker-compose build frontend && docker-compose up -d")
             else:
                 log("步骤 3/3: 构建 Docker 镜像...")
                 compose_dir = os.path.dirname(compose_file)
@@ -474,10 +503,11 @@ async def apply_upgrade() -> dict:
         if os.path.exists(compose_file):
             if _is_container:
                 log("容器环境 - 后端代码已通过 volume mount 更新")
-                log("提示: 请在宿主机执行以下命令重启后端以加载新代码:")
-                log("  docker-compose restart backend")
-                log("  若本次更新包含前端改动，请在宿主机执行:")
-                log("    docker-compose build frontend && docker-compose up -d")
+                log("正在重启后端容器以加载新代码...")
+                _restart_backend_container(delay_seconds=3)
+                log("✓ 后端容器将在 3 秒后重启")
+                log("提示: 若本次更新包含前端改动，请在宿主机执行:")
+                log("  docker-compose build frontend && docker-compose up -d")
             else:
                 compose_dir = os.path.dirname(compose_file)
                 dc_cmd = _get_docker_compose_cmd()
