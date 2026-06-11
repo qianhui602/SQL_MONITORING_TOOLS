@@ -769,6 +769,31 @@ function openModal(type) {
           break
       }
       if (option) {
+        option.dataZoom = [
+          {
+            type: 'inside',
+            start: 0,
+            end: 100,
+            zoomLock: false
+          },
+          {
+            type: 'slider',
+            start: 0,
+            end: 100,
+            height: 24,
+            bottom: 10,
+            borderColor: 'transparent',
+            backgroundColor: 'rgba(240,240,240,0.3)',
+            fillerColor: 'rgba(24,144,255,0.15)',
+            handleStyle: { color: '#1890ff' },
+            textStyle: { fontSize: 11 },
+            dataBackground: {
+              lineStyle: { color: '#1890ff', opacity: 0.3 },
+              areaStyle: { color: '#1890ff', opacity: 0.08 }
+            }
+          }
+        ]
+        option.grid.bottom = 50
         modalChart.setOption(option, true)
       }
     }
