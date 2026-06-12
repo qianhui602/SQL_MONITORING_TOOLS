@@ -1,12 +1,10 @@
 """
-告警通知发送服务
-
-提供邮件（SMTP）、钉钉机器人、企业微信机器人和飞书机器人四种通知渠道，
-以及组合发送的 NotificationService。
-"""
+鍛婅閫氱煡鍙戦€佹湇鍔?
+鎻愪緵閭欢锛圫MTP锛夈€侀拤閽夋満鍣ㄤ汉銆佷紒涓氬井淇℃満鍣ㄤ汉鍜岄涔︽満鍣ㄤ汉鍥涚閫氱煡娓犻亾锛?浠ュ強缁勫悎鍙戦€佺殑 NotificationService銆?"""
 
 import logging
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 from typing import Dict, List
 
@@ -16,14 +14,82 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ============================================================
+# HTML 閭欢妯℃澘
+# ============================================================
+
+_HTML_HEAD = """\
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:'Microsoft YaHei','Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+"""
+
+_HTML_FOOT = """\
+</table>
+<p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">
+  SQL Monitor &mdash; Automated Notification / 鑷姩閫氱煡
+</p>
+</td></tr></table></body></html>"""
+
+
+def _html_header(title_zh: str, title_en: str, color: str = "#1890ff") -> str:
+    return (
+        f'<tr><td style="background:{color};padding:28px 32px;">'
+        f'<h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">'
+        f'{title_zh}</h1>'
+        f'<p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">'
+        f'{title_en}</p></td></tr>'
+    )
+
+
+def _html_body_row(label_zh: str, label_en: str, value: str) -> str:
+    return (
+        f'<tr><td style="padding:12px 32px;border-bottom:1px solid #f0f0f0;">'
+        f'<span style="color:#888;font-size:13px;">{label_zh} / {label_en}</span><br>'
+        f'<span style="color:#222;font-size:15px;font-weight:500;">{value}</span>'
+        f'</td></tr>'
+    )
+
+
+def _html_section(title_zh: str, title_en: str) -> str:
+    return (
+        f'<tr><td style="padding:20px 32px 8px;">'
+        f'<h2 style="margin:0;font-size:15px;color:#333;border-left:3px solid #1890ff;padding-left:10px;">'
+        f'{title_zh}<span style="font-weight:400;color:#999;font-size:12px;margin-left:6px;">{title_en}</span>'
+        f'</h2></td></tr>'
+    )
+
+
+def _html_button(url: str, text_zh: str, text_en: str) -> str:
+    return (
+        f'<tr><td style="padding:20px 32px;text-align:center;">'
+        f'<a href="{url}" style="display:inline-block;padding:12px 32px;background:#1890ff;color:#fff;'
+        f'text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;">'
+        f'{text_zh} / {text_en}</a></td></tr>'
+    )
+
+
+def _html_footer_note() -> str:
+    return (
+        f'<tr><td style="padding:16px 32px 24px;">'
+        f'<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">'
+        f'&#9888; 璇峰Ε鍠勪繚绠℃偍鐨勭櫥褰曚俊鎭紝璇峰嬁杞彂缁欎粬浜恒€?br>'
+        f'Please keep your login credentials secure and do not share them.</p></td></tr>'
+    )
+
+
+# ============================================================
+# EmailNotifier
+# ============================================================
 
 class EmailNotifier:
-    """邮件通知发送器
+    """閭欢閫氱煡鍙戦€佸櫒
 
-    使用 SMTP 协议通过配置的邮件服务器发送告警邮件。
-    支持 TLS 加密，默认端口 587。
-    优先从数据库配置读取 SMTP 设置，回退到环境变量。
-    """
+    浣跨敤 SMTP 鍗忚閫氳繃閰嶇疆鐨勯偖浠舵湇鍔″櫒鍙戦€佸憡璀﹂偖浠躲€?    鏀寔 TLS 鍔犲瘑锛岄粯璁ょ鍙?587銆?    浼樺厛浠庢暟鎹簱閰嶇疆璇诲彇 SMTP 璁剧疆锛屽洖閫€鍒扮幆澧冨彉閲忋€?    """
 
     def __init__(self) -> None:
         self.server: str = ""
@@ -34,7 +100,7 @@ class EmailNotifier:
         self._db_loaded = False
 
     async def _load_db_config(self) -> None:
-        """从数据库加载 SMTP 配置"""
+        """浠庢暟鎹簱鍔犺浇 SMTP 閰嶇疆"""
         if self._db_loaded:
             return
         try:
@@ -57,7 +123,6 @@ class EmailNotifier:
                 self.recipients = [r.strip() for r in raw_recipients.split(",") if r.strip()]
         except Exception as e:
             logger.warning("Failed to load SMTP config from DB: %s", e)
-            # 回退到环境变量
             self.server = settings.SMTP_SERVER
             self.port = settings.SMTP_PORT
             self.user = settings.SMTP_USER
@@ -65,341 +130,220 @@ class EmailNotifier:
             self.recipients = settings.ALERT_EMAILS
         self._db_loaded = True
 
-    async def send(self, subject: str, body: str) -> bool:
-        """发送邮件通知"""
-        await self._load_db_config()
-        if not self._is_configured():
-            logger.warning("SMTP not configured, skipping email notification")
-            return False
-
-        if not self.recipients:
-            logger.warning("No alert email recipients configured, skipping")
-            return False
-
-        try:
-            import smtplib
-
-            msg = MIMEText(body, "plain", "utf-8")
-            msg["Subject"] = subject
-            msg["From"] = formataddr(("SQL Monitor Alert", self.user))
-            msg["To"] = ", ".join(self.recipients)
-
-            with smtplib.SMTP(self.server, self.port) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                smtp.login(self.user, self.password)
-                smtp.sendmail(self.user, self.recipients, msg.as_string())
-
-            logger.info("Email notification sent to %s: %s", self.recipients, subject)
-            return True
-
-        except smtplib.SMTPAuthenticationError:
-            logger.error("SMTP authentication failed for user %s", self.user)
-            return False
-        except smtplib.SMTPException as e:
-            logger.error("SMTP error while sending email: %s", e)
-            return False
-        except OSError as e:
-            logger.error("Network error while sending email: %s", e)
-            return False
-
     def _is_configured(self) -> bool:
         return bool(self.server and self.user and self.password)
 
-    async def send_async(self, subject: str, body: str) -> bool:
-        """异步发送邮件（在线程池中执行同步 SMTP）"""
-        import asyncio
-        return await asyncio.get_event_loop().run_in_executor(None, lambda: self._send_sync(subject, body))
+    def _build_message(self, subject: str, html_body: str, recipients: List[str]) -> MIMEMultipart:
+        """鏋勫缓 HTML 閭欢"""
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = formataddr(("SQL Monitor", self.user))
+        msg["To"] = ", ".join(recipients)
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+        return msg
 
-    def _send_sync(self, subject: str, body: str) -> bool:
-        """同步发送邮件（供线程池调用）"""
-        if not self._is_configured():
-            return False
-        if not self.recipients:
-            return False
+    def _send_msg(self, msg: MIMEMultipart, recipients: List[str]) -> bool:
+        """鍚屾鍙戦€侀偖浠?""
         try:
             import smtplib
-            msg = MIMEText(body, "plain", "utf-8")
-            msg["Subject"] = subject
-            msg["From"] = formataddr(("SQL Monitor Alert", self.user))
-            msg["To"] = ", ".join(self.recipients)
-            with smtplib.SMTP(self.server, self.port) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                smtp.login(self.user, self.password)
-                smtp.sendmail(self.user, self.recipients, msg.as_string())
-            logger.info("Email sent to %s: %s", self.recipients, subject)
-            return True
-        except Exception as e:
-            logger.error("Email send failed: %s", e)
-            return False
-
-    async def send_welcome_email(self, username: str, password: str, full_name: str = "", to_email: str = "") -> bool:
-        """发送新用户欢迎邮件"""
-        await self._load_db_config()
-        if not self._is_configured():
-            return False
-
-        # 优先发送到用户邮箱，其次发送到管理员配置的收件人
-        recipients = [to_email] if to_email else self.recipients
-        if not recipients:
-            return False
-
-        display_name = full_name or username
-        subject = "Welcome to SQL Monitor - Account Created"
-        body = (
-            f"Hello {display_name},\n\n"
-            f"Your account has been created for the SQL Monitoring Platform.\n\n"
-            f"Login Details:\n"
-            f"  URL: {settings.PROJECT_NAME}\n"
-            f"  Username: {username}\n"
-            f"  Password: {password}\n\n"
-            f"Please change your password after first login.\n\n"
-            f"If you have any questions, please contact your administrator.\n\n"
-            f"---\n"
-            f"SQL Monitor Alert System"
-        )
-
-        try:
-            import smtplib
-            from email.header import Header
-            from email.utils import formataddr
-
-            msg = MIMEText(body, "plain", "utf-8")
-            msg["Subject"] = subject
-            msg["From"] = formataddr(("SQL Monitor Alert", self.user))
-            msg["To"] = ", ".join(recipients)
-
             with smtplib.SMTP(self.server, self.port) as smtp:
                 smtp.ehlo()
                 smtp.starttls()
                 smtp.ehlo()
                 smtp.login(self.user, self.password)
                 smtp.sendmail(self.user, recipients, msg.as_string())
-
-            logger.info("Welcome email sent to %s", recipients)
             return True
-        except Exception as e:
-            logger.error("Failed to send welcome email: %s", e)
+        except smtplib.SMTPAuthenticationError:
+            logger.error("SMTP authentication failed for user %s", self.user)
+            return False
+        except smtplib.SMTPException as e:
+            logger.error("SMTP error: %s", e)
+            return False
+        except OSError as e:
+            logger.error("Network error: %s", e)
             return False
 
+    async def send(self, subject: str, html_body: str) -> bool:
+        """鍙戦€?HTML 閭欢閫氱煡"""
+        await self._load_db_config()
+        if not self._is_configured():
+            logger.warning("SMTP not configured, skipping email notification")
+            return False
+        if not self.recipients:
+            logger.warning("No alert email recipients configured, skipping")
+            return False
+
+        msg = self._build_message(subject, html_body, self.recipients)
+        ok = self._send_msg(msg, self.recipients)
+        if ok:
+            logger.info("Email sent to %s: %s", self.recipients, subject)
+        return ok
+
+    async def send_welcome_email(self, username: str, password: str, full_name: str = "", to_email: str = "") -> bool:
+        """鍙戦€佹柊鐢ㄦ埛娆㈣繋閭欢锛堜腑鑻卞弻璇?HTML锛?""
+        await self._load_db_config()
+        if not self._is_configured():
+            return False
+
+        recipients = [to_email] if to_email else self.recipients
+        if not recipients:
+            return False
+
+        display_name = full_name or username
+        subject = f"SQL Monitor 璐﹀彿宸插垱寤?/ Account Created - {display_name}"
+        login_url = getattr(settings, "PROJECT_NAME", "SQL Monitor")
+
+        html = _HTML_HEAD
+        html += _html_header("娆㈣繋鍔犲叆 SQL Monitor", "Welcome to SQL Monitor", "#1890ff")
+        html += _html_section("璐﹀彿淇℃伅", "Account Information")
+        html += _html_body_row("濮撳悕", "Name", display_name)
+        html += _html_body_row("鐢ㄦ埛鍚?, "Username", username)
+        html += _html_body_row("鍒濆瀵嗙爜", "Initial Password",
+                               f'<span style="background:#fff1f0;padding:3px 8px;border-radius:4px;color:#cf1322;font-family:monospace;">{password}</span>')
+        html += _html_section("鐧诲綍鍦板潃", "Login URL")
+        html += _html_button(login_url, "绔嬪嵆鐧诲綍", "Login Now")
+        html += _html_footer_note()
+        html += _HTML_FOOT
+
+        msg = self._build_message(subject, html, recipients)
+        ok = self._send_msg(msg, recipients)
+        if ok:
+            logger.info("Welcome email sent to %s", recipients)
+        else:
+            logger.error("Failed to send welcome email to %s", recipients)
+        return ok
+
+    async def send_alert_email(self, subject: str, alert_type: str, alert_detail: str,
+                               server_address: str = "", severity: str = "warning") -> bool:
+        """鍙戦€佸憡璀﹂€氱煡閭欢锛堜腑鑻卞弻璇?HTML锛?""
+        await self._load_db_config()
+        if not self._is_configured():
+            return False
+        if not self.recipients:
+            return False
+
+        color_map = {"critical": "#f5222d", "warning": "#fa8c16", "info": "#1890ff"}
+        color = color_map.get(severity, "#fa8c16")
+        severity_zh = {"critical": "涓ラ噸", "warning": "璀﹀憡", "info": "淇℃伅"}.get(severity, "璀﹀憡")
+        severity_en = severity.capitalize()
+
+        html = _HTML_HEAD
+        html += _html_header(f"{severity_zh}鍛婅 / {severity_en} Alert", alert_type, color)
+        html += _html_section("鍛婅绫诲瀷", "Alert Type")
+        html += _html_body_row("绫诲瀷", "Type", alert_type)
+        if server_address:
+            html += _html_body_row("鏈嶅姟鍣?, "Server", server_address)
+        html += _html_section("鍛婅璇︽儏", "Details")
+        html += f'<tr><td style="padding:12px 32px 24px;">'
+        html += f'<pre style="background:#f8f8f8;padding:16px;border-radius:8px;font-size:13px;'
+        html += f'color:#333;line-height:1.6;overflow-x:auto;white-space:pre-wrap;">'
+        html += f'{alert_detail}</pre></td></tr>'
+        html += _HTML_FOOT
+
+        msg = self._build_message(subject, html, self.recipients)
+        ok = self._send_msg(msg, self.recipients)
+        if ok:
+            logger.info("Alert email sent to %s: %s", self.recipients, subject)
+        return ok
+
+
+# ============================================================
+# Webhook Notifiers (DingTalk / WeCom / Feishu)
+# ============================================================
 
 class DingTalkNotifier:
-    """钉钉机器人通知发送器
-
-    通过钉钉自定义机器人 Webhook 发送 Markdown 格式消息。
-    使用 httpx 异步发送 POST 请求。
-    """
+    """閽夐拤鏈哄櫒浜洪€氱煡鍙戦€佸櫒"""
 
     def __init__(self) -> None:
         self.webhook_url: str = settings.DINGTALK_WEBHOOK_URL
 
     async def send(self, message: str) -> bool:
-        """发送钉钉机器人消息
-
-        消息格式为 Markdown 类型。
-        https://open.dingtalk.com/document/robots/custom-robot-access
-
-        Args:
-            message: Markdown 格式消息内容
-
-        Returns:
-            bool: 发送成功返回 True，否则返回 False
-        """
         if not self.webhook_url:
-            logger.warning("DingTalk webhook URL not configured, skipping")
             return False
-
         payload = {
             "msgtype": "markdown",
-            "markdown": {
-                "title": "SQL Monitor Alert",
-                "text": message,
-            },
+            "markdown": {"title": "SQL Monitor Alert", "text": message},
         }
-
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(self.webhook_url, json=payload)
                 resp.raise_for_status()
                 result = resp.json()
-
                 if result.get("errcode") == 0:
                     logger.info("DingTalk notification sent successfully")
                     return True
-
-                logger.error(
-                    "DingTalk API returned error: errcode=%s, errmsg=%s",
-                    result.get("errcode"),
-                    result.get("errmsg"),
-                )
+                logger.error("DingTalk API error: %s", result.get("errmsg"))
                 return False
-
-        except httpx.TimeoutException:
-            logger.error("DingTalk webhook request timed out")
-            return False
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "DingTalk webhook returned HTTP %s: %s",
-                e.response.status_code,
-                e.response.text,
-            )
-            return False
-        except httpx.RequestError as e:
-            logger.error("DingTalk webhook request failed: %s", e)
+        except Exception as e:
+            logger.error("DingTalk send failed: %s", e)
             return False
 
 
 class WeComNotifier:
-    """企业微信机器人通知发送器
-
-    通过企业微信群机器人 Webhook 发送 Markdown 格式消息。
-    使用 httpx 异步发送 POST 请求。
-    https://developer.work.weixin.qq.com/document/path/91770
-    """
+    """浼佷笟寰俊鏈哄櫒浜洪€氱煡鍙戦€佸櫒"""
 
     def __init__(self) -> None:
         self.webhook_url: str = getattr(settings, "WECOM_WEBHOOK_URL", "")
 
     async def send(self, message: str) -> bool:
-        """发送企业微信机器人消息
-
-        消息格式为 Markdown 类型。
-
-        Args:
-            message: Markdown 格式消息内容
-
-        Returns:
-            bool: 发送成功返回 True，否则返回 False
-        """
         if not self.webhook_url:
-            logger.warning("WeCom webhook URL not configured, skipping")
             return False
-
-        payload = {
-            "msgtype": "markdown",
-            "markdown": {
-                "content": message,
-            },
-        }
-
+        payload = {"msgtype": "markdown", "markdown": {"content": message}}
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(self.webhook_url, json=payload)
                 resp.raise_for_status()
                 result = resp.json()
-
                 if result.get("errcode") == 0:
                     logger.info("WeCom notification sent successfully")
                     return True
-
-                logger.error(
-                    "WeCom API returned error: errcode=%s, errmsg=%s",
-                    result.get("errcode"),
-                    result.get("errmsg"),
-                )
+                logger.error("WeCom API error: %s", result.get("errmsg"))
                 return False
-
-        except httpx.TimeoutException:
-            logger.error("WeCom webhook request timed out")
-            return False
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "WeCom webhook returned HTTP %s: %s",
-                e.response.status_code,
-                e.response.text,
-            )
-            return False
-        except httpx.RequestError as e:
-            logger.error("WeCom webhook request failed: %s", e)
+        except Exception as e:
+            logger.error("WeCom send failed: %s", e)
             return False
 
 
 class FeishuNotifier:
-    """飞书机器人通知发送器
-
-    通过飞书自定义机器人 Webhook 发送富文本消息。
-    使用 httpx 异步发送 POST 请求。
-    https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot
-    """
+    """椋炰功鏈哄櫒浜洪€氱煡鍙戦€佸櫒"""
 
     def __init__(self) -> None:
         self.webhook_url: str = getattr(settings, "FEISHU_WEBHOOK_URL", "")
 
     async def send(self, message: str) -> bool:
-        """发送飞书机器人消息
-
-        消息格式为 Interactive（卡片消息），支持 Markdown 子集。
-
-        Args:
-            message: Markdown 格式消息内容
-
-        Returns:
-            bool: 发送成功返回 True，否则返回 False
-        """
         if not self.webhook_url:
-            logger.warning("Feishu webhook URL not configured, skipping")
             return False
-
         payload = {
             "msg_type": "interactive",
             "card": {
                 "header": {
-                    "title": {
-                        "tag": "plain_text",
-                        "content": "SQL Monitor Alert",
-                    },
+                    "title": {"tag": "plain_text", "content": "SQL Monitor 鍛婅 / Alert"},
                     "template": "red",
                 },
-                "elements": [
-                    {
-                        "tag": "markdown",
-                        "content": message,
-                    }
-                ],
+                "elements": [{"tag": "markdown", "content": message}],
             },
         }
-
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(self.webhook_url, json=payload)
                 resp.raise_for_status()
                 result = resp.json()
-
                 if result.get("code") == 0:
                     logger.info("Feishu notification sent successfully")
                     return True
-
-                logger.error(
-                    "Feishu API returned error: code=%s, msg=%s",
-                    result.get("code"),
-                    result.get("msg"),
-                )
+                logger.error("Feishu API error: %s", result.get("msg"))
                 return False
-
-        except httpx.TimeoutException:
-            logger.error("Feishu webhook request timed out")
-            return False
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "Feishu webhook returned HTTP %s: %s",
-                e.response.status_code,
-                e.response.text,
-            )
-            return False
-        except httpx.RequestError as e:
-            logger.error("Feishu webhook request failed: %s", e)
+        except Exception as e:
+            logger.error("Feishu send failed: %s", e)
             return False
 
+
+# ============================================================
+# NotificationService
+# ============================================================
 
 class NotificationService:
-    """组合通知服务
-
-    整合 EmailNotifier、DingTalkNotifier、WeComNotifier 和 FeishuNotifier，
-    提供一次性发送所有渠道通知和按渠道单独发送的便捷方法。
-    """
+    """缁勫悎閫氱煡鏈嶅姟"""
 
     def __init__(self) -> None:
         self.email_notifier = EmailNotifier()
@@ -408,53 +352,21 @@ class NotificationService:
         self.feishu_notifier = FeishuNotifier()
 
     async def send_webhook(self, channel: str, message: str) -> bool:
-        """按指定渠道发送 Webhook 通知
-
-        Args:
-            channel: 通知渠道 ("dingtalk" / "wecom" / "feishu")
-            message: Markdown 格式消息内容
-
-        Returns:
-            bool: 发送成功返回 True，否则返回 False
-        """
         if channel == "dingtalk":
             return await self.dingtalk_notifier.send(message)
         elif channel == "wecom":
             return await self.wecom_notifier.send(message)
         elif channel == "feishu":
             return await self.feishu_notifier.send(message)
+        return False
+
+    async def notify_all(self, subject: str, body: str, html_body: str = "") -> Dict[str, bool]:
+        result: Dict[str, bool] = {"email": False, "dingtalk": False, "wecom": False, "feishu": False}
+        # 閭欢锛堜紭鍏?HTML锛?        if html_body:
+            result["email"] = await self.email_notifier.send(subject, html_body)
         else:
-            logger.warning("Unknown webhook channel: %s", channel)
-            return False
-
-    async def notify_all(self, subject: str, body: str) -> Dict[str, bool]:
-        """同时发送所有渠道通知
-
-        Args:
-            subject: 通知主题（邮件主题/钉钉标题）
-            body: 通知正文（纯文本/Markdown）
-
-        Returns:
-            dict: 各渠道发送结果，格式:
-                {"email": True/False, "dingtalk": True/False, "wecom": True/False, "feishu": True/False}
-        """
-        result: Dict[str, bool] = {
-            "email": False,
-            "dingtalk": False,
-            "wecom": False,
-            "feishu": False,
-        }
-
-        # 邮件异步发送（从 DB 加载配置）
-        result["email"] = await self.email_notifier.send(subject, body)
-
-        # 钉钉异步发送
+            result["email"] = await self.email_notifier.send(subject, f"<pre>{body}</pre>")
         result["dingtalk"] = await self.dingtalk_notifier.send(body)
-
-        # 企业微信异步发送
         result["wecom"] = await self.wecom_notifier.send(body)
-
-        # 飞书异步发送
         result["feishu"] = await self.feishu_notifier.send(body)
-
         return result
