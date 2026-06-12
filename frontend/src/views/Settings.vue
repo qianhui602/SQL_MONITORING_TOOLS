@@ -749,7 +749,7 @@ onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
   width: 44px;
   height: 24px;
   background: #d9d9d9;
-  border-radius: 12px;
+  border-radius: 6px;
   transition: background 0.3s;
   flex-shrink: 0;
 }
