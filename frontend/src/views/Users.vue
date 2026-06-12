@@ -340,7 +340,7 @@ onMounted(loadUsers)
 .tag {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 12px;
   border: 1px solid transparent;
 }
@@ -392,7 +392,7 @@ onMounted(loadUsers)
   width: 460px;
   max-width: 92vw;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 .modal-header {
   padding: 16px 20px;
