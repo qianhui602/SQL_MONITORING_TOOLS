@@ -12,6 +12,7 @@
             <th>ID</th>
             <th>用户名</th>
             <th>姓名</th>
+            <th>邮箱</th>
             <th>角色</th>
             <th>状态</th>
             <th>最后登录</th>
@@ -21,15 +22,16 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" class="empty">加载中...</td>
+            <td colspan="9" class="empty">加载中...</td>
           </tr>
           <tr v-else-if="users.length === 0">
-            <td colspan="8" class="empty">暂无用户</td>
+            <td colspan="9" class="empty">暂无用户</td>
           </tr>
           <tr v-for="u in users" :key="u.id">
             <td>{{ u.id }}</td>
             <td>{{ u.username }}</td>
             <td>{{ u.full_name || '-' }}</td>
+            <td>{{ u.email || '-' }}</td>
             <td>
               <span class="tag" :class="roleClass(u.role)">{{ roleLabel(u.role) }}</span>
             </td>
@@ -80,6 +82,10 @@
           <div class="form-row">
             <label>姓名</label>
             <input v-model="form.full_name" placeholder="可选" />
+          </div>
+          <div class="form-row">
+            <label>邮箱（用于接收欢迎邮件和告警通知）</label>
+            <input v-model="form.email" type="email" placeholder="user@example.com" />
           </div>
           <div class="form-row">
             <label>{{ dialogMode === 'create' ? '密码' : '重置密码（留空则不修改）' }}</label>
@@ -138,6 +144,7 @@ const form = reactive({
   username: '',
   password: '',
   full_name: '',
+  email: '',
   role: 'viewer',
   is_active: true
 })
@@ -191,6 +198,7 @@ function openCreateDialog() {
     username: '',
     password: '',
     full_name: '',
+    email: '',
     role: 'viewer',
     is_active: true
   })
@@ -205,6 +213,7 @@ function openEditDialog(u) {
     username: u.username,
     password: '',
     full_name: u.full_name || '',
+    email: u.email || '',
     role: u.role,
     is_active: u.is_active
   })
@@ -239,12 +248,14 @@ async function onSubmit() {
         username: form.username,
         password: form.password,
         role: form.role,
-        full_name: form.full_name || null
+        full_name: form.full_name || null,
+        email: form.email || null
       })
     } else {
       const payload = {
         role: form.role,
         full_name: form.full_name || null,
+        email: form.email || null,
         is_active: form.is_active
       }
       if (form.password) payload.password = form.password
