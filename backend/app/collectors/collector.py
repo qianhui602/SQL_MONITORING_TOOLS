@@ -113,7 +113,7 @@ class MetricsCollector:
 
         # 采集阻塞事件
         try:
-            blocking_data = self.blocking_collector.collect_blocking_events(connection)
+            blocking_data = self.blocking_collector.collect_blocking(connection)
             result["blocking_events"] = blocking_data.get("blocking_events", [])
             if blocking_data.get("error"):
                 logger.error("Blocking events collection error: %s", blocking_data["error"])
