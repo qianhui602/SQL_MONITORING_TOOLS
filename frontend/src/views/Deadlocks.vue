@@ -466,7 +466,7 @@ onMounted(() => {
   gap: 6px;
   height: 30px;
   padding: 0 14px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  background: #4f46e5;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -477,7 +477,7 @@ onMounted(() => {
 }
 
 .btn-analyze:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4338ca, #4f46e5);
+  background: #4338ca;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
 }
@@ -502,7 +502,7 @@ onMounted(() => {
 }
 
 .analysis-panel {
-  background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 100%);
+  background: #f7f8fa;
   border: 1px solid #e0e7ff;
   border-radius: 8px;
   padding: 16px 20px;
