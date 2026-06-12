@@ -51,6 +51,9 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(
         String(100), nullable=True, default=None, comment="姓名"
     )
+    email: Mapped[str] = mapped_column(
+        String(200), nullable=True, default=None, comment="邮箱地址"
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, comment="是否启用"
     )
