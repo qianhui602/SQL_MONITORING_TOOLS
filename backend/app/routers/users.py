@@ -32,6 +32,7 @@ class UserResponse(BaseModel):
     username: str
     role: str
     full_name: Optional[str] = None
+    email: Optional[str] = None
     is_active: bool
     last_login_at: Optional[datetime] = None
     created_at: datetime
@@ -45,11 +46,13 @@ class CreateUserRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=100)
     role: str = Field(default=UserRole.VIEWER.value)
     full_name: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[str] = Field(default=None, max_length=200)
 
 
 class UpdateUserRequest(BaseModel):
     role: Optional[str] = None
     full_name: Optional[str] = None
+    email: Optional[str] = Field(default=None, max_length=200)
     is_active: Optional[bool] = None
     password: Optional[str] = Field(default=None, min_length=6, max_length=100)
 
@@ -96,6 +99,7 @@ async def create_user(
         password_hash=hash_password(payload.password),
         role=payload.role,
         full_name=payload.full_name,
+        email=payload.email,
         is_active=True,
     )
     db.add(user)
@@ -109,17 +113,19 @@ async def create_user(
         f"创建用户: {user.username}, 角色: {user.role}", client_ip,
     )
 
-    # 发送欢迎邮件
-    try:
-        from app.services.notification import NotificationService
-        ns = NotificationService()
-        await ns.email_notifier.send_welcome_email(
-            username=payload.username,
-            password=payload.password,
-            full_name=payload.full_name or "",
-        )
-    except Exception as e:
-        logger.debug("Welcome email not sent: %s", e)
+    # 发送欢迎邮件（发送到用户邮箱）
+    if payload.email:
+        try:
+            from app.services.notification import NotificationService
+            ns = NotificationService()
+            await ns.email_notifier.send_welcome_email(
+                username=payload.username,
+                password=payload.password,
+                full_name=payload.full_name or "",
+                to_email=payload.email,
+            )
+        except Exception as e:
+            logger.debug("Welcome email not sent: %s", e)
 
     return user
 
@@ -153,6 +159,8 @@ async def update_user(
 
     if payload.full_name is not None:
         user.full_name = payload.full_name
+    if payload.email is not None:
+        user.email = payload.email
     if payload.is_active is not None:
         user.is_active = payload.is_active
     if payload.password:
