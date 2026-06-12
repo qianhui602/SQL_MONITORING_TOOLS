@@ -15,6 +15,7 @@ from app.models.config import SystemConfig
 from app.models.user import User
 from app.collectors.sqlserver import MSSQLConnectionManager
 from app.services.auth_service import get_current_user, require_admin
+from app.services.deepseek import AI_PROVIDERS
 from app.services.audit_service import log_action
 
 router = APIRouter()
@@ -193,3 +194,14 @@ async def test_mssql_connection(
         return {"success": False, "error": "连接测试未通过"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@router.get(
+    "/ai_providers",
+    summary="获取可用的 AI 提供商列表",
+)
+async def get_ai_providers(
+    _: User = Depends(get_current_user),
+) -> dict:
+    """返回所有可用的 AI 提供商及其模型列表。"""
+    return {"providers": AI_PROVIDERS}
