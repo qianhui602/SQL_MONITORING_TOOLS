@@ -1,10 +1,10 @@
-"""DeepSeek AI 分析服务
+"""AI 分析服务
 
-支持从数据库配置中读取 API Key 和模型名称，
-实现在系统设置界面动态修改。
+支持多种 AI 提供商（DeepSeek、OpenAI、Xiaomi MiMo、自定义），
+所有提供商均使用 OpenAI 兼容的 /v1/chat/completions 接口。
+支持从数据库配置中读取 API Key、模型和 Base URL。
 """
 
-import json
 import logging
 from typing import Optional
 
@@ -16,13 +16,53 @@ from app.models.config import SystemConfig
 
 logger = logging.getLogger(__name__)
 
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+# AI 提供商预设配置
+AI_PROVIDERS = {
+    "deepseek": {
+        "name": "DeepSeek",
+        "base_url": "https://api.deepseek.com",
+        "models": [
+            {"id": "deepseek-v4-flash", "name": "DeepSeek-V4-Flash（快速）"},
+            {"id": "deepseek-v4-pro", "name": "DeepSeek-V4-Pro（增强）"},
+        ],
+    },
+    "openai": {
+        "name": "OpenAI",
+        "base_url": "https://api.openai.com",
+        "models": [
+            {"id": "gpt-4o-mini", "name": "GPT-4o Mini（快速）"},
+            {"id": "gpt-4o", "name": "GPT-4o（增强）"},
+            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo（经济）"},
+        ],
+    },
+    "xiaomi": {
+        "name": "Xiaomi MiMo",
+        "base_url": "https://api.xiaomi.com",
+        "models": [
+            {"id": "mimo-7b", "name": "MiMo-7B（轻量）"},
+            {"id": "mimo-13b", "name": "MiMo-13B（标准）"},
+        ],
+    },
+    "custom": {
+        "name": "自定义（OpenAI 兼容）",
+        "base_url": "",
+        "models": [],
+    },
+}
 
 
-async def get_deepseek_config(db: AsyncSession) -> dict:
-    """从数据库读取 DeepSeek 配置"""
-    keys = ["deepseek_api_key", "deepseek_model"]
-    config = {"api_key": "", "model": "deepseek-v4-flash"}
+async def get_ai_config(db: AsyncSession) -> dict:
+    """从数据库读取 AI 配置（兼容旧的 deepseek_ 前缀配置）"""
+    keys = [
+        "ai_provider", "ai_api_key", "ai_model", "ai_base_url",
+        "deepseek_api_key", "deepseek_model",
+    ]
+    config = {
+        "provider": "deepseek",
+        "api_key": "",
+        "model": "deepseek-v4-flash",
+        "base_url": "",
+    }
 
     try:
         stmt = select(SystemConfig).where(
@@ -31,14 +71,32 @@ async def get_deepseek_config(db: AsyncSession) -> dict:
         result = await db.execute(stmt)
         rows = result.scalars().all()
         for row in rows:
-            if row.config_key == "deepseek_api_key":
+            if row.config_key == "ai_provider":
+                config["provider"] = row.config_value or "deepseek"
+            elif row.config_key == "ai_api_key":
                 config["api_key"] = row.config_value
-            elif row.config_key == "deepseek_model":
+            elif row.config_key == "ai_model":
                 config["model"] = row.config_value
+            elif row.config_key == "ai_base_url":
+                config["base_url"] = row.config_value
+            # 兼容旧配置
+            elif row.config_key == "deepseek_api_key" and not config["api_key"]:
+                config["api_key"] = row.config_value
+            elif row.config_key == "deepseek_model" and not config["model"]:
+                config["model"] = row.config_value
+
     except Exception as e:
-        logger.warning("读取 DeepSeek 配置失败，使用默认值: %s", e)
+        logger.warning("读取 AI 配置失败，使用默认值: %s", e)
 
     return config
+
+
+def _get_base_url(provider: str, custom_base_url: str = "") -> str:
+    """获取提供商的 API Base URL"""
+    if provider == "custom":
+        return custom_base_url.rstrip("/")
+    preset = AI_PROVIDERS.get(provider, {})
+    return preset.get("base_url", "https://api.deepseek.com")
 
 
 def _build_prompt(deadlock_info: dict) -> str:
@@ -80,56 +138,77 @@ def _build_prompt(deadlock_info: dict) -> str:
     return prompt
 
 
+async def _call_ai_api(
+    base_url: str,
+    api_key: str,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    timeout: float = 60.0,
+) -> Optional[str]:
+    """调用 OpenAI 兼容的 Chat Completions API"""
+    if not api_key:
+        return None
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.post(
+            f"{base_url}/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 2048,
+            },
+        )
+        if resp.status_code != 200:
+            logger.error("AI API error: %s %s", resp.status_code, resp.text)
+            return None
+
+        data = resp.json()
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        return content.strip() if content else None
+
+
 async def analyze_deadlock(
     deadlock_info: dict,
     api_key: str = "",
     model: str = "deepseek-v4-flash",
+    base_url: str = "",
+    provider: str = "deepseek",
 ) -> Optional[str]:
+    """分析死锁事件"""
     if not api_key:
-        logger.error("DeepSeek API Key 未配置")
-        return "AI 分析失败：DeepSeek API Key 未配置，请在系统设置中填写。"
+        provider_name = AI_PROVIDERS.get(provider, {}).get("name", provider)
+        return f"AI 分析失败：{provider_name} API Key 未配置，请在系统设置中填写。"
 
+    url = base_url or _get_base_url(provider)
     try:
         prompt = _build_prompt(deadlock_info)
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位资深的 SQL Server 数据库性能优化专家，精通死锁分析、索引优化和事务调优。",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 2048,
-                },
-            )
-            if resp.status_code != 200:
-                logger.error(
-                    f"DeepSeek API error: {resp.status_code} {resp.text}"
-                )
-                return f"AI 分析调用失败 (HTTP {resp.status_code})"
-
-            data = resp.json()
-            content = (
-                data.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
-            return content.strip() if content else "AI 分析返回为空"
+        result = await _call_ai_api(
+            base_url=url,
+            api_key=api_key,
+            model=model,
+            system_prompt="你是一位资深的 SQL Server 数据库性能优化专家，精通死锁分析、索引优化和事务调优。",
+            user_prompt=prompt,
+        )
+        return result or "AI 分析返回为空"
 
     except httpx.TimeoutException:
-        logger.error("DeepSeek API 请求超时")
+        logger.error("AI API 请求超时")
         return "AI 分析请求超时，请稍后重试"
     except Exception as e:
-        logger.exception(f"DeepSeek API 调用异常: {e}")
+        logger.exception("AI API 调用异常: %s", e)
         return f"AI 分析异常: {str(e)}"
 
 
@@ -194,49 +273,41 @@ async def analyze_report(
     report_data: dict,
     api_key: str = "",
     model: str = "deepseek-v4-flash",
+    base_url: str = "",
+    provider: str = "deepseek",
 ) -> Optional[str]:
-    """使用 DeepSeek AI 生成报告分析建议"""
+    """使用 AI 生成报告分析建议"""
     if not api_key:
-        logger.error("DeepSeek API Key 未配置")
-        return "AI 分析失败：DeepSeek API Key 未配置，请在系统设置中填写。"
+        provider_name = AI_PROVIDERS.get(provider, {}).get("name", provider)
+        return f"AI 分析失败：{provider_name} API Key 未配置，请在系统设置中填写。"
 
+    url = base_url or _get_base_url(provider)
     try:
         prompt = _build_report_prompt(report_data)
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位资深的 SQL Server 数据库性能优化专家，精通性能分析、索引优化和系统调优。",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 2048,
-                },
-            )
-            if resp.status_code != 200:
-                logger.error(f"DeepSeek API error: {resp.status_code} {resp.text}")
-                return f"报告分析调用失败 (HTTP {resp.status_code})"
-
-            data = resp.json()
-            content = (
-                data.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
-            return content.strip() if content else "报告分析返回为空"
+        result = await _call_ai_api(
+            base_url=url,
+            api_key=api_key,
+            model=model,
+            system_prompt="你是一位资深的 SQL Server 数据库性能优化专家，精通性能分析、索引优化和系统调优。",
+            user_prompt=prompt,
+        )
+        return result or "报告分析返回为空"
 
     except httpx.TimeoutException:
-        logger.error("DeepSeek 报告分析 API 请求超时")
+        logger.error("AI 报告分析 API 请求超时")
         return "报告分析请求超时，请稍后重试"
     except Exception as e:
-        logger.exception(f"DeepSeek 报告分析 API 调用异常: {e}")
+        logger.exception("AI 报告分析 API 调用异常: %s", e)
         return f"报告分析异常: {str(e)}"
+
+
+# 向后兼容：旧函数名映射
+async def get_deepseek_config(db: AsyncSession) -> dict:
+    """向后兼容：返回旧格式配置"""
+    config = await get_ai_config(db)
+    return {
+        "api_key": config["api_key"],
+        "model": config["model"],
+        "base_url": config["base_url"],
+        "provider": config["provider"],
+    }
