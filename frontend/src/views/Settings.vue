@@ -172,7 +172,7 @@
             <label class="config-label">收件人邮箱</label>
             <input
               type="text"
-              v-model="smtpConfigs.smtp_recipients"
+              v-model="alertConfigs.smtp_recipients"
               class="config-input"
               placeholder="user1@example.com, user2@example.com"
             />
@@ -329,6 +329,7 @@ const alertConfigs = reactive({
   deadlock_alert_enabled: 'true',
   collection_interrupt_threshold: '3',
   alert_cooldown_minutes: '30',
+  smtp_recipients: '',
 })
 
 // 通知渠道配置
@@ -344,7 +345,6 @@ const smtpConfigs = reactive({
   smtp_port: '587',
   smtp_user: '',
   smtp_password: '',
-  smtp_recipients: '',
 })
 
 const mssqlConfigs = computed(() => {
@@ -407,6 +407,7 @@ async function fetchConfigs() {
     alertConfigs.deadlock_alert_enabled = find('deadlock_alert_enabled') || 'true'
     alertConfigs.collection_interrupt_threshold = find('collection_interrupt_threshold') || '3'
     alertConfigs.alert_cooldown_minutes = find('alert_cooldown_minutes') || '30'
+    alertConfigs.smtp_recipients = find('smtp_recipients')
 
     // 通知配置
     notifyConfigs.wecom_webhook_url = find('wecom_webhook_url')
@@ -446,7 +447,7 @@ async function saveAll() {
     { key: 'smtp_port', value: smtpConfigs.smtp_port },
     { key: 'smtp_user', value: smtpConfigs.smtp_user },
     { key: 'smtp_password', value: smtpConfigs.smtp_password },
-    { key: 'smtp_recipients', value: smtpConfigs.smtp_recipients },
+    { key: 'smtp_recipients', value: alertConfigs.smtp_recipients },
   ]
   try {
     const results = await Promise.allSettled(
@@ -522,7 +523,7 @@ async function testSmtp() {
       port: parseInt(smtpConfigs.smtp_port, 10) || 587,
       user: smtpConfigs.smtp_user,
       password: smtpConfigs.smtp_password,
-      recipients: smtpConfigs.smtp_recipients,
+      recipients: alertConfigs.smtp_recipients,
     })
     smtpTestOk.value = result?.success
     smtpTestResult.value = result?.message || result?.error || '未知结果'
