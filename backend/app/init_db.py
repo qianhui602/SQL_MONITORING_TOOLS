@@ -119,14 +119,34 @@ _DEFAULT_CONFIGS = [
     },
     # ========== DeepSeek AI 配置 ==========
     {
+        "key": "ai_provider",
+        "value": "deepseek",
+        "desc": "AI 提供商（deepseek / openai / xiaomi / custom）",
+    },
+    {
+        "key": "ai_api_key",
+        "value": "",
+        "desc": "AI API 密钥",
+    },
+    {
+        "key": "ai_model",
+        "value": "deepseek-v4-flash",
+        "desc": "AI 模型名称",
+    },
+    {
+        "key": "ai_base_url",
+        "value": "",
+        "desc": "AI API Base URL（自定义提供商时填写）",
+    },
+    {
         "key": "deepseek_api_key",
         "value": "sk-40bd88a5422c4db1acf7f566e8acd88a",
-        "desc": "DeepSeek API 密钥",
+        "desc": "DeepSeek API 密钥（已废弃，请使用 ai_api_key）",
     },
     {
         "key": "deepseek_model",
         "value": "deepseek-v4-flash",
-        "desc": "DeepSeek 模型（deepseek-v4-flash / deepseek-v4-pro）",
+        "desc": "DeepSeek 模型（已废弃，请使用 ai_model）",
     },
     # ========== SMTP 邮件配置 ==========
     {
