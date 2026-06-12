@@ -142,6 +142,10 @@ export function updateConfig(key, value) {
   return request.put(`/config/${key}`, { config_value: value })
 }
 
+export function getAiProviders() {
+  return request.get('/config/ai_providers')
+}
+
 // ===== 慢查询 =====
 export function getSlowQueries(params) { return request.get('/slow-queries', { params }) }
 export function getSlowQueryStats(params) { return request.get('/slow-queries/stats', { params }) }
