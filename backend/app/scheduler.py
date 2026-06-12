@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.collectors.collector import MetricsCollector
 from app.collectors.sqlserver import MSSQLConnectionManager
