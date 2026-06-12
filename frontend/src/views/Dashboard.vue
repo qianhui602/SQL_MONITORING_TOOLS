@@ -980,17 +980,15 @@ onUnmounted(() => {
 }
 
 .stat-card.stat-blue { border-left: 3px solid #1890ff; }
-.stat-card.stat-green { border-left: 3px solid #52c41a; }
-.stat-card.stat-cyan { border-left: 3px solid #13c2c2; }
-.stat-card.stat-purple { border-left: 3px solid #722ed1; }
-.stat-card.stat-orange { border-left: 3px solid #fa8c16; }
-.stat-card.stat-magenta { border-left: 3px solid #eb2f96; }
-.stat-card.stat-red { border-left: 3px solid #f5222d; }
-.stat-card.stat-deadlock { border-left: 3px solid #fa541c; }
+.stat-card.stat-green { border-left: 3px solid #1890ff; }
+.stat-card.stat-cyan { border-left: 3px solid #1890ff; }
+.stat-card.stat-purple { border-left: 3px solid #1890ff; }
+.stat-card.stat-orange { border-left: 3px solid #1890ff; }
+.stat-card.stat-magenta { border-left: 3px solid #1890ff; }
+.stat-card.stat-red { border-left: 3px solid #1890ff; }
+.stat-card.stat-deadlock { border-left: 3px solid #1890ff; }
 
-.stat-icon {
-  display: none;
-}
+.stat-icon { display: none; }
 
 .stat-info {
   display: flex;
@@ -1174,7 +1172,7 @@ onUnmounted(() => {
   bottom: 0;
   background-color: var(--border-color);
   transition: .3s;
-  border-radius: 22px;
+  border-radius: 11px;
 }
 .compare-slider:before {
   position: absolute;
@@ -1390,7 +1388,7 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
 .modal-content {
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: 6px;
   width: 90%;
   max-width: 1200px;
   height: 80vh;
