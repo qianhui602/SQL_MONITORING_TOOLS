@@ -8,6 +8,10 @@
       </div>
     </div>
 
+    <div v-if="message" :class="['message-toast', messageType === 'error' ? 'error' : 'success']">
+      {{ message }}
+    </div>
+
     <div class="config-sections">
       <!-- 系统设置 -->
       <div class="config-section">
@@ -292,10 +296,6 @@
         </div>
       </div>
     </div>
-
-    <div v-if="message" :class="['message', messageType === 'error' ? 'error' : 'success']">
-      {{ message }}
-    </div>
   </div>
 </template>
 
@@ -450,13 +450,20 @@ async function saveAll() {
   ]
   try {
     for (const cfg of allConfigs) {
-      await updateConfig(cfg.key, cfg.value)
+      try {
+        await updateConfig(cfg.key, String(cfg.value))
+      } catch (e) {
+        const detail = e?.response?.data?.detail || e.message
+        message.value = `保存失败 [${cfg.key}]: ${detail}`
+        messageType.value = 'error'
+        return
+      }
     }
     message.value = '保存成功！配置将在下一个采集周期自动应用。'
     messageType.value = 'success'
     setTimezone(timezone.value)
   } catch (e) {
-    message.value = '保存失败: ' + (e.message || '未知错误')
+    message.value = '保存失败: ' + (e?.response?.data?.detail || e.message || '未知错误')
     messageType.value = 'error'
   } finally {
     if (toastTimer) clearTimeout(toastTimer)
@@ -635,18 +642,26 @@ onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
   font-size: 12px;
   color: #999;
 }
-.message {
-  margin-top: 20px;
+.message-toast {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin-bottom: 16px;
   padding: 12px 16px;
   border-radius: 4px;
   font-size: 14px;
+  animation: slideDown 0.2s ease;
 }
-.message.success {
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.message-toast.success {
   background: #f6ffed;
   border: 1px solid #b7eb8f;
   color: #52c41a;
 }
-.message.error {
+.message-toast.error {
   background: #fff2f0;
   border: 1px solid #ffccc7;
   color: #f5222d;
