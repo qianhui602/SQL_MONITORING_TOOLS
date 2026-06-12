@@ -302,13 +302,13 @@ async function onUploadZip() {
 .page-header h2 { margin: 0; font-size: 18px; color: var(--text-primary); }
 .header-actions { display: flex; gap: 8px; }
 
-.card { background: var(--bg-card); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border-color); }
+.card { background: var(--bg-card); border-radius: 6px; box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border-color); }
 .card-header { display: flex; align-items: center; gap: 10px; padding: 16px 24px; border-bottom: 1px solid var(--border-color); }
 .card-header h3 { margin: 0; font-size: 15px; color: var(--text-primary); flex: 1; }
 .card-icon { color: var(--text-muted); flex-shrink: 0; }
 .card-body { padding: 24px; }
 
-.badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
 .badge-update { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
 .badge-warn { background: rgba(250, 140, 22, 0.12); color: #fa8c16; }
 .badge-ok { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
@@ -363,7 +363,7 @@ async function onUploadZip() {
 .upload-hint { margin: 0 0 16px; color: var(--text-secondary); font-size: 13px; }
 .upload-hint a { color: #1890ff; }
 .upload-hint code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-.upload-zone { border: 2px dashed var(--border-color); border-radius: 10px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.upload-zone { border: 2px dashed var(--border-color); border-radius: 6px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
 .upload-zone:hover, .upload-zone.drag-over { border-color: #1890ff; background: rgba(24, 144, 255, 0.04); }
 .upload-zone.uploading { cursor: not-allowed; opacity: 0.7; }
 .upload-content p { margin: 8px 0 0; color: var(--text-primary); font-size: 14px; }
@@ -371,7 +371,7 @@ async function onUploadZip() {
 
 .upgrade-steps { display: flex; align-items: flex-start; margin-bottom: 20px; padding: 16px 20px; background: var(--bg-primary); border-radius: 8px; }
 .step { display: flex; align-items: flex-start; gap: 10px; flex: 1; }
-.step-indicator { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; background: var(--border-color); color: var(--text-muted); transition: all 0.3s; }
+.step-indicator { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; background: var(--border-color); color: var(--text-muted); transition: all 0.2s; }
 .step-completed .step-indicator { background: #52c41a; color: #fff; }
 .step-active .step-indicator { background: #1890ff; color: #fff; box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); animation: pulse 1.5s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.2); } 50% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0.1); } }
@@ -385,7 +385,7 @@ async function onUploadZip() {
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
 .btn-outline:hover:not(:disabled) { border-color: #1890ff; color: #1890ff; }
-.btn-upgrade { background: linear-gradient(135deg, #52c41a, #389e0d); color: #fff; font-weight: 500; padding: 10px 28px; font-size: 15px; }
+.btn-upgrade { background: #52c41a; color: #fff; font-weight: 500; padding: 10px 28px; font-size: 15px; }
 .btn-upgrade:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(82, 196, 26, 0.4); transform: translateY(-1px); }
 .spinner-sm { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
