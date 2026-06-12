@@ -431,7 +431,7 @@ onMounted(fetchInstances)
   width: 500px;
   max-width: 92vw;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {
