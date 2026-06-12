@@ -125,7 +125,7 @@ async function onSubmit() {
 /* ---- 左侧品牌区 ---- */
 .login-left {
   width: 45%;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+  background: #0f172a;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -141,8 +141,7 @@ async function onSubmit() {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 70% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 40%);
+  background: transparent;
   pointer-events: none;
 }
 
@@ -222,7 +221,7 @@ async function onSubmit() {
 .login-card {
   width: 420px;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 48px 40px 40px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
@@ -274,7 +273,7 @@ async function onSubmit() {
   height: 44px;
   padding: 0 14px 0 40px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 14px;
   color: #0f172a;
   background: #f8fafc;
@@ -303,10 +302,10 @@ async function onSubmit() {
 
 .login-btn {
   height: 46px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #2563eb;
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -320,7 +319,7 @@ async function onSubmit() {
 }
 
 .login-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: #1d4ed8;
   box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
   transform: translateY(-1px);
 }
@@ -350,7 +349,7 @@ async function onSubmit() {
   }
   .login-right {
     width: 100%;
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    background: #0f172a;
   }
   .login-card {
     width: 90%;
