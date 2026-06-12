@@ -128,6 +128,43 @@ _DEFAULT_CONFIGS = [
         "value": "deepseek-v4-flash",
         "desc": "DeepSeek 模型（deepseek-v4-flash / deepseek-v4-pro）",
     },
+    # ========== SMTP 邮件配置 ==========
+    {
+        "key": "smtp_server",
+        "value": "",
+        "desc": "SMTP 邮件服务器地址",
+    },
+    {
+        "key": "smtp_port",
+        "value": "587",
+        "desc": "SMTP 端口（默认 587）",
+    },
+    {
+        "key": "smtp_user",
+        "value": "",
+        "desc": "SMTP 发件人账号",
+    },
+    {
+        "key": "smtp_password",
+        "value": "",
+        "desc": "SMTP 发件人密码",
+    },
+    {
+        "key": "smtp_recipients",
+        "value": "",
+        "desc": "告警邮件接收人（多个用逗号分隔）",
+    },
+    {
+        "key": "smtp_enabled",
+        "value": "false",
+        "desc": "邮件告警开关",
+    },
+    # ========== 数据保留策略 ==========
+    {
+        "key": "data_retention_days",
+        "value": "90",
+        "desc": "数据保留天数（超过此天数的监控数据将被自动清理）",
+    },
     # ========== 系统设置 ==========
     {
         "key": "timezone",

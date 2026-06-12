@@ -22,6 +22,7 @@ from app.routers.export import router as export_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.upgrade import router as upgrade_router
+from app.routers.smtp_test import router as smtp_test_router
 
 api_router = APIRouter()
 
@@ -42,5 +43,6 @@ api_router.include_router(export_router, prefix="/export", tags=["数据导出"]
 api_router.include_router(notifications_router, prefix="/notifications", tags=["通知"])
 api_router.include_router(reports_router, prefix="/reports", tags=["报告"])
 api_router.include_router(upgrade_router, prefix="/upgrade", tags=["在线升级"])
+api_router.include_router(smtp_test_router, prefix="/smtp", tags=["SMTP邮件"])
 
 __all__ = ["api_router"]

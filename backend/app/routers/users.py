@@ -109,6 +109,18 @@ async def create_user(
         f"创建用户: {user.username}, 角色: {user.role}", client_ip,
     )
 
+    # 发送欢迎邮件
+    try:
+        from app.services.notification import NotificationService
+        ns = NotificationService()
+        await ns.email_notifier.send_welcome_email(
+            username=payload.username,
+            password=payload.password,
+            full_name=payload.full_name or "",
+        )
+    except Exception as e:
+        logger.debug("Welcome email not sent: %s", e)
+
     return user
 
 

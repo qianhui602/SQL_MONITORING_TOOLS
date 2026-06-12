@@ -22,25 +22,52 @@ class EmailNotifier:
 
     使用 SMTP 协议通过配置的邮件服务器发送告警邮件。
     支持 TLS 加密，默认端口 587。
+    优先从数据库配置读取 SMTP 设置，回退到环境变量。
     """
 
     def __init__(self) -> None:
-        self.server: str = settings.SMTP_SERVER
-        self.port: int = settings.SMTP_PORT
-        self.user: str = settings.SMTP_USER
-        self.password: str = settings.SMTP_PASSWORD
-        self.recipients: List[str] = settings.ALERT_EMAILS
+        self.server: str = ""
+        self.port: int = 587
+        self.user: str = ""
+        self.password: str = ""
+        self.recipients: List[str] = []
+        self._db_loaded = False
 
-    def send(self, subject: str, body: str) -> bool:
-        """发送邮件通知
+    async def _load_db_config(self) -> None:
+        """从数据库加载 SMTP 配置"""
+        if self._db_loaded:
+            return
+        try:
+            from app.database import async_session_factory
+            from sqlalchemy import text
 
-        Args:
-            subject: 邮件主题
-            body: 邮件正文（纯文本格式）
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    text("SELECT config_key, config_value FROM system_configs WHERE config_key IN ('smtp_server', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_recipients', 'smtp_enabled')")
+                )
+                config = {row[0]: row[1] for row in result}
+                if config.get("smtp_enabled", "false").lower() != "true":
+                    self._db_loaded = True
+                    return
+                self.server = config.get("smtp_server", "")
+                self.port = int(config.get("smtp_port", "587"))
+                self.user = config.get("smtp_user", "")
+                self.password = config.get("smtp_password", "")
+                raw_recipients = config.get("smtp_recipients", "")
+                self.recipients = [r.strip() for r in raw_recipients.split(",") if r.strip()]
+        except Exception as e:
+            logger.warning("Failed to load SMTP config from DB: %s", e)
+            # 回退到环境变量
+            self.server = settings.SMTP_SERVER
+            self.port = settings.SMTP_PORT
+            self.user = settings.SMTP_USER
+            self.password = settings.SMTP_PASSWORD
+            self.recipients = settings.ALERT_EMAILS
+        self._db_loaded = True
 
-        Returns:
-            bool: 发送成功返回 True，否则返回 False
-        """
+    async def send(self, subject: str, body: str) -> bool:
+        """发送邮件通知"""
+        await self._load_db_config()
         if not self._is_configured():
             logger.warning("SMTP not configured, skipping email notification")
             return False
@@ -64,9 +91,7 @@ class EmailNotifier:
                 smtp.login(self.user, self.password)
                 smtp.sendmail(self.user, self.recipients, msg.as_string())
 
-            logger.info(
-                "Email notification sent to %s: %s", self.recipients, subject
-            )
+            logger.info("Email notification sent to %s: %s", self.recipients, subject)
             return True
 
         except smtplib.SMTPAuthenticationError:
@@ -80,12 +105,58 @@ class EmailNotifier:
             return False
 
     def _is_configured(self) -> bool:
-        """检查 SMTP 配置是否完整
-
-        Returns:
-            bool: 配置完整返回 True
-        """
         return bool(self.server and self.user and self.password)
+
+    async def send_async(self, subject: str, body: str) -> bool:
+        """异步发送邮件（在线程池中执行同步 SMTP）"""
+        import asyncio
+        return await asyncio.get_event_loop().run_in_executor(None, lambda: self._send_sync(subject, body))
+
+    def _send_sync(self, subject: str, body: str) -> bool:
+        """同步发送邮件（供线程池调用）"""
+        if not self._is_configured():
+            return False
+        if not self.recipients:
+            return False
+        try:
+            import smtplib
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = subject
+            msg["From"] = formataddr(("SQL Monitor Alert", self.user))
+            msg["To"] = ", ".join(self.recipients)
+            with smtplib.SMTP(self.server, self.port) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(self.user, self.password)
+                smtp.sendmail(self.user, self.recipients, msg.as_string())
+            logger.info("Email sent to %s: %s", self.recipients, subject)
+            return True
+        except Exception as e:
+            logger.error("Email send failed: %s", e)
+            return False
+
+    async def send_welcome_email(self, username: str, password: str, full_name: str = "") -> bool:
+        """发送新用户欢迎邮件"""
+        await self._load_db_config()
+        if not self._is_configured() or not self.recipients:
+            return False
+
+        display_name = full_name or username
+        subject = f"Welcome to SQL Monitor - Account Created"
+        body = (
+            f"Hello {display_name},\n\n"
+            f"Your account has been created for the SQL Monitoring Platform.\n\n"
+            f"Login Details:\n"
+            f"  URL: {settings.PROJECT_NAME}\n"
+            f"  Username: {username}\n"
+            f"  Password: {password}\n\n"
+            f"Please change your password after first login.\n\n"
+            f"If you have any questions, please contact your administrator.\n\n"
+            f"---\n"
+            f"SQL Monitor Alert System"
+        )
+        return self._send_sync(subject, body)
 
 
 class DingTalkNotifier:
@@ -347,8 +418,8 @@ class NotificationService:
             "feishu": False,
         }
 
-        # 邮件同步发送
-        result["email"] = self.email_notifier.send(subject, body)
+        # 邮件异步发送（从 DB 加载配置）
+        result["email"] = await self.email_notifier.send(subject, body)
 
         # 钉钉异步发送
         result["dingtalk"] = await self.dingtalk_notifier.send(body)

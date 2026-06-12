@@ -9,6 +9,7 @@
     </div>
 
     <div class="config-sections">
+      <!-- 系统设置 -->
       <div class="config-section">
         <h3 class="section-title">系统设置</h3>
         <div class="config-grid">
@@ -25,9 +26,22 @@
             </select>
             <span class="config-desc">系统时区（用于日志和报表时间显示）</span>
           </div>
+          <div class="config-item">
+            <label class="config-label">数据保留天数</label>
+            <input
+              type="number"
+              v-model="dataRetentionDays"
+              class="config-input"
+              min="7"
+              max="3650"
+              placeholder="90"
+            />
+            <span class="config-desc">超过此天数的监控数据将被自动清理（建议 90-365 天）</span>
+          </div>
         </div>
       </div>
 
+      <!-- SQL Server 连接配置 -->
       <div class="config-section">
         <h3 class="section-title">SQL Server 连接配置</h3>
         <div class="config-grid">
@@ -44,6 +58,7 @@
         </div>
       </div>
 
+      <!-- PostgreSQL 后台数据库 -->
       <div class="config-section">
         <h3 class="section-title">PostgreSQL 后台数据库</h3>
         <div class="config-grid">
@@ -60,27 +75,199 @@
         </div>
       </div>
 
+      <!-- 数据采集配置 -->
       <div class="config-section">
-        <h3 class="section-title">采集与告警配置</h3>
+        <h3 class="section-title">数据采集配置</h3>
         <div class="config-grid">
-          <div class="config-item" v-for="item in alertConfigs" :key="item.key">
-            <label class="config-label">{{ item.label }}</label>
-            <input
-              v-if="item.key !== 'mssql_instances_enabled' && item.key !== 'deadlock_alert_enabled' && item.key !== 'wecom_enabled'"
-              v-model="item.value"
-              class="config-input"
-              :placeholder="item.desc"
-            />
-            <label v-else class="toggle-label">
-              <input type="checkbox" v-model="item.value" true-value="true" false-value="false" class="toggle-input" />
+          <div class="config-item">
+            <label class="config-label">启用多实例采集</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="collectConfigs.mssql_instances_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ item.value === 'true' ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ collectConfigs.mssql_instances_enabled ? '已开启' : '已关闭' }}</span>
             </label>
-            <span class="config-desc">{{ item.desc }}</span>
+            <span class="config-desc">开启后从「实例管理」读取监控目标列表，关闭则使用上方 SQL Server 配置</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">采集间隔（秒）</label>
+            <input
+              type="number"
+              v-model="collectConfigs.scheduler_interval_seconds"
+              class="config-input"
+              min="10"
+              max="3600"
+              placeholder="60"
+            />
+            <span class="config-desc">数据采集频率，建议 30-120 秒</span>
           </div>
         </div>
       </div>
 
+      <!-- 告警规则配置 -->
+      <div class="config-section">
+        <h3 class="section-title">告警规则配置</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">内存告警阈值（%）</label>
+            <input
+              type="number"
+              v-model="alertConfigs.memory_alert_threshold_pct"
+              class="config-input"
+              min="50"
+              max="100"
+              placeholder="85"
+            />
+            <span class="config-desc">SQL Server 内存使用率超过此值触发告警</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">内存告警持续时长（分钟）</label>
+            <input
+              type="number"
+              v-model="alertConfigs.memory_alert_duration_minutes"
+              class="config-input"
+              min="1"
+              max="60"
+              placeholder="5"
+            />
+            <span class="config-desc">内存持续超过阈值超过此时长才触发告警</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">死锁告警开关</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="alertConfigs.deadlock_alert_enabled" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ alertConfigs.deadlock_alert_enabled ? '已开启' : '已关闭' }}</span>
+            </label>
+            <span class="config-desc">检测到死锁事件时是否触发告警通知</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">采集中断阈值（次）</label>
+            <input
+              type="number"
+              v-model="alertConfigs.collection_interrupt_threshold"
+              class="config-input"
+              min="1"
+              max="10"
+              placeholder="3"
+            />
+            <span class="config-desc">连续多少次采集失败后触发中断告警</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">告警冷却期（分钟）</label>
+            <input
+              type="number"
+              v-model="alertConfigs.alert_cooldown_minutes"
+              class="config-input"
+              min="5"
+              max="1440"
+              placeholder="30"
+            />
+            <span class="config-desc">相同类型告警在此期间不重复发送</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 通知渠道配置 -->
+      <div class="config-section">
+        <h3 class="section-title">通知渠道配置</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">企业微信通知开关</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="notifyConfigs.wecom_enabled" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ notifyConfigs.wecom_enabled ? '已开启' : '已关闭' }}</span>
+            </label>
+            <span class="config-desc">是否通过企业微信机器人发送告警通知</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">企业微信 Webhook URL</label>
+            <input
+              type="text"
+              v-model="notifyConfigs.wecom_webhook_url"
+              class="config-input"
+              placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+            />
+            <span class="config-desc">企业微信群机器人 Webhook 地址</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMTP 邮件配置 -->
+      <div class="config-section">
+        <h3 class="section-title">SMTP 邮件配置</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">邮件告警开关</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="smtpConfigs.smtp_enabled" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ smtpConfigs.smtp_enabled ? '已开启' : '已关闭' }}</span>
+            </label>
+            <span class="config-desc">是否通过邮件发送告警通知和欢迎邮件</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">SMTP 服务器</label>
+            <input
+              type="text"
+              v-model="smtpConfigs.smtp_server"
+              class="config-input"
+              placeholder="smtp.example.com"
+            />
+            <span class="config-desc">SMTP 服务器地址</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">SMTP 端口</label>
+            <input
+              type="number"
+              v-model="smtpConfigs.smtp_port"
+              class="config-input"
+              placeholder="587"
+            />
+            <span class="config-desc">SMTP 端口（TLS 用 587，SSL 用 465）</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">发件人账号</label>
+            <input
+              type="text"
+              v-model="smtpConfigs.smtp_user"
+              class="config-input"
+              placeholder="alert@example.com"
+            />
+            <span class="config-desc">SMTP 登录账号 / 发件人邮箱</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">发件人密码</label>
+            <input
+              type="password"
+              v-model="smtpConfigs.smtp_password"
+              class="config-input"
+              placeholder="密码或授权码"
+            />
+            <span class="config-desc">SMTP 登录密码或应用授权码</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">收件人邮箱</label>
+            <input
+              type="text"
+              v-model="smtpConfigs.smtp_recipients"
+              class="config-input"
+              placeholder="user1@example.com, user2@example.com"
+            />
+            <span class="config-desc">告警邮件接收人，多个用逗号分隔</span>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-sm btn-test" @click="testSmtp" :disabled="smtpTesting">
+            {{ smtpTesting ? '发送中...' : '发送测试邮件' }}
+          </button>
+          <span v-if="smtpTestResult" :class="['smtp-test-result', smtpTestOk ? 'ok' : 'fail']">
+            {{ smtpTestResult }}
+          </span>
+        </div>
+      </div>
+
+      <!-- DeepSeek AI 配置 -->
       <div class="config-section">
         <h3 class="section-title">DeepSeek AI 配置</h3>
         <div class="config-grid">
@@ -113,7 +300,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import request, { getConfigs, updateConfig } from '@/api'
 import { setTimezone } from '@/utils/datetime'
 
@@ -121,9 +308,44 @@ const configList = ref([])
 const deepseekApiKey = ref('')
 const deepseekModel = ref('deepseek-v4-flash')
 const timezone = ref('Asia/Shanghai')
+const dataRetentionDays = ref(90)
 const message = ref('')
 const messageType = ref('success')
+const smtpTesting = ref(false)
+const smtpTestResult = ref('')
+const smtpTestOk = ref(false)
 let toastTimer = null
+
+// 数据采集配置
+const collectConfigs = reactive({
+  mssql_instances_enabled: 'false',
+  scheduler_interval_seconds: '60',
+})
+
+// 告警规则配置
+const alertConfigs = reactive({
+  memory_alert_threshold_pct: '85',
+  memory_alert_duration_minutes: '5',
+  deadlock_alert_enabled: 'true',
+  collection_interrupt_threshold: '3',
+  alert_cooldown_minutes: '30',
+})
+
+// 通知渠道配置
+const notifyConfigs = reactive({
+  wecom_webhook_url: '',
+  wecom_enabled: 'false',
+})
+
+// SMTP 配置
+const smtpConfigs = reactive({
+  smtp_enabled: 'false',
+  smtp_server: '',
+  smtp_port: '587',
+  smtp_user: '',
+  smtp_password: '',
+  smtp_recipients: '',
+})
 
 const mssqlConfigs = computed(() => {
   const map = {
@@ -133,7 +355,7 @@ const mssqlConfigs = computed(() => {
     mssql_password: { label: '密码', password: true },
     mssql_database: { label: '数据库', password: false },
   }
-  return filterAndMap(configList.value, map, 'MSSQL')
+  return filterAndMap(configList.value, map)
 })
 
 const pgConfigs = computed(() => {
@@ -144,84 +366,94 @@ const pgConfigs = computed(() => {
     pg_user: { label: '账号', password: false },
     pg_password: { label: '密码', password: true },
   }
-  return filterAndMap(configList.value, map, 'PG')
+  return filterAndMap(configList.value, map)
 })
 
-const alertConfigs = computed(() => {
-  const map = {
-    mssql_instances_enabled: { label: '启用多实例采集', password: false },
-    scheduler_interval_seconds: { label: '采集间隔(秒)', password: false },
-    memory_alert_threshold_pct: { label: '内存告警阈值(%)', password: false },
-    memory_alert_duration_minutes: { label: '内存告警持续时长(分钟)', password: false },
-    deadlock_alert_enabled: { label: '死锁告警开关', password: false },
-    collection_interrupt_threshold: { label: '采集中断阈值(次)', password: false },
-    alert_cooldown_minutes: { label: '告警冷却期(分钟)', password: false },
-    wecom_webhook_url: { label: '企业微信 Webhook URL', password: false },
-    wecom_enabled: { label: '企业微信通知开关', password: false },
-  }
-  return filterAndMap(configList.value, map, null)
-})
-
-function filterAndMap(list, map, prefix) {
-  const result = []
-  for (const cfg of list) {
-    const meta = map[cfg.config_key]
-    if (meta) {
-      result.push({
-        key: cfg.config_key,
-        label: meta.label,
-        value: cfg.config_value,
-        desc: cfg.description,
-        password: meta.password,
-      })
-    }
-  }
-  return result
-}
-
-function getVisibleLabel(config) {
-  if (config.config_key === 'pg_password' || config.config_key === 'mssql_password') return '********'
-  return config.config_value
+function filterAndMap(list, map) {
+  return list
+    .filter(cfg => map[cfg.config_key])
+    .map(cfg => ({
+      key: cfg.config_key,
+      label: map[cfg.config_key].label,
+      value: cfg.config_value,
+      desc: cfg.description,
+      password: map[cfg.config_key].password,
+    }))
 }
 
 async function fetchConfigs() {
   try {
     const data = await getConfigs()
     configList.value = Array.isArray(data) ? data : (data.items || [])
-    // 提取 DeepSeek 配置
-    const apiKeyCfg = configList.value.find(c => c.config_key === 'deepseek_api_key')
-    const modelCfg = configList.value.find(c => c.config_key === 'deepseek_model')
-    if (apiKeyCfg) deepseekApiKey.value = apiKeyCfg.config_value
-    if (modelCfg) deepseekModel.value = modelCfg.config_value
-    // 提取系统时区配置
-    const tzCfg = configList.value.find(c => c.config_key === 'timezone')
-    if (tzCfg) {
-      timezone.value = tzCfg.config_value
-      setTimezone(tzCfg.config_value)
-    }
+
+    const find = key => configList.value.find(c => c.config_key === key)?.config_value || ''
+
+    // DeepSeek
+    deepseekApiKey.value = find('deepseek_api_key')
+    deepseekModel.value = find('deepseek_model') || 'deepseek-v4-flash'
+
+    // 系统设置
+    timezone.value = find('timezone') || 'Asia/Shanghai'
+    dataRetentionDays.value = find('data_retention_days') || '90'
+    setTimezone(timezone.value)
+
+    // 采集配置
+    collectConfigs.mssql_instances_enabled = find('mssql_instances_enabled') || 'false'
+    collectConfigs.scheduler_interval_seconds = find('scheduler_interval_seconds') || '60'
+
+    // 告警配置
+    alertConfigs.memory_alert_threshold_pct = find('memory_alert_threshold_pct') || '85'
+    alertConfigs.memory_alert_duration_minutes = find('memory_alert_duration_minutes') || '5'
+    alertConfigs.deadlock_alert_enabled = find('deadlock_alert_enabled') || 'true'
+    alertConfigs.collection_interrupt_threshold = find('collection_interrupt_threshold') || '3'
+    alertConfigs.alert_cooldown_minutes = find('alert_cooldown_minutes') || '30'
+
+    // 通知配置
+    notifyConfigs.wecom_webhook_url = find('wecom_webhook_url')
+    notifyConfigs.wecom_enabled = find('wecom_enabled') || 'false'
+
+    // SMTP 配置
+    smtpConfigs.smtp_enabled = find('smtp_enabled') || 'false'
+    smtpConfigs.smtp_server = find('smtp_server')
+    smtpConfigs.smtp_port = find('smtp_port') || '587'
+    smtpConfigs.smtp_user = find('smtp_user')
+    smtpConfigs.smtp_password = find('smtp_password')
+    smtpConfigs.smtp_recipients = find('smtp_recipients')
   } catch (e) {
     console.error('获取配置失败', e)
   }
 }
 
 async function saveAll() {
-  const allConfigs = [...mssqlConfigs.value, ...pgConfigs.value, ...alertConfigs.value]
-  // 添加 DeepSeek 配置
-  allConfigs.push(
+  const allConfigs = [
+    ...mssqlConfigs.value,
+    ...pgConfigs.value,
     { key: 'deepseek_api_key', value: deepseekApiKey.value },
-    { key: 'deepseek_model', value: deepseekModel.value }
-  )
-  // 添加系统时区配置
-  allConfigs.push(
-    { key: 'timezone', value: timezone.value }
-  )
+    { key: 'deepseek_model', value: deepseekModel.value },
+    { key: 'timezone', value: timezone.value },
+    { key: 'data_retention_days', value: String(dataRetentionDays.value) },
+    { key: 'mssql_instances_enabled', value: collectConfigs.mssql_instances_enabled },
+    { key: 'scheduler_interval_seconds', value: collectConfigs.scheduler_interval_seconds },
+    { key: 'memory_alert_threshold_pct', value: alertConfigs.memory_alert_threshold_pct },
+    { key: 'memory_alert_duration_minutes', value: alertConfigs.memory_alert_duration_minutes },
+    { key: 'deadlock_alert_enabled', value: alertConfigs.deadlock_alert_enabled },
+    { key: 'collection_interrupt_threshold', value: alertConfigs.collection_interrupt_threshold },
+    { key: 'alert_cooldown_minutes', value: alertConfigs.alert_cooldown_minutes },
+    { key: 'wecom_webhook_url', value: notifyConfigs.wecom_webhook_url },
+    { key: 'wecom_enabled', value: notifyConfigs.wecom_enabled },
+    { key: 'smtp_enabled', value: smtpConfigs.smtp_enabled },
+    { key: 'smtp_server', value: smtpConfigs.smtp_server },
+    { key: 'smtp_port', value: smtpConfigs.smtp_port },
+    { key: 'smtp_user', value: smtpConfigs.smtp_user },
+    { key: 'smtp_password', value: smtpConfigs.smtp_password },
+    { key: 'smtp_recipients', value: smtpConfigs.smtp_recipients },
+  ]
   try {
     for (const cfg of allConfigs) {
       await updateConfig(cfg.key, cfg.value)
     }
     message.value = '保存成功！配置将在下一个采集周期自动应用。'
     messageType.value = 'success'
-    // 立即应用时区设置
     setTimezone(timezone.value)
   } catch (e) {
     message.value = '保存失败: ' + (e.message || '未知错误')
@@ -272,13 +504,30 @@ async function testConnection() {
   }
 }
 
-onMounted(() => {
-  fetchConfigs()
-})
+async function testSmtp() {
+  if (smtpTesting.value) return
+  smtpTesting.value = true
+  smtpTestResult.value = ''
+  try {
+    const result = await request.post('/smtp/test', {
+      server: smtpConfigs.smtp_server,
+      port: parseInt(smtpConfigs.smtp_port, 10) || 587,
+      user: smtpConfigs.smtp_user,
+      password: smtpConfigs.smtp_password,
+      recipients: smtpConfigs.smtp_recipients,
+    })
+    smtpTestOk.value = result?.success
+    smtpTestResult.value = result?.message || result?.error || '未知结果'
+  } catch (e) {
+    smtpTestOk.value = false
+    smtpTestResult.value = '测试失败: ' + (e?.response?.data?.detail || e.message)
+  } finally {
+    smtpTesting.value = false
+  }
+}
 
-onUnmounted(() => {
-  if (toastTimer) clearTimeout(toastTimer)
-})
+onMounted(() => { fetchConfigs() })
+onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
 </script>
 
 <style scoped>
@@ -320,6 +569,10 @@ onUnmounted(() => {
 }
 .btn-test:hover {
   background: #389e0d;
+}
+.btn-sm {
+  padding: 5px 14px;
+  font-size: 13px;
 }
 .config-sections {
   display: flex;
@@ -378,30 +631,6 @@ onUnmounted(() => {
 .config-select:focus {
   border-color: #1890ff;
 }
-[data-theme='dark'] .config-section {
-  background: #1e293b;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-[data-theme='dark'] .section-title {
-  color: #60a5fa;
-  border-bottom-color: #334155;
-}
-[data-theme='dark'] .config-label {
-  color: #cbd5e1;
-}
-[data-theme='dark'] .config-input,
-[data-theme='dark'] .config-select {
-  background: #0f172a;
-  border-color: #334155;
-  color: #e2e8f0;
-}
-[data-theme='dark'] .config-input:focus,
-[data-theme='dark'] .config-select:focus {
-  border-color: #60a5fa;
-}
-[data-theme='dark'] .config-desc {
-  color: #64748b;
-}
 .config-desc {
   font-size: 12px;
   color: #999;
@@ -422,7 +651,16 @@ onUnmounted(() => {
   border: 1px solid #ffccc7;
   color: #f5222d;
 }
-
+.smtp-test-result {
+  margin-left: 12px;
+  font-size: 13px;
+}
+.smtp-test-result.ok {
+  color: #52c41a;
+}
+.smtp-test-result.fail {
+  color: #f5222d;
+}
 /* 开关样式 */
 .toggle-label {
   display: flex;
@@ -463,6 +701,31 @@ onUnmounted(() => {
 .toggle-text {
   font-size: 13px;
   color: #666;
+}
+/* Dark theme */
+[data-theme='dark'] .config-section {
+  background: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+[data-theme='dark'] .section-title {
+  color: #60a5fa;
+  border-bottom-color: #334155;
+}
+[data-theme='dark'] .config-label {
+  color: #cbd5e1;
+}
+[data-theme='dark'] .config-input,
+[data-theme='dark'] .config-select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+[data-theme='dark'] .config-input:focus,
+[data-theme='dark'] .config-select:focus {
+  border-color: #60a5fa;
+}
+[data-theme='dark'] .config-desc {
+  color: #64748b;
 }
 [data-theme='dark'] .toggle-switch {
   background: #475569;

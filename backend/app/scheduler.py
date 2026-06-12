@@ -5,7 +5,7 @@ APScheduler 定时任务管理
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -46,6 +46,8 @@ class SchedulerManager:
 
         interval = settings.SCHEDULER_INTERVAL_SECONDS
         self.add_collect_job(interval_seconds=interval)
+        # 添加数据清理定时任务（每天凌晨 3 点执行）
+        self.add_cleanup_job()
         logger.info("Scheduler configured with interval=%ds", interval)
 
     def add_collect_job(self, interval_seconds: int = 60) -> None:
@@ -493,6 +495,81 @@ class SchedulerManager:
                         "involved_objects": ",".join(involved_objects) if involved_objects else None,
                     },
                 )
+
+    def add_cleanup_job(self) -> None:
+        """添加定时数据清理任务（每天凌晨 3 点执行）"""
+        if self.scheduler is None:
+            raise RuntimeError("Scheduler not initialized. Call setup() first.")
+
+        self.scheduler.add_job(
+            func=self._cleanup_old_data,
+            trigger="cron",
+            hour=3,
+            minute=0,
+            id="cleanup_old_data",
+            name="Cleanup old monitoring data",
+            replace_existing=True,
+        )
+        logger.info("Cleanup job added: daily at 03:00")
+
+    async def _cleanup_old_data(self) -> None:
+        """清理超过保留天数的旧监控数据"""
+        try:
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    text("SELECT config_value FROM system_configs WHERE config_key = 'data_retention_days'")
+                )
+                row = result.fetchone()
+                retention_days = int(row[0]) if row and row[0] else 90
+
+                if retention_days <= 0:
+                    return
+
+                cutoff = datetime.now(timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=retention_days)
+
+                tables = [
+                    "metrics",
+                    "slow_queries",
+                    "disk_space_records",
+                    "blocking_events",
+                ]
+                total_deleted = 0
+                for table in tables:
+                    try:
+                        result = await session.execute(
+                            text(f"DELETE FROM {table} WHERE collected_at < :cutoff"),
+                            {"cutoff": cutoff},
+                        )
+                        deleted = result.rowcount
+                        total_deleted += deleted
+                        if deleted > 0:
+                            logger.info("Cleanup %s: deleted %d rows older than %d days", table, deleted, retention_days)
+                    except Exception as e:
+                        logger.warning("Failed to clean table %s: %s", table, e)
+
+                # 清理旧的告警日志（保留 180 天）
+                alert_cutoff = datetime.now(timezone.utc) - timedelta(days=180)
+                try:
+                    result = await session.execute(
+                        text("DELETE FROM alert_logs WHERE triggered_at < :cutoff"),
+                        {"cutoff": alert_cutoff},
+                    )
+                    if result.rowcount > 0:
+                        total_deleted += result.rowcount
+                        logger.info("Cleanup alert_logs: deleted %d rows", result.rowcount)
+                except Exception as e:
+                    logger.warning("Failed to clean alert_logs: %s", e)
+
+                await session.commit()
+                if total_deleted > 0:
+                    logger.info("Data cleanup completed: total %d rows deleted", total_deleted)
+                else:
+                    logger.debug("Data cleanup completed: no expired data found")
+
+        except Exception as e:
+            logger.error("Data cleanup job failed: %s", e, exc_info=True)
 
     def start(self) -> None:
         """启动调度器"""
