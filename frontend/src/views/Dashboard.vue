@@ -101,6 +101,11 @@
             @click="onTimeRangeChange(opt.value)"
           >{{ opt.label }}</button>
         </div>
+        <span class="chart-toolbar-divider"></span>
+        <span class="chart-toolbar-label">刷新：</span>
+        <select v-model="refreshInterval" class="refresh-select" @change="restartTimer">
+          <option v-for="opt in refreshOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
       </div>
       <div class="chart-toolbar-right">
         <!-- 对比模式 -->
@@ -253,6 +258,14 @@ const modalType = ref('')
 const timeRange = ref('1h')
 const compareMode = ref(false)
 const compareRange = ref('yesterday')
+const refreshInterval = ref(10000)
+const refreshOptions = [
+  { label: '5 秒', value: 5000 },
+  { label: '10 秒', value: 10000 },
+  { label: '30 秒', value: 30000 },
+  { label: '60 秒', value: 60000 },
+  { label: '关闭', value: 0 },
+]
 
 // 获取实例列表
 async function fetchInstances() {
@@ -409,8 +422,7 @@ function getHistoryLimit() {
 }
 
 function getRefreshInterval() {
-  const opt = rangeOptions.find(o => o.value === timeRange.value)
-  return opt ? opt.refreshMs : 10000
+  return refreshInterval.value
 }
 
 function createOption(title, data, timeLabels, color, unit, extraSeries = null) {
@@ -851,7 +863,10 @@ function restartTimer() {
     clearInterval(timer)
     timer = null
   }
-  timer = setInterval(fetchData, getRefreshInterval())
+  const interval = getRefreshInterval()
+  if (interval > 0) {
+    timer = setInterval(fetchData, interval)
+  }
 }
 
 function onTimeRangeChange(val) {
@@ -905,7 +920,7 @@ onMounted(async () => {
   window.addEventListener('resize', resizeCharts)
   document.addEventListener('click', handleClickOutside)
   await fetchData()
-  timer = setInterval(fetchData, getRefreshInterval())
+  restartTimer()
 })
 
 onUnmounted(() => {
@@ -951,48 +966,31 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   background: var(--bg-card);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: 6px;
+  padding: 14px 16px;
   box-shadow: var(--shadow);
-  border-left: 3px solid transparent;
-  transition: box-shadow 0.2s, transform 0.2s;
+  border: 1px solid var(--border-color);
+  transition: box-shadow 0.2s;
   position: relative;
-  overflow: hidden;
   cursor: pointer;
 }
 
 .stat-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
 }
 
-.stat-card.stat-blue { border-left-color: #1890ff; }
-.stat-card.stat-green { border-left-color: #52c41a; }
-.stat-card.stat-cyan { border-left-color: #13c2c2; }
-.stat-card.stat-purple { border-left-color: #722ed1; }
-.stat-card.stat-orange { border-left-color: #fa8c16; }
-.stat-card.stat-magenta { border-left-color: #eb2f96; }
-.stat-card.stat-red { border-left-color: #f5222d; }
-.stat-card.stat-deadlock { border-left-color: #fa541c; }
+.stat-card.stat-blue { border-left: 3px solid #1890ff; }
+.stat-card.stat-green { border-left: 3px solid #52c41a; }
+.stat-card.stat-cyan { border-left: 3px solid #13c2c2; }
+.stat-card.stat-purple { border-left: 3px solid #722ed1; }
+.stat-card.stat-orange { border-left: 3px solid #fa8c16; }
+.stat-card.stat-magenta { border-left: 3px solid #eb2f96; }
+.stat-card.stat-red { border-left: 3px solid #f5222d; }
+.stat-card.stat-deadlock { border-left: 3px solid #fa541c; }
 
 .stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  flex-shrink: 0;
+  display: none;
 }
-
-.stat-blue .stat-icon { background: rgba(24,144,255,0.1); color: #1890ff; }
-.stat-green .stat-icon { background: rgba(82,196,26,0.1); color: #52c41a; }
-.stat-cyan .stat-icon { background: rgba(19,194,194,0.1); color: #13c2c2; }
-.stat-purple .stat-icon { background: rgba(114,46,209,0.1); color: #722ed1; }
-.stat-orange .stat-icon { background: rgba(250,140,22,0.1); color: #fa8c16; }
-.stat-magenta .stat-icon { background: rgba(235,47,150,0.1); color: #eb2f96; }
-.stat-red .stat-icon { background: rgba(245,34,45,0.1); color: #f5222d; }
-.stat-deadlock .stat-icon { background: rgba(250,84,28,0.1); color: #fa541c; }
 
 .stat-info {
   display: flex;
@@ -1010,21 +1008,15 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-mini-chart {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 48px;
-  height: 3px;
-  border-radius: 2px 0 0 0;
-  opacity: 0.5;
+  display: none;
 }
 
 .stat-deadlock .stat-value.deadlock-val {
@@ -1041,9 +1033,9 @@ onUnmounted(() => {
   flex: 1 1 calc(50% - 8px);
   min-width: 400px;
   background: var(--bg-card);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 16px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: box-shadow 0.2s;
 }
@@ -1135,6 +1127,27 @@ onUnmounted(() => {
 .range-tab.active {
   color: #fff;
   background: #1890ff;
+  border-color: #1890ff;
+}
+
+.chart-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
+.refresh-select {
+  padding: 5px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  cursor: pointer;
+  outline: none;
+}
+.refresh-select:focus {
   border-color: #1890ff;
 }
 
