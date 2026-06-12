@@ -4,6 +4,15 @@
     <div class="toolbar">
       <div class="toolbar-row">
         <div class="toolbar-group">
+          <label class="toolbar-label">实例</label>
+          <select v-model="selectedInstanceId" class="instance-select" :disabled="loadingInstances" @change="generateReport">
+            <option value="">所有实例</option>
+            <option v-for="inst in instances" :key="inst.id" :value="inst.id">
+              {{ inst.name }} ({{ inst.host }}:{{ inst.port }})
+            </option>
+          </select>
+        </div>
+        <div class="toolbar-group">
           <label class="toolbar-label">时间范围</label>
           <div class="time-range-group">
             <button
@@ -399,7 +408,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { getReportSummary, saveReport, getReportHistory, deleteReportHistory } from '@/api'
+import { getReportSummary, saveReport, getReportHistory, deleteReportHistory, getInstances } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
 // ---- 状态 ----
@@ -419,6 +428,11 @@ const error = ref('')
 const reportData = ref(null)
 const showHistory = ref(false)
 const historyList = ref([])
+
+// 实例筛选
+const instances = ref([])
+const selectedInstanceId = ref('')
+const loadingInstances = ref(false)
 
 const hasTrendData = computed(() => {
   if (!reportData.value?.trends) return false
@@ -495,10 +509,14 @@ async function generateReport() {
   reportData.value = null
   try {
     const range = getTimeRange()
-    const data = await getReportSummary({
+    const params = {
       start_time: range.start_time,
       end_time: range.end_time,
-    })
+    }
+    if (selectedInstanceId.value) {
+      params.instance_id = selectedInstanceId.value
+    }
+    const data = await getReportSummary(params)
     data.start_time = range.start_time
     data.end_time = range.end_time
     reportData.value = data
@@ -837,9 +855,23 @@ async function deleteHistory(id) {
   } catch { /* ignore */ }
 }
 
+// ---- 实例列表 ----
+async function fetchInstances() {
+  try {
+    loadingInstances.value = true
+    const data = await getInstances()
+    instances.value = Array.isArray(data) ? data : (data.items || [])
+  } catch (e) {
+    console.error('获取实例列表失败', e)
+  } finally {
+    loadingInstances.value = false
+  }
+}
+
 // ---- 生命周期 ----
 onMounted(() => {
   loadHistory()
+  fetchInstances()
 })
 
 onUnmounted(() => {
@@ -857,7 +889,7 @@ onUnmounted(() => {
 /* ============== Toolbar ============== */
 .toolbar {
   background: var(--bg-card, #fff);
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 16px 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--border-color, #f0f0f0);
@@ -939,10 +971,26 @@ onUnmounted(() => {
 
 .date-input:focus { border-color: #1890ff; }
 
+/* 实例选择下拉框 */
+.instance-select {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color, #d9d9d9);
+  border-radius: 6px;
+  background: var(--bg-card, #fff);
+  color: var(--text-primary, #333);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 180px;
+}
+.instance-select:focus { border-color: #1890ff; }
+.instance-select:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .btn-primary {
   height: 32px;
   padding: 0 16px;
-  background: linear-gradient(135deg, #1890ff, #096dd9);
+  background: #1890ff;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -999,7 +1047,7 @@ onUnmounted(() => {
   text-align: center;
   padding: 80px 20px;
   background: var(--bg-card, #fff);
-  border-radius: 10px;
+  border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--border-color, #f0f0f0);
 }
@@ -1022,7 +1070,7 @@ onUnmounted(() => {
 /* ============== Report Content ============== */
 .report-content {
   background: var(--bg-card, #fff);
-  border-radius: 10px;
+  border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   padding: 36px 40px;
   border: 1px solid var(--border-color, #f0f0f0);
@@ -1043,7 +1091,7 @@ onUnmounted(() => {
   transform: translateX(-50%);
   width: 60px;
   height: 3px;
-  background: linear-gradient(90deg, #1890ff, #52c41a);
+  background: #1890ff;
   border-radius: 2px;
 }
 
@@ -1081,7 +1129,7 @@ onUnmounted(() => {
 .section-title-bar {
   width: 4px;
   height: 18px;
-  background: linear-gradient(180deg, #1890ff, #52c41a);
+  background: #1890ff;
   border-radius: 2px;
 }
 
@@ -1098,7 +1146,7 @@ onUnmounted(() => {
 .section-tag {
   font-size: 12px;
   padding: 2px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-weight: 500;
 }
 
@@ -1115,7 +1163,7 @@ onUnmounted(() => {
 .summary-card {
   padding: 18px 14px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   text-align: center;
   border: 1px solid var(--border-color, #f0f0f0);
   display: flex;
@@ -1129,7 +1177,6 @@ onUnmounted(() => {
 }
 
 .summary-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
   border-color: #1890ff;
 }
@@ -1137,7 +1184,7 @@ onUnmounted(() => {
 .card-icon-wrap {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1181,7 +1228,7 @@ onUnmounted(() => {
 .chart-card {
   padding: 14px 16px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--border-color, #f0f0f0);
 }
 
@@ -1213,7 +1260,7 @@ onUnmounted(() => {
   padding: 50px 20px;
   text-align: center;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px dashed var(--border-color, #d9d9d9);
   margin: 0;
 }
@@ -1243,7 +1290,7 @@ onUnmounted(() => {
   border-collapse: collapse;
   font-size: 13px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border-color, #f0f0f0);
 }
@@ -1309,7 +1356,7 @@ onUnmounted(() => {
 .status-card {
   padding: 20px 16px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--border-color, #f0f0f0);
   text-align: center;
   transition: all 0.2s;
@@ -1326,9 +1373,9 @@ onUnmounted(() => {
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(82, 196, 26, 0.1));
+  background: #f7f8fa;
   color: #1890ff;
-  border-radius: 12px;
+  border-radius: 6px;
   margin-bottom: 10px;
 }
 
@@ -1361,7 +1408,7 @@ onUnmounted(() => {
   color: var(--text-muted, #8c8c8c);
   font-size: 13px;
   background: var(--bg-primary, #fafafa);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px dashed var(--border-color, #d9d9d9);
   display: flex;
   flex-direction: column;
@@ -1392,15 +1439,15 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 500;
   padding: 3px 10px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #722ed1, #531dab);
+  border-radius: 6px;
+  background: #722ed1;
   color: #fff;
 }
 
 .ai-analysis {
   padding: 24px 28px;
-  background: linear-gradient(180deg, #fafbff, #fafafa);
-  border-radius: 10px;
+  background: #fafafa;
+  border-radius: 6px;
   border: 1px solid var(--border-color, #f0f0f0);
   font-size: 14px;
   line-height: 1.85;
@@ -1415,7 +1462,7 @@ onUnmounted(() => {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, #1890ff, #52c41a);
+  background: #1890ff;
   border-radius: 3px 0 0 3px;
 }
 
@@ -1707,7 +1754,7 @@ onUnmounted(() => {
 
 /* Slide animation */
 .slide-right-enter-active, .slide-right-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 .slide-right-enter-from, .slide-right-leave-to {
   opacity: 0;
