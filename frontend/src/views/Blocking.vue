@@ -266,7 +266,7 @@ onUnmounted(() => {
   color: var(--text-muted, #999);
   background: var(--bg-primary, #f5f6fa);
   padding: 2px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .toolbar-right {
