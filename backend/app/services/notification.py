@@ -136,14 +136,19 @@ class EmailNotifier:
             logger.error("Email send failed: %s", e)
             return False
 
-    async def send_welcome_email(self, username: str, password: str, full_name: str = "") -> bool:
+    async def send_welcome_email(self, username: str, password: str, full_name: str = "", to_email: str = "") -> bool:
         """发送新用户欢迎邮件"""
         await self._load_db_config()
-        if not self._is_configured() or not self.recipients:
+        if not self._is_configured():
+            return False
+
+        # 优先发送到用户邮箱，其次发送到管理员配置的收件人
+        recipients = [to_email] if to_email else self.recipients
+        if not recipients:
             return False
 
         display_name = full_name or username
-        subject = f"Welcome to SQL Monitor - Account Created"
+        subject = "Welcome to SQL Monitor - Account Created"
         body = (
             f"Hello {display_name},\n\n"
             f"Your account has been created for the SQL Monitoring Platform.\n\n"
@@ -156,7 +161,29 @@ class EmailNotifier:
             f"---\n"
             f"SQL Monitor Alert System"
         )
-        return self._send_sync(subject, body)
+
+        try:
+            import smtplib
+            from email.header import Header
+            from email.utils import formataddr
+
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = subject
+            msg["From"] = formataddr(("SQL Monitor Alert", self.user))
+            msg["To"] = ", ".join(recipients)
+
+            with smtplib.SMTP(self.server, self.port) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(self.user, self.password)
+                smtp.sendmail(self.user, recipients, msg.as_string())
+
+            logger.info("Welcome email sent to %s", recipients)
+            return True
+        except Exception as e:
+            logger.error("Failed to send welcome email: %s", e)
+            return False
 
 
 class DingTalkNotifier:
