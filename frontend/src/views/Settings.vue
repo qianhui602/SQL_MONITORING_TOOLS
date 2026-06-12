@@ -168,6 +168,16 @@
             />
             <span class="config-desc">相同类型告警在此期间不重复发送</span>
           </div>
+          <div class="config-item">
+            <label class="config-label">收件人邮箱</label>
+            <input
+              type="text"
+              v-model="smtpConfigs.smtp_recipients"
+              class="config-input"
+              placeholder="user1@example.com, user2@example.com"
+            />
+            <span class="config-desc">告警邮件接收人，多个用逗号分隔</span>
+          </div>
         </div>
       </div>
 
@@ -249,16 +259,6 @@
               placeholder="密码或授权码"
             />
             <span class="config-desc">SMTP 登录密码或应用授权码</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">收件人邮箱</label>
-            <input
-              type="text"
-              v-model="smtpConfigs.smtp_recipients"
-              class="config-input"
-              placeholder="user1@example.com, user2@example.com"
-            />
-            <span class="config-desc">告警邮件接收人，多个用逗号分隔</span>
           </div>
         </div>
         <div style="margin-top: 12px;">
@@ -449,15 +449,16 @@ async function saveAll() {
     { key: 'smtp_recipients', value: smtpConfigs.smtp_recipients },
   ]
   try {
-    for (const cfg of allConfigs) {
-      try {
-        await updateConfig(cfg.key, String(cfg.value))
-      } catch (e) {
-        const detail = e?.response?.data?.detail || e.message
-        message.value = `保存失败 [${cfg.key}]: ${detail}`
-        messageType.value = 'error'
-        return
-      }
+    const results = await Promise.allSettled(
+      allConfigs.map(cfg => updateConfig(cfg.key, String(cfg.value)))
+    )
+    const failures = results
+      .map((r, i) => r.status === 'rejected' ? allConfigs[i].key : null)
+      .filter(Boolean)
+    if (failures.length > 0) {
+      message.value = `保存失败: ${failures.join(', ')} 配置项保存异常`
+      messageType.value = 'error'
+      return
     }
     message.value = '保存成功！配置将在下一个采集周期自动应用。'
     messageType.value = 'success'

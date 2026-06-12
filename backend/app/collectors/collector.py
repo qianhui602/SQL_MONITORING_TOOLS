@@ -10,6 +10,7 @@ from typing import Any, Dict
 from app.collectors.blocking import BlockingCollector
 from app.collectors.deadlock import DeadlockDetector
 from app.collectors.disk import DiskCollector
+from app.collectors.index_analyzer import IndexAnalyzer
 from app.collectors.performance import PerformanceCollector
 from app.collectors.slow_query import SlowQueryCollector
 from app.collectors.sqlserver import MSSQLConnectionManager
@@ -31,6 +32,7 @@ class MetricsCollector:
         self.slow_query_collector = SlowQueryCollector()
         self.disk_collector = DiskCollector()
         self.blocking_collector = BlockingCollector()
+        self.index_analyzer = IndexAnalyzer()
 
     def collect_all_metrics(self) -> Dict[str, Any]:
         """执行一次完整的采集
@@ -51,6 +53,8 @@ class MetricsCollector:
             "slow_queries": [],
             "disk_space": [],
             "blocking_events": [],
+            "missing_indexes": [],
+            "fragmented_indexes": [],
         }
 
         try:
@@ -115,5 +119,15 @@ class MetricsCollector:
                 logger.error("Blocking events collection error: %s", blocking_data["error"])
         except Exception as e:
             logger.error("Unexpected error during blocking events collection: %s", e)
+
+        # 采集索引分析数据
+        try:
+            index_data = self.index_analyzer.collect_all(connection)
+            result["missing_indexes"] = index_data.get("missing_indexes", [])
+            result["fragmented_indexes"] = index_data.get("fragmented_indexes", [])
+            if index_data.get("error"):
+                logger.error("Index analysis collection error: %s", index_data["error"])
+        except Exception as e:
+            logger.error("Unexpected error during index analysis collection: %s", e)
 
         return result

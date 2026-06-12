@@ -166,14 +166,18 @@ class SchedulerManager:
                 await self._store_slow_queries(session, data["slow_queries"], server_address)
                 await self._store_disk_space(session, data["disk_space"], server_address)
                 await self._store_blocking_events(session, data.get("blocking_events", []), server_address)
+                await self._store_missing_indexes(session, data.get("missing_indexes", []), server_address)
+                await self._store_index_fragmentation(session, data.get("fragmented_indexes", []), server_address)
                 await session.commit()
                 logger.info(
-                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events",
+                    "Single-instance collection completed: %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events, %d missing indexes, %d fragmented indexes",
                     len(data["metrics"]),
                     len(data["deadlocks"]),
                     len(data["slow_queries"]),
                     len(data["disk_space"]),
                     len(data.get("blocking_events", [])),
+                    len(data.get("missing_indexes", [])),
+                    len(data.get("fragmented_indexes", [])),
                 )
             except Exception as e:
                 await session.rollback()
@@ -235,15 +239,23 @@ class SchedulerManager:
                         await self._store_blocking_events(
                             session, data.get("blocking_events", []), server_address
                         )
+                        await self._store_missing_indexes(
+                            session, data.get("missing_indexes", []), server_address
+                        )
+                        await self._store_index_fragmentation(
+                            session, data.get("fragmented_indexes", []), server_address
+                        )
                         await session.commit()
                         logger.info(
-                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events",
+                            "Instance %s: stored %d metrics, %d deadlocks, %d slow queries, %d disk records, %d blocking events, %d missing indexes, %d fragmented indexes",
                             server_address,
                             len(instance_metrics),
                             len(instance_deadlocks),
                             len(data.get("slow_queries", [])),
                             len(data.get("disk_space", [])),
                             len(data.get("blocking_events", [])),
+                            len(data.get("missing_indexes", [])),
+                            len(data.get("fragmented_indexes", [])),
                         )
                     except Exception as e:
                         await session.rollback()
@@ -392,6 +404,48 @@ class SchedulerManager:
                 )
             except Exception as e:
                 logger.warning("Failed to store blocking event: %s", e)
+
+    async def _store_missing_indexes(
+        self, session: AsyncSession, data: List[Dict[str, Any]], server_address: str
+    ) -> None:
+        """将缺失索引数据写入数据库"""
+        from app.models.index_analysis import MissingIndex
+
+        for item in data:
+            record = MissingIndex(
+                database_name=item.get("database_name", "unknown"),
+                schema_name=item.get("schema_name", ""),
+                table_name=item.get("table_name", ""),
+                equality_columns=item.get("equality_columns"),
+                inequality_columns=item.get("inequality_columns"),
+                included_columns=item.get("included_columns"),
+                avg_user_impact=item.get("avg_user_impact", 0.0),
+                user_seeks=item.get("user_seeks", 0),
+                user_scans=item.get("user_scans", 0),
+                collected_at=datetime.now(timezone.utc),
+                server_address=server_address,
+            )
+            session.add(record)
+
+    async def _store_index_fragmentation(
+        self, session: AsyncSession, data: List[Dict[str, Any]], server_address: str
+    ) -> None:
+        """将索引碎片数据写入数据库"""
+        from app.models.index_analysis import IndexFragmentation
+
+        for item in data:
+            record = IndexFragmentation(
+                database_name=item.get("database_name", "unknown"),
+                schema_name=item.get("schema_name", ""),
+                table_name=item.get("table_name", ""),
+                index_name=item.get("index_name", ""),
+                avg_fragmentation_pct=item.get("avg_fragmentation_pct", 0.0),
+                page_count=item.get("page_count", 0),
+                index_type=item.get("index_type", "NONCLUSTERED"),
+                collected_at=datetime.now(timezone.utc),
+                server_address=server_address,
+            )
+            session.add(record)
 
     async def _run_alert_checks(self, metrics_data: Dict[str, Any]) -> None:
         """执行告警规则检查"""
