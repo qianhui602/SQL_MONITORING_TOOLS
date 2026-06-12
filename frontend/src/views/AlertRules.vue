@@ -389,7 +389,7 @@ onMounted(fetchRules)
 .tag {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 12px;
   border: 1px solid transparent;
   margin: 1px;
@@ -452,7 +452,7 @@ onMounted(fetchRules)
   cursor: pointer;
   inset: 0;
   background: #ccc;
-  border-radius: 22px;
+  border-radius: 11px;
   transition: 0.3s;
 }
 
@@ -521,7 +521,7 @@ onMounted(fetchRules)
   width: 460px;
   max-width: 92vw;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .modal-wide {
