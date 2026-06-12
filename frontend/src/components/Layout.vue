@@ -567,8 +567,8 @@ onBeforeUnmount(() => {
   max-height: 480px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   z-index: 1000;
@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 .avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1890ff, #096dd9);
+  background: #1890ff;
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-weight: 600; font-size: 14px;
