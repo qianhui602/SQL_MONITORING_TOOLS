@@ -271,27 +271,47 @@
         </div>
       </div>
 
-      <!-- DeepSeek AI 配置 -->
+      <!-- AI 模型配置 -->
       <div class="config-section">
-        <h3 class="section-title">DeepSeek AI 配置</h3>
+        <h3 class="section-title">AI 模型配置</h3>
         <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">AI 提供商</label>
+            <select v-model="aiConfigs.ai_provider" class="config-select" @change="onProviderChange">
+              <option value="deepseek">DeepSeek</option>
+              <option value="openai">OpenAI</option>
+              <option value="xiaomi">Xiaomi MiMo</option>
+              <option value="custom">自定义（OpenAI 兼容）</option>
+            </select>
+            <span class="config-desc">选择 AI 服务提供商</span>
+          </div>
           <div class="config-item">
             <label class="config-label">API 密钥</label>
             <input
               type="password"
-              v-model="deepseekApiKey"
+              v-model="aiConfigs.ai_api_key"
               class="config-input"
-              placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              placeholder="API Key"
             />
-            <span class="config-desc">DeepSeek API 密钥，用于 AI 死锁分析和报告生成</span>
+            <span class="config-desc">{{ providerName }} API 密钥，用于 AI 死锁分析和报告生成</span>
           </div>
           <div class="config-item">
             <label class="config-label">AI 模型</label>
-            <select v-model="deepseekModel" class="config-select">
-              <option value="deepseek-v4-flash">DeepSeek-V4-Flash（快速）</option>
-              <option value="deepseek-v4-pro">DeepSeek-V4-Pro（增强）</option>
+            <select v-if="currentModels.length" v-model="aiConfigs.ai_model" class="config-select">
+              <option v-for="m in currentModels" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
-            <span class="config-desc">选择用于 AI 分析的 DeepSeek 模型版本</span>
+            <input v-else v-model="aiConfigs.ai_model" class="config-input" placeholder="输入模型名称" />
+            <span class="config-desc">选择或输入用于 AI 分析的模型</span>
+          </div>
+          <div class="config-item" v-if="aiConfigs.ai_provider === 'custom'">
+            <label class="config-label">API Base URL</label>
+            <input
+              type="text"
+              v-model="aiConfigs.ai_base_url"
+              class="config-input"
+              placeholder="https://your-api.com"
+            />
+            <span class="config-desc">自定义 API 地址（需兼容 OpenAI /v1/chat/completions 接口）</span>
           </div>
         </div>
       </div>
@@ -301,12 +321,17 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import request, { getConfigs, updateConfig } from '@/api'
+import request, { getConfigs, updateConfig, getAiProviders } from '@/api'
 import { setTimezone } from '@/utils/datetime'
 
 const configList = ref([])
-const deepseekApiKey = ref('')
-const deepseekModel = ref('deepseek-v4-flash')
+const aiProviders = ref({})
+const aiConfigs = reactive({
+  ai_provider: 'deepseek',
+  ai_api_key: '',
+  ai_model: 'deepseek-v4-flash',
+  ai_base_url: '',
+})
 const timezone = ref('Asia/Shanghai')
 const dataRetentionDays = ref(90)
 const message = ref('')
@@ -346,6 +371,24 @@ const smtpConfigs = reactive({
   smtp_user: '',
   smtp_password: '',
 })
+
+const providerName = computed(() => {
+  return aiProviders.value[aiConfigs.ai_provider]?.name || aiConfigs.ai_provider
+})
+
+const currentModels = computed(() => {
+  return aiProviders.value[aiConfigs.ai_provider]?.models || []
+})
+
+function onProviderChange() {
+  const models = currentModels.value
+  if (models.length && !models.find(m => m.id === aiConfigs.ai_model)) {
+    aiConfigs.ai_model = models[0].id
+  }
+  if (aiConfigs.ai_provider !== 'custom') {
+    aiConfigs.ai_base_url = ''
+  }
+}
 
 const mssqlConfigs = computed(() => {
   const map = {
@@ -388,9 +431,11 @@ async function fetchConfigs() {
 
     const find = key => configList.value.find(c => c.config_key === key)?.config_value || ''
 
-    // DeepSeek
-    deepseekApiKey.value = find('deepseek_api_key')
-    deepseekModel.value = find('deepseek_model') || 'deepseek-v4-flash'
+    // AI 配置（兼容旧 deepseek_ 前缀）
+    aiConfigs.ai_provider = find('ai_provider') || 'deepseek'
+    aiConfigs.ai_api_key = find('ai_api_key') || find('deepseek_api_key') || ''
+    aiConfigs.ai_model = find('ai_model') || find('deepseek_model') || 'deepseek-v4-flash'
+    aiConfigs.ai_base_url = find('ai_base_url') || ''
 
     // 系统设置
     timezone.value = find('timezone') || 'Asia/Shanghai'
@@ -429,8 +474,10 @@ async function saveAll() {
   const allConfigs = [
     ...mssqlConfigs.value,
     ...pgConfigs.value,
-    { key: 'deepseek_api_key', value: deepseekApiKey.value },
-    { key: 'deepseek_model', value: deepseekModel.value },
+    { key: 'ai_provider', value: aiConfigs.ai_provider },
+    { key: 'ai_api_key', value: String(aiConfigs.ai_api_key) },
+    { key: 'ai_model', value: String(aiConfigs.ai_model) },
+    { key: 'ai_base_url', value: String(aiConfigs.ai_base_url) },
     { key: 'timezone', value: timezone.value },
     { key: 'data_retention_days', value: String(dataRetentionDays.value) },
     { key: 'mssql_instances_enabled', value: collectConfigs.mssql_instances_enabled },
@@ -535,7 +582,15 @@ async function testSmtp() {
   }
 }
 
-onMounted(() => { fetchConfigs() })
+onMounted(async () => {
+  fetchConfigs()
+  try {
+    const data = await getAiProviders()
+    aiProviders.value = data.providers || {}
+  } catch (e) {
+    console.error('获取 AI 提供商列表失败', e)
+  }
+})
 onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
 </script>
 
