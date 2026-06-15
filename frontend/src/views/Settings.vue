@@ -13,6 +13,43 @@
     </div>
 
     <div class="config-sections">
+      <!-- 品牌设置 -->
+      <div class="config-section">
+        <h3 class="section-title">品牌设置</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">系统标题</label>
+            <input
+              type="text"
+              v-model="brandTitle"
+              class="config-input"
+              placeholder="数据库监控平台"
+            />
+            <span class="config-desc">登录页和侧边栏显示的系统标题</span>
+          </div>
+          <div class="config-item brand-logo-item">
+            <label class="config-label">Logo 图片</label>
+            <div class="logo-upload-area">
+              <div class="logo-preview" v-if="logoPreviewUrl">
+                <img :src="logoPreviewUrl" alt="Logo" class="logo-preview-img" />
+              </div>
+              <div class="logo-preview logo-placeholder" v-else>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bfbfbf" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>暂无自定义 Logo</span>
+              </div>
+              <div class="logo-actions">
+                <label class="btn btn-sm btn-upload">
+                  <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" @change="onLogoUpload" hidden />
+                  {{ logoPreviewUrl ? '更换 Logo' : '上传 Logo' }}
+                </label>
+                <button v-if="logoPreviewUrl" class="btn btn-sm btn-danger" @click="onDeleteLogo">恢复默认</button>
+                <span class="config-desc">支持 PNG、JPG、SVG、WebP，建议尺寸 200x50px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 系统设置 -->
       <div class="config-section">
         <h3 class="section-title">系统设置</h3>
@@ -321,7 +358,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import request, { getConfigs, updateConfig, getAiProviders } from '@/api'
+import request, { getConfigs, updateConfig, getAiProviders, getLogoUrl, uploadLogo, deleteLogo } from '@/api'
 import { setTimezone } from '@/utils/datetime'
 
 const configList = ref([])
@@ -340,6 +377,11 @@ const smtpTesting = ref(false)
 const smtpTestResult = ref('')
 const smtpTestOk = ref(false)
 let toastTimer = null
+
+// 品牌设置
+const brandTitle = ref('数据库监控平台')
+const logoPreviewUrl = ref('')
+const logoCacheBust = ref('')
 
 // 数据采集配置
 const collectConfigs = reactive({
@@ -465,6 +507,12 @@ async function fetchConfigs() {
     smtpConfigs.smtp_user = find('smtp_user')
     smtpConfigs.smtp_password = find('smtp_password')
     smtpConfigs.smtp_recipients = find('smtp_recipients')
+
+    // 品牌配置
+    brandTitle.value = find('brand_title') || '数据库监控平台'
+
+    // 检查是否有自定义 Logo
+    checkLogoExists()
   } catch (e) {
     console.error('获取配置失败', e)
   }
@@ -495,6 +543,7 @@ async function saveAll() {
     { key: 'smtp_user', value: smtpConfigs.smtp_user },
     { key: 'smtp_password', value: smtpConfigs.smtp_password },
     { key: 'smtp_recipients', value: alertConfigs.smtp_recipients },
+    { key: 'brand_title', value: brandTitle.value },
   ]
   try {
     const results = await Promise.allSettled(
@@ -579,6 +628,52 @@ async function testSmtp() {
     smtpTestResult.value = '测试失败: ' + (e?.response?.data?.detail || e.message)
   } finally {
     smtpTesting.value = false
+  }
+}
+
+// ---------- Logo 管理 ----------
+async function checkLogoExists() {
+  try {
+    const resp = await fetch(getLogoUrl(), { method: 'HEAD' })
+    if (resp.ok) {
+      logoPreviewUrl.value = getLogoUrl() + '?t=' + Date.now()
+    } else {
+      logoPreviewUrl.value = ''
+    }
+  } catch {
+    logoPreviewUrl.value = ''
+  }
+}
+
+async function onLogoUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  try {
+    const data = await uploadLogo(file)
+    logoPreviewUrl.value = data.logo_url || (getLogoUrl() + '?t=' + Date.now())
+    message.value = 'Logo 上传成功！'
+    messageType.value = 'success'
+  } catch (err) {
+    message.value = 'Logo 上传失败: ' + (err?.response?.data?.detail || err.message)
+    messageType.value = 'error'
+  } finally {
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { message.value = '' }, 3000)
+  }
+}
+
+async function onDeleteLogo() {
+  try {
+    await deleteLogo()
+    logoPreviewUrl.value = ''
+    message.value = '已恢复默认 Logo'
+    messageType.value = 'success'
+  } catch (err) {
+    message.value = '删除失败: ' + (err?.response?.data?.detail || err.message)
+    messageType.value = 'error'
+  } finally {
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { message.value = '' }, 3000)
   }
 }
 
@@ -807,5 +902,65 @@ onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
 }
 [data-theme='dark'] .toggle-text {
   color: #94a3b8;
+}
+
+/* 品牌 Logo 上传 */
+.brand-logo-item {
+  grid-column: 1 / -1;
+}
+.logo-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.logo-preview {
+  width: 160px;
+  height: 60px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+.logo-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.logo-placeholder {
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #bfbfbf;
+}
+.logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-sm {
+  padding: 5px 14px;
+  font-size: 13px;
+}
+.btn-upload {
+  background: #1890ff;
+  color: #fff;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+}
+.btn-upload:hover {
+  background: #40a9ff;
+}
+.btn-danger {
+  background: #ff4d4f;
+  color: #fff;
+  border: none;
+}
+.btn-danger:hover {
+  background: #ff7875;
 }
 </style>

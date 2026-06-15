@@ -142,6 +142,22 @@ export function updateConfig(key, value) {
   return request.put(`/config/${key}`, { config_value: value })
 }
 
+export function getLogoUrl() {
+  return '/api/config/logo'
+}
+
+export function uploadLogo(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/config/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export function deleteLogo() {
+  return request.delete('/config/logo')
+}
+
 export function getAiProviders() {
   return request.get('/config/ai_providers')
 }

@@ -3,8 +3,8 @@
     <!-- 左侧品牌区 -->
     <div class="login-left">
       <div class="left-content">
-        <img src="/LOGO.png" alt="太阳谷" class="left-logo" />
-        <h1 class="left-title">数据库监控平台</h1>
+        <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="left-logo" />
+        <h1 class="left-title">{{ brandTitle }}</h1>
         <p class="left-desc">实时监控 · 智能告警 · 深度分析</p>
         <div class="left-features">
           <div class="feature-item">
@@ -84,19 +84,38 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authStore } from '@/stores/auth'
+import { getConfig, getLogoUrl } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const errorMsg = ref('')
 
+const brandTitle = ref('数据库监控平台')
+const customLogoUrl = ref('')
+
 const form = reactive({
   username: '',
   password: ''
 })
+
+async function fetchBrandConfig() {
+  try {
+    const title = await getConfig('brand_title')
+    if (title) brandTitle.value = title
+
+    const logoUrl = getLogoUrl()
+    const resp = await fetch(logoUrl, { method: 'HEAD' })
+    if (resp.ok) {
+      customLogoUrl.value = logoUrl + '?t=' + Date.now()
+    }
+  } catch (e) {
+    console.debug('品牌配置获取失败（首次安装或无配置）')
+  }
+}
 
 async function onSubmit() {
   if (loading.value) return
@@ -113,6 +132,8 @@ async function onSubmit() {
     loading.value = false
   }
 }
+
+onMounted(fetchBrandConfig)
 </script>
 
 <style scoped>

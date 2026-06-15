@@ -5,10 +5,13 @@
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+import os
+import uuid
 
 from app.database import get_db
 from app.models.config import SystemConfig
@@ -205,3 +208,94 @@ async def get_ai_providers(
 ) -> dict:
     """返回所有可用的 AI 提供商及其模型列表。"""
     return {"providers": AI_PROVIDERS}
+
+
+# ---------- 品牌 Logo 上传 ----------
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+LOGO_FILENAME = "logo"
+
+
+def _get_logo_path() -> str:
+    """查找当前 logo 文件的完整路径"""
+    for ext in (".png", ".jpg", ".jpeg", ".svg", ".webp"):
+        path = os.path.join(UPLOAD_DIR, LOGO_FILENAME + ext)
+        if os.path.isfile(path):
+            return path
+    return ""
+
+
+@router.get(
+    "/logo",
+    summary="获取当前 Logo 图片",
+)
+async def get_logo():
+    """返回当前上传的 Logo 图片，无则返回 404。"""
+    logo_path = _get_logo_path()
+    if not logo_path:
+        raise HTTPException(status_code=404, detail="暂无自定义 Logo")
+    media_type = "image/png"
+    if logo_path.endswith(".svg"):
+        media_type = "image/svg+xml"
+    elif logo_path.endswith(".jpg") or logo_path.endswith(".jpeg"):
+        media_type = "image/jpeg"
+    elif logo_path.endswith(".webp"):
+        media_type = "image/webp"
+    return FileResponse(logo_path, media_type=media_type)
+
+
+@router.post(
+    "/logo",
+    summary="上传 Logo 图片",
+)
+async def upload_logo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+) -> dict:
+    """上传 Logo 图片，保存到 uploads 目录。支持 png/jpg/svg/webp。"""
+    allowed = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="仅支持 PNG、JPG、SVG、WebP 格式")
+
+    ext_map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/svg+xml": ".svg",
+        "image/webp": ".webp",
+    }
+    ext = ext_map.get(file.content_type, ".png")
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    # 删除旧 logo
+    for old_ext in (".png", ".jpg", ".jpeg", ".svg", ".webp"):
+        old_path = os.path.join(UPLOAD_DIR, LOGO_FILENAME + old_ext)
+        if os.path.isfile(old_path):
+            os.remove(old_path)
+
+    # 保存新 logo
+    logo_path = os.path.join(UPLOAD_DIR, LOGO_FILENAME + ext)
+    content = await file.read()
+    with open(logo_path, "wb") as f:
+        f.write(content)
+
+    return {"success": True, "logo_url": f"/api/config/logo?t={uuid.uuid4().hex[:8]}"}
+
+
+@router.delete(
+    "/logo",
+    summary="删除自定义 Logo（恢复默认）",
+)
+async def delete_logo(
+    current_user: User = Depends(require_admin),
+) -> dict:
+    """删除上传的 Logo 文件。"""
+    deleted = False
+    for ext in (".png", ".jpg", ".jpeg", ".svg", ".webp"):
+        path = os.path.join(UPLOAD_DIR, LOGO_FILENAME + ext)
+        if os.path.isfile(path):
+            os.remove(path)
+            deleted = True
+    if not deleted:
+        raise HTTPException(status_code=404, detail="暂无自定义 Logo")
+    return {"success": True}

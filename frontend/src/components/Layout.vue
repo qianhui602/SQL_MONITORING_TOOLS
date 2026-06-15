@@ -3,8 +3,8 @@
     <!-- 侧边栏 -->
     <aside class="sidebar" :class="{ collapsed: isCollapsed }">
       <div class="sidebar-header">
-        <img src="/LOGO.png" alt="太阳谷" class="sidebar-logo-img" v-show="!isCollapsed" />
-        <img src="/LOGO.png" alt="太阳谷" class="sidebar-logo-img-mini" v-show="isCollapsed" />
+        <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="sidebar-logo-img" v-show="!isCollapsed" />
+        <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="sidebar-logo-img-mini" v-show="isCollapsed" />
       </div>
 
       <nav class="nav-menu">
@@ -122,7 +122,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authStore } from '@/stores/auth'
 import { useTheme } from '@/stores/theme'
-import { getNotifications, markNotificationRead, deleteNotification, markAllNotificationsRead, checkUpgrade } from '@/api'
+import { getNotifications, markNotificationRead, deleteNotification, markAllNotificationsRead, checkUpgrade, getConfig, getLogoUrl } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
 const { theme, toggleTheme } = useTheme()
@@ -137,6 +137,9 @@ const notifRef = ref(null)
 const notifList = ref([])
 const notifUnread = ref(0)
 const currentVersion = ref('1.0.0')
+
+const brandTitle = ref('数据库监控平台')
+const customLogoUrl = ref('')
 
 function severityClass(sev) {
   return { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium', low: 'sev-low' }[sev] || 'sev-medium'
@@ -237,7 +240,7 @@ const visibleMenuItems = computed(() =>
   menuItems.filter((item) => !item.requiresAdmin || authStore.isAdmin.value)
 )
 
-const currentTitle = computed(() => route.meta?.title || '数据库监控平台')
+const currentTitle = computed(() => route.meta?.title || brandTitle.value)
 
 const displayName = computed(() => {
   const u = authStore.state.user
@@ -286,11 +289,26 @@ function handleClickOutside(e) {
   handleNotifOutside(e)
 }
 
+async function fetchBrandConfig() {
+  try {
+    const title = await getConfig('brand_title')
+    if (title) brandTitle.value = title
+
+    const logoUrl = getLogoUrl()
+    const resp = await fetch(logoUrl, { method: 'HEAD' })
+    if (resp.ok) {
+      customLogoUrl.value = logoUrl + '?t=' + Date.now()
+    }
+  } catch (e) {
+    console.debug('品牌配置获取失败（首次安装或无配置）')
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchNotifications()
-  // 获取版本号
   checkUpgrade().then(d => { currentVersion.value = d.current_version }).catch(() => {})
+  fetchBrandConfig()
 })
 
 onBeforeUnmount(() => {
