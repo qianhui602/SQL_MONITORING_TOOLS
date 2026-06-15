@@ -225,4 +225,17 @@ export function uploadZipUpgrade(file) {
   })
 }
 
+// ===== 系统安装向导 =====
+export function getSetupStatus() {
+  return request.get('/setup/status')
+}
+
+export function createSetupAdmin(data) {
+  return request.post('/setup/admin', data)
+}
+
+export function saveSetupConfig(data) {
+  return request.post('/setup/config', data)
+}
+
 export default request

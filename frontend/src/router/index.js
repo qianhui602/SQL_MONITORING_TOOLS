@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authStore } from '@/stores/auth'
+import { getSetupStatus } from '@/api'
 
 const routes = [
   {
@@ -7,6 +8,12 @@ const routes = [
     name: 'Login',
     component: () => import('@/views/Login.vue'),
     meta: { title: '登录', public: true, layout: false }
+  },
+  {
+    path: '/setup',
+    name: 'Setup',
+    component: () => import('@/views/Setup.vue'),
+    meta: { title: '系统安装', public: true, layout: false }
   },
   {
     path: '/',
@@ -109,7 +116,19 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  // 系统初始化检查（除 /setup 本身外均检测）
+  if (to.path !== '/setup') {
+    try {
+      const status = await getSetupStatus()
+      if (!status.initialized) {
+        return next({ path: '/setup' })
+      }
+    } catch {
+      // 如果请求失败，继续正常导航
+    }
+  }
+
   const isPublic = to.meta?.public
   const authed = authStore.isAuthenticated.value
 
