@@ -118,14 +118,14 @@ npm run dev
 │   ├── Dockerfile
 │   ├── index.html
 │   └── vite.config.js
-├── Docs/                   # 项目文档
+├── docs/                   # 项目文档
 │   ├── PROJECT_DOCUMENTATION.md   # 项目概览与部署指南
 │   ├── TECHNICAL_DOCUMENTATION.md # 技术架构与实现细节
 │   └── 指标监控说明文档.md         # 指标详解与告警体系
+├── scripts/                # 部署脚本
+│   ├── deploy.sh           # Linux/Mac 部署脚本
+│   └── deploy.ps1          # Windows 部署脚本
 ├── docker-compose.yml      # Docker Compose 编排
-├── .env.example            # 环境变量模板
-├── deploy.sh               # 部署脚本（Linux/Mac）
-└── deploy.ps1              # 部署脚本（Windows）
 ```
 
 ---
@@ -152,11 +152,11 @@ npm run dev
 
 ## 文档
 
-完整文档请参阅 [Docs](./Docs/) 目录：
+完整文档请参阅 [docs](./docs/) 目录：
 
-- **[项目文档](./Docs/PROJECT_DOCUMENTATION.md)** — 项目概述、部署指南、API 接口说明、数据库设计
-- **[技术文档](./Docs/TECHNICAL_DOCUMENTATION.md)** — 架构分层、核心模块实现、API 设计规范、运维安全、故障排查
-- **[指标监控说明](./Docs/指标监控说明文档.md)** — 28 项性能指标详解、专项监控、告警体系、诊断与问题排查
+- **[项目文档](./docs/PROJECT_DOCUMENTATION.md)** — 项目概述、部署指南、API 接口说明、数据库设计
+- **[技术文档](./docs/TECHNICAL_DOCUMENTATION.md)** — 架构分层、核心模块实现、API 设计规范、运维安全、故障排查
+- **[指标监控说明](./docs/指标监控说明文档.md)** — 28 项性能指标详解、专项监控、告警体系、诊断与问题排查
 
 ---
 
