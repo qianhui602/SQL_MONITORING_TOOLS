@@ -1,84 +1,25 @@
 <template>
   <div class="dashboard">
     <div class="stat-grid">
-      <div class="stat-card stat-blue" @click="$router.push('/?focus=cpu')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+      <div
+        v-for="(card, idx) in statCardOrder"
+        :key="card.key"
+        class="stat-card"
+        :class="['stat-' + card.key, { 'drag-over': dragOverIndex === idx }]"
+        :draggable="true"
+        @click="$router.push(card.route)"
+        @dragstart="onDragStart($event, idx)"
+        @dragover.prevent="onDragOver($event, idx)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, idx)"
+        @dragend="onDragEnd"
+      >
+        <div class="stat-drag-handle" @click.stop title="拖拽排序">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
         </div>
         <div class="stat-info">
-          <div class="stat-label">CPU 使用率</div>
-          <div class="stat-value">{{ cpuUsage }}%</div>
-        </div>
-        <div class="stat-mini-chart" :style="{ background: cpuColor }"></div>
-      </div>
-
-      <div class="stat-card stat-green" @click="$router.push('/?focus=memory')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">内存使用量</div>
-          <div class="stat-value">{{ memoryUsage }} GB</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-cyan" @click="$router.push('/?focus=connections')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">活跃连接</div>
-          <div class="stat-value">{{ activeConnections }}</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-purple" @click="$router.push('/?focus=cache')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">缓存命中率</div>
-          <div class="stat-value">{{ cacheHitRate }}%</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-orange" @click="$router.push('/disk-space')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">磁盘使用率</div>
-          <div class="stat-value" :style="{ color: diskColor }">{{ diskUsage }}%</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-magenta" @click="$router.push('/?focus=batch')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">批处理/秒</div>
-          <div class="stat-value">{{ batchRequests }}</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-red" @click="$router.push('/?focus=locks')">
-        <div class="stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">锁等待</div>
-          <div class="stat-value" :style="{ color: lockColor }">{{ lockWaits }}</div>
-        </div>
-      </div>
-
-      <div class="stat-card stat-deadlock" @click="$router.push('/deadlocks')">
-        <div class="stat-icon deadlock-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">死锁事件</div>
-          <div class="stat-value deadlock-val">{{ deadlockCount }}</div>
+          <div class="stat-label">{{ card.label }}</div>
+          <div class="stat-value" :style="card.valueStyle || {}">{{ card.value }}</div>
         </div>
       </div>
     </div>
@@ -335,6 +276,85 @@ function moveChartDown(index) {
   chartOrder.value[index] = chartOrder.value[index + 1]
   chartOrder.value[index + 1] = tmp
   saveChartOrder()
+}
+
+// ---------- 指标卡片排序 ----------
+const defaultStatCardOrder = ['cpu', 'memory', 'connections', 'cache', 'disk', 'batch', 'locks', 'deadlock']
+const STORAGE_KEY_STAT_ORDER = 'sql_monitor_stat_order'
+
+const allStatCards = {
+  cpu:       { key: 'cpu',       label: 'CPU 使用率',   route: '/?focus=cpu' },
+  memory:    { key: 'memory',    label: '内存使用量',   route: '/?focus=memory' },
+  connections:{ key: 'connections', label: '活跃连接',   route: '/?focus=connections' },
+  cache:     { key: 'cache',     label: '缓存命中率',   route: '/?focus=cache' },
+  disk:      { key: 'disk',      label: '磁盘使用率',   route: '/disk-space' },
+  batch:     { key: 'batch',     label: '批处理/秒',    route: '/?focus=batch' },
+  locks:     { key: 'locks',     label: '锁等待',       route: '/?focus=locks' },
+  deadlock:  { key: 'deadlock',  label: '死锁事件',     route: '/deadlocks' },
+}
+
+function loadStatCardOrder() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_STAT_ORDER)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length === defaultStatCardOrder.length) {
+        return parsed
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return [...defaultStatCardOrder]
+}
+
+function saveStatCardOrder() {
+  localStorage.setItem(STORAGE_KEY_STAT_ORDER, JSON.stringify(statCardOrderKeys.value))
+}
+
+const statCardOrderKeys = ref(loadStatCardOrder())
+const dragIndex = ref(null)
+const dragOverIndex = ref(null)
+
+const statCardOrder = computed(() => {
+  return statCardOrderKeys.value.map(key => {
+    const card = allStatCards[key]
+    if (!card) return null
+    const valueStyle = {}
+    if (key === 'cpu')     card.value = cpuUsage.value + '%'
+    else if (key === 'memory')    card.value = memoryUsage.value + ' GB'
+    else if (key === 'connections') card.value = activeConnections.value
+    else if (key === 'cache')     card.value = cacheHitRate.value + '%'
+    else if (key === 'disk')      { card.value = diskUsage.value + '%'; valueStyle.color = diskColor.value }
+    else if (key === 'batch')     card.value = batchRequests.value
+    else if (key === 'locks')     { card.value = lockWaits.value; valueStyle.color = lockColor.value }
+    else if (key === 'deadlock')  card.value = deadlockCount.value
+    return { ...card, valueStyle }
+  }).filter(Boolean)
+})
+
+function onDragStart(e, idx) {
+  dragIndex.value = idx
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', idx)
+}
+function onDragOver(e, idx) {
+  dragOverIndex.value = idx
+}
+function onDragLeave() {
+  dragOverIndex.value = null
+}
+function onDrop(e, idx) {
+  const from = dragIndex.value
+  if (from === null || from === idx) return
+  const keys = [...statCardOrderKeys.value]
+  const [moved] = keys.splice(from, 1)
+  keys.splice(idx, 0, moved)
+  statCardOrderKeys.value = keys
+  saveStatCardOrder()
+  dragOverIndex.value = null
+}
+function onDragEnd() {
+  dragIndex.value = null
+  dragOverIndex.value = null
 }
 
 function resetChartOrder() {
@@ -970,23 +990,55 @@ onUnmounted(() => {
   padding: 14px 16px;
   box-shadow: var(--shadow);
   border: 1px solid var(--border-color);
-  transition: box-shadow 0.2s;
+  border-left: 3px solid var(--border-color);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
   position: relative;
   cursor: pointer;
+  min-height: 62px;
 }
 
 .stat-card:hover {
   box-shadow: var(--shadow-md);
 }
 
-.stat-card.stat-blue { border-left: 3px solid #1890ff; }
-.stat-card.stat-green { border-left: 3px solid #1890ff; }
-.stat-card.stat-cyan { border-left: 3px solid #1890ff; }
-.stat-card.stat-purple { border-left: 3px solid #1890ff; }
-.stat-card.stat-orange { border-left: 3px solid #1890ff; }
-.stat-card.stat-magenta { border-left: 3px solid #1890ff; }
-.stat-card.stat-red { border-left: 3px solid #1890ff; }
-.stat-card.stat-deadlock { border-left: 3px solid #1890ff; }
+.stat-card.drag-over {
+  border-left-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.3);
+}
+
+.stat-card[draggable="true"] {
+  cursor: grab;
+}
+.stat-card[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.7;
+}
+
+.stat-cpu       { border-left-color: #1890ff; }
+.stat-memory    { border-left-color: #52c41a; }
+.stat-connections { border-left-color: #13c2c2; }
+.stat-cache     { border-left-color: #722ed1; }
+.stat-disk      { border-left-color: #fa8c16; }
+.stat-batch     { border-left-color: #eb2f96; }
+.stat-locks     { border-left-color: #f5222d; }
+.stat-deadlock  { border-left-color: #faad14; }
+
+.stat-drag-handle {
+  color: #bfbfbf;
+  cursor: grab;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.stat-card:hover .stat-drag-handle {
+  opacity: 1;
+}
+.stat-drag-handle:active {
+  cursor: grabbing;
+  color: #1890ff;
+}
 
 .stat-icon { display: none; }
 
