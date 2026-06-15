@@ -44,14 +44,14 @@ class IndexAnalyzer:
                     migs.user_seeks,
                     migs.user_scans
                 FROM sys.dm_db_missing_index_details AS mid
-                INNER JOIN sys.dm_db_missing_index_groups AS mig
-                    ON mid.index_handle = mig.index_handle
-                INNER JOIN sys.dm_db_missing_index_group_stats AS migs
-                    ON mig.index_group_handle = migs.group_handle
-                INNER JOIN sys.objects AS o
-                    ON mid.object_id = o.object_id
-                WHERE mid.database_id = DB_ID()
-                ORDER BY migs.avg_user_impact DESC;
+                    INNER JOIN sys.dm_db_missing_index_groups AS mig
+                        ON mid.index_handle = mig.index_handle
+                    INNER JOIN sys.dm_db_missing_index_group_stats AS migs
+                        ON mig.index_group_handle = migs.group_handle
+                    INNER JOIN sys.objects AS o
+                        ON mid.object_id = o.object_id
+                    WHERE mid.database_id > 4
+                    ORDER BY migs.avg_user_impact DESC;
             """)
             rows = cursor.fetchall()
             cursor.close()
@@ -98,14 +98,15 @@ class IndexAnalyzer:
                         ELSE 'NONCLUSTERED'
                     END AS index_type
                 FROM sys.dm_db_index_physical_stats(
-                    DB_ID(), NULL, NULL, NULL, 'LIMITED'
+                    NULL, NULL, NULL, NULL, 'LIMITED'
                 ) AS ips
                 INNER JOIN sys.indexes AS i
                     ON ips.object_id = i.object_id
                     AND ips.index_id = i.index_id
                 INNER JOIN sys.objects AS o
                     ON ips.object_id = o.object_id
-                WHERE ips.avg_fragmentation_in_percent > 5
+                WHERE ips.database_id > 4
+                  AND ips.avg_fragmentation_in_percent > 5
                   AND ips.page_count > 100
                   AND o.is_ms_shipped = 0
                 ORDER BY ips.avg_fragmentation_in_percent DESC;
