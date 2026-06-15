@@ -37,6 +37,15 @@ class DeadlockEvent(Base):
     analysis_result: Mapped[str] = mapped_column(
         Text, nullable=True, default=None, comment="DeepSeek AI 分析结果"
     )
+    login_name: Mapped[str] = mapped_column(
+        String(128), nullable=True, default=None, comment="主要执行用户名"
+    )
+    host_name: Mapped[str] = mapped_column(
+        String(128), nullable=True, default=None, comment="客户端主机名"
+    )
+    client_app: Mapped[str] = mapped_column(
+        String(256), nullable=True, default=None, comment="客户端应用程序名"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -87,6 +96,15 @@ class DeadlockSql(Base):
     )
     involved_objects: Mapped[str] = mapped_column(
         String(500), nullable=True, default=None, comment="涉及的对象（表/索引等），逗号分隔"
+    )
+    login_name: Mapped[str] = mapped_column(
+        String(128), nullable=True, default=None, comment="执行用户名"
+    )
+    host_name: Mapped[str] = mapped_column(
+        String(128), nullable=True, default=None, comment="客户端主机名"
+    )
+    client_app: Mapped[str] = mapped_column(
+        String(256), nullable=True, default=None, comment="客户端应用程序名"
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

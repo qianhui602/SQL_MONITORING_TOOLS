@@ -508,11 +508,28 @@ class SchedulerManager:
     ) -> None:
         """将死锁事件写入 PostgreSQL"""
         for dl in deadlocks:
+            # 从进程列表中提取主要用户的上下文信息
+            processes = dl.get("processes", []) or []
+            primary_login = None
+            primary_host = None
+            primary_app = None
+            for p in processes:
+                if p.get("login_name"):
+                    primary_login = p["login_name"]
+                if p.get("hostname"):
+                    primary_host = p["hostname"]
+                if p.get("clientapp"):
+                    primary_app = p["clientapp"]
+                if primary_login and primary_host and primary_app:
+                    break
+
             stmt = text("""
                 INSERT INTO deadlocks (
-                    occur_at, victim_session_id, deadlock_xml, server_address
+                    occur_at, victim_session_id, deadlock_xml, server_address,
+                    login_name, host_name, client_app
                 ) VALUES (
-                    :occur_at, :victim_session_id, :deadlock_xml, :server_address
+                    :occur_at, :victim_session_id, :deadlock_xml, :server_address,
+                    :login_name, :host_name, :client_app
                 )
                 RETURNING id
             """)
@@ -523,6 +540,9 @@ class SchedulerManager:
                     "victim_session_id": dl.get("victim_session_id"),
                     "deadlock_xml": dl.get("deadlock_xml", ""),
                     "server_address": server_address,
+                    "login_name": primary_login,
+                    "host_name": primary_host,
+                    "client_app": primary_app,
                 },
             )
             event_id = result.scalar_one()
@@ -535,9 +555,11 @@ class SchedulerManager:
                 sql_text = sql_statements[i] if i < len(sql_statements) else None
                 stmt_sql = text("""
                     INSERT INTO deadlock_sqls (
-                        event_id, session_id, sql_text, isolation_level, involved_objects
+                        event_id, session_id, sql_text, isolation_level, involved_objects,
+                        login_name, host_name, client_app
                     ) VALUES (
-                        :event_id, :session_id, :sql_text, :isolation_level, :involved_objects
+                        :event_id, :session_id, :sql_text, :isolation_level, :involved_objects,
+                        :login_name, :host_name, :client_app
                     )
                 """)
                 await session.execute(
@@ -548,6 +570,9 @@ class SchedulerManager:
                         "sql_text": sql_text,
                         "isolation_level": proc.get("isolation_level"),
                         "involved_objects": ",".join(involved_objects) if involved_objects else None,
+                        "login_name": proc.get("login_name"),
+                        "host_name": proc.get("hostname"),
+                        "client_app": proc.get("clientapp"),
                     },
                 )
 

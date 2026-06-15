@@ -34,6 +34,9 @@ class DeadlockSqlItem(BaseModel):
     sql_text: Optional[str] = None
     isolation_level: Optional[str] = None
     involved_objects: Optional[str] = None
+    login_name: Optional[str] = None
+    host_name: Optional[str] = None
+    client_app: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -45,6 +48,9 @@ class DeadlockEventListItem(BaseModel):
     occur_at: datetime
     victim_session_id: Optional[int] = None
     server_address: str
+    login_name: Optional[str] = None
+    host_name: Optional[str] = None
+    client_app: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -140,6 +146,9 @@ async def get_deadlock_events(
             occur_at=event.occur_at,
             victim_session_id=event.victim_session_id,
             server_address=event.server_address,
+            login_name=event.login_name,
+            host_name=event.host_name,
+            client_app=event.client_app,
         )
         for event in events
     ]
@@ -189,6 +198,9 @@ async def get_deadlock_event_detail(
             sql_text=sql.sql_text,
             isolation_level=sql.isolation_level,
             involved_objects=sql.involved_objects,
+            login_name=sql.login_name,
+            host_name=sql.host_name,
+            client_app=sql.client_app,
         )
         for sql in (event.deadlock_sqls or [])
     ]

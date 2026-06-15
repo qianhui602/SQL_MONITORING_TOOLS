@@ -27,6 +27,9 @@
             <th>发生时间</th>
             <th>受害会话 ID</th>
             <th>SQL Server 地址</th>
+            <th>用户</th>
+            <th>主机（设备）</th>
+            <th>应用程序</th>
           </tr>
         </thead>
         <tbody>
@@ -44,18 +47,39 @@
                 <span :class="{ 'victim-tag': true }">{{ row.victim_session_id }}</span>
               </td>
               <td>{{ row.server_address }}</td>
+              <td>
+                <span v-if="row.login_name" class="meta-tag user-tag">{{ row.login_name }}</span>
+                <span v-else class="meta-tag meta-empty">-</span>
+              </td>
+              <td>
+                <span v-if="row.host_name" class="meta-tag host-tag">{{ row.host_name }}</span>
+                <span v-else class="meta-tag meta-empty">-</span>
+              </td>
+              <td>
+                <span v-if="row.client_app" class="meta-tag app-tag">{{ row.client_app }}</span>
+                <span v-else class="meta-tag meta-empty">-</span>
+              </td>
             </tr>
             <tr v-if="expandedId === row.id" class="detail-row">
-              <td colspan="4">
+              <td colspan="7">
                 <div class="detail-content">
                   <div class="detail-section">
                     <h4 class="detail-title">关联 SQL 语句</h4>
                     <div v-if="detailData?.sql_statements?.length">
-                      <pre
+                      <div
                         v-for="(sql, idx) in detailData.sql_statements"
                         :key="idx"
-                        class="sql-block"
-                      >{{ sql }}</pre>
+                        class="sql-process-block"
+                      >
+                        <div class="process-meta">
+                          <span class="meta-tag session-tag">会话 {{ sql.session_id }}</span>
+                          <span v-if="sql.login_name" class="meta-tag user-tag">用户: {{ sql.login_name }}</span>
+                          <span v-if="sql.host_name" class="meta-tag host-tag">主机: {{ sql.host_name }}</span>
+                          <span v-if="sql.client_app" class="meta-tag app-tag">应用: {{ sql.client_app }}</span>
+                          <span v-if="sql.isolation_level" class="meta-tag iso-tag">隔离: {{ sql.isolation_level }}</span>
+                        </div>
+                        <pre class="sql-block">{{ sql.sql_text }}</pre>
+                      </div>
                     </div>
                     <p v-else class="no-data">无</p>
                   </div>
@@ -116,7 +140,7 @@
             </tr>
           </template>
           <tr v-if="list.length === 0">
-            <td colspan="4" class="empty-cell">暂无数据</td>
+            <td colspan="7" class="empty-cell">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -389,6 +413,35 @@ onMounted(() => {
   border-radius: 4px;
   font-weight: 600;
   font-size: 12px;
+}
+
+.meta-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.meta-tag.user-tag { background: #e6f7ff; color: #096dd9; }
+.meta-tag.host-tag { background: #f6ffed; color: #389e0d; }
+.meta-tag.app-tag { background: #fff7e6; color: #d48806; }
+.meta-tag.session-tag { background: #f0f0f0; color: #595959; font-weight: 600; }
+.meta-tag.iso-tag { background: #f9f0ff; color: #722ed1; }
+.meta-tag.meta-empty { background: transparent; color: #bfbfbf; }
+
+.process-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+}
+
+.sql-process-block {
+  margin-bottom: 16px;
 }
 
 .detail-row td {

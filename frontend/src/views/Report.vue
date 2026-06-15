@@ -221,6 +221,9 @@
               <th>发生时间</th>
               <th>受害会话ID</th>
               <th>服务器</th>
+              <th>用户</th>
+              <th>主机（设备）</th>
+              <th>应用程序</th>
             </tr>
           </thead>
           <tbody>
@@ -228,6 +231,9 @@
               <td>{{ formatDateTime(ev.occur_at, { second: true }) }}</td>
               <td><code class="inline-code">{{ ev.victim_session_id }}</code></td>
               <td>{{ ev.server_address }}</td>
+              <td>{{ ev.login_name || '-' }}</td>
+              <td>{{ ev.host_name || '-' }}</td>
+              <td>{{ ev.client_app || '-' }}</td>
             </tr>
           </tbody>
         </table>

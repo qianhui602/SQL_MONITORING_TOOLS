@@ -251,6 +251,44 @@ async def _run_migrations() -> None:
                     )
                 )
                 logger.info("迁移: deadlocks 表添加 analysis_result 列")
+
+            # 检查 deadlocks 表是否有用户上下文字段
+            for col, typ in [
+                ("login_name", "VARCHAR(128)"),
+                ("host_name", "VARCHAR(128)"),
+                ("client_app", "VARCHAR(256)"),
+            ]:
+                result = await conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'deadlocks' AND column_name = :col"
+                    ),
+                    {"col": col},
+                )
+                if not result.first():
+                    await conn.execute(
+                        text(f"ALTER TABLE deadlocks ADD COLUMN {col} {typ}")
+                    )
+                    logger.info("迁移: deadlocks 表添加 %s 列", col)
+
+            # 检查 deadlock_sqls 表是否有用户上下文字段
+            for col, typ in [
+                ("login_name", "VARCHAR(128)"),
+                ("host_name", "VARCHAR(128)"),
+                ("client_app", "VARCHAR(256)"),
+            ]:
+                result = await conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'deadlock_sqls' AND column_name = :col"
+                    ),
+                    {"col": col},
+                )
+                if not result.first():
+                    await conn.execute(
+                        text(f"ALTER TABLE deadlock_sqls ADD COLUMN {col} {typ}")
+                    )
+                    logger.info("迁移: deadlock_sqls 表添加 %s 列", col)
     except Exception:
         logger.exception("数据库迁移失败")
 

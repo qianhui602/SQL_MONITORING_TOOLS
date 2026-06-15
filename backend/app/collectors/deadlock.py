@@ -111,6 +111,9 @@ class DeadlockDetector:
                         "session_id": None,
                         "transaction_name": None,
                         "isolation_level": None,
+                        "login_name": process.get("loginname"),
+                        "hostname": process.get("hostname"),
+                        "clientapp": process.get("clientapp"),
                     }
                     proc_id = process.get("id", "")
                     spid = process.get("spid")
