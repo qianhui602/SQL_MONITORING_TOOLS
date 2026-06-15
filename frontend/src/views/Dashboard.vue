@@ -970,7 +970,7 @@ onUnmounted(() => {
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 16px;
 }
 
 @media (max-width: 1200px) {
@@ -984,17 +984,17 @@ onUnmounted(() => {
 .stat-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   background: var(--bg-card);
-  border-radius: 6px;
-  padding: 14px 16px;
+  border-radius: 8px;
+  padding: 18px 20px;
   box-shadow: var(--shadow);
   border: 1px solid var(--border-color);
   border-left: 3px solid var(--border-color);
   transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
   position: relative;
   cursor: pointer;
-  min-height: 62px;
+  min-height: 72px;
 }
 
 .stat-card:hover {
@@ -1050,7 +1050,7 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   font-weight: 500;
   white-space: nowrap;
@@ -1058,7 +1058,7 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
