@@ -97,12 +97,15 @@ async def get_deadlock_events(
     server_address: Optional[str] = Query(
         None, description="按实例筛选（server_address），如 生产环境(10.0.0.1:1433)"
     ),
+    login_name: Optional[str] = Query(None, description="按用户名筛选（模糊匹配）"),
+    host_name: Optional[str] = Query(None, description="按主机名筛选（模糊匹配）"),
+    client_app: Optional[str] = Query(None, description="按应用程序筛选（模糊匹配）"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> DeadlockEventListResponse:
-    """分页查询死锁事件列表，支持按时间范围和实例筛选。"""
+    """分页查询死锁事件列表，支持按时间范围、实例、用户、主机、应用筛选。"""
     conditions = []
 
     if start_time:
@@ -111,6 +114,12 @@ async def get_deadlock_events(
         conditions.append(DeadlockEvent.occur_at <= end_time)
     if server_address:
         conditions.append(DeadlockEvent.server_address == server_address)
+    if login_name:
+        conditions.append(DeadlockEvent.login_name.ilike(f"%{login_name}%"))
+    if host_name:
+        conditions.append(DeadlockEvent.host_name.ilike(f"%{host_name}%"))
+    if client_app:
+        conditions.append(DeadlockEvent.client_app.ilike(f"%{client_app}%"))
 
     # 查询总数
     count_stmt = select(sa_func.count(DeadlockEvent.id)).where(*conditions)

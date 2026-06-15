@@ -1,22 +1,39 @@
 <template>
   <div class="deadlocks">
-    <div class="toolbar">
-      <div class="toolbar-group">
-        <label class="toolbar-label">实例</label>
-        <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
-          <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
-        </select>
+    <div class="toolbar toolbar-deadlocks">
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <label class="toolbar-label">实例</label>
+          <select v-model="selectedInstance" class="instance-select">
+            <option value="">全部实例</option>
+            <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <label class="toolbar-label">开始时间</label>
+          <input type="datetime-local" v-model="startTime" class="input" />
+        </div>
+        <div class="toolbar-group">
+          <label class="toolbar-label">结束时间</label>
+          <input type="datetime-local" v-model="endTime" class="input" />
+        </div>
+        <button class="btn-primary" @click="onSearch">查询</button>
+        <button class="btn-secondary" @click="onResetFilters" title="重置所有筛选条件">重置</button>
       </div>
-      <div class="toolbar-group">
-        <label class="toolbar-label">开始时间</label>
-        <input type="datetime-local" v-model="startTime" class="input" />
+      <div class="toolbar-row filter-row">
+        <div class="toolbar-group">
+          <label class="toolbar-label">用户</label>
+          <input type="text" v-model="filterLoginName" class="input filter-input" placeholder="用户名，如 Sboadmin" @keyup.enter="onSearch" />
+        </div>
+        <div class="toolbar-group">
+          <label class="toolbar-label">主机（设备）</label>
+          <input type="text" v-model="filterHostName" class="input filter-input" placeholder="主机名，如 MSSAP01C" @keyup.enter="onSearch" />
+        </div>
+        <div class="toolbar-group">
+          <label class="toolbar-label">应用程序</label>
+          <input type="text" v-model="filterClientApp" class="input filter-input" placeholder="应用名，如 SAP Business One" @keyup.enter="onSearch" />
+        </div>
       </div>
-      <div class="toolbar-group">
-        <label class="toolbar-label">结束时间</label>
-        <input type="datetime-local" v-model="endTime" class="input" />
-      </div>
-      <button class="btn-primary" @click="onSearch">查询</button>
     </div>
 
     <div class="table-card">
@@ -180,6 +197,9 @@ const page = ref(1)
 const pageSize = ref(10)
 const startTime = ref('')
 const endTime = ref('')
+const filterLoginName = ref('')
+const filterHostName = ref('')
+const filterClientApp = ref('')
 const expandedId = ref(null)
 const detailData = ref(null)
 const analyzing = ref(false)
@@ -202,6 +222,9 @@ async function fetchList() {
     }
     if (startTime.value) params.start_time = startTime.value
     if (endTime.value) params.end_time = endTime.value
+    if (filterLoginName.value) params.login_name = filterLoginName.value
+    if (filterHostName.value) params.host_name = filterHostName.value
+    if (filterClientApp.value) params.client_app = filterClientApp.value
     const serverAddress = getServerAddress()
     if (serverAddress) params.server_address = serverAddress
 
@@ -218,6 +241,16 @@ function onSearch() {
   expandedId.value = null
   detailData.value = null
   fetchList()
+}
+
+function onResetFilters() {
+  selectedInstance.value = ''
+  startTime.value = ''
+  endTime.value = ''
+  filterLoginName.value = ''
+  filterHostName.value = ''
+  filterClientApp.value = ''
+  onSearch()
 }
 
 function goPage(p) {
@@ -297,6 +330,27 @@ onMounted(() => {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
+.toolbar-deadlocks {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.filter-row {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 12px;
+}
+
+.filter-input {
+  min-width: 180px;
+}
+
 .toolbar-group {
   display: flex;
   flex-direction: column;
@@ -335,6 +389,22 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #40a9ff;
+}
+
+.btn-secondary {
+  height: 32px;
+  padding: 0 16px;
+  background: #fff;
+  color: #595959;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: #1890ff;
+  color: #1890ff;
 }
 
 .instance-select {
