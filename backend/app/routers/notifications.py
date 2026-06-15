@@ -42,6 +42,28 @@ class NotificationsResponse(BaseModel):
 
 
 @router.get(
+    "/unread-count",
+    summary="获取未读通知数量",
+)
+async def get_unread_count(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict:
+    """仅返回未读通知数量，用于轻量级轮询。"""
+    stmt = select(sa_func.count(AlertLog.id)).where(
+        AlertLog.acknowledged == False
+    )
+    try:
+        result = await db.execute(stmt)
+        count = result.scalar() or 0
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"查询未读数失败: {str(e)}"
+        )
+    return {"unread_count": count}
+
+
+@router.get(
     "",
     response_model=NotificationsResponse,
     summary="获取通知列表",

@@ -202,6 +202,7 @@ export function exportDeadlocks(params) { return request.get('/export/deadlocks'
 export function exportSlowQueries(params) { return request.get('/export/slow-queries', { params, responseType: 'blob' }) }
 
 // ===== 通知管理 =====
+export function getUnreadCount() { return request.get('/notifications/unread-count') }
 export function getNotifications(limit = 20) { return request.get('/notifications', { params: { limit } }) }
 export function markNotificationRead(id) { return request.put(`/notifications/${id}/read`) }
 export function deleteNotification(id) { return request.delete(`/notifications/${id}`) }
