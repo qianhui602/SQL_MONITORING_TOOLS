@@ -125,7 +125,7 @@ async def update_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> ConfigItem:
-    """更新指定配置项的值。"""
+    """更新指定配置项的值。若配置项不存在则自动创建。"""
     check_stmt = select(SystemConfig).where(SystemConfig.config_key == key)
 
     try:
@@ -137,8 +137,25 @@ async def update_config(
         )
 
     if config is None:
-        raise HTTPException(
-            status_code=404, detail=f"配置项不存在: config_key={key}"
+        # 自动创建不存在的配置项
+        new_config = SystemConfig(
+            config_key=key,
+            config_value=body.config_value,
+            description=None,
+        )
+        db.add(new_config)
+        await db.flush()
+
+        client_ip = request.client.host if request.client else ""
+        await log_action(
+            db, current_user.username, "CREATE", "Config",
+            f"创建配置: {key} = {body.config_value}", client_ip,
+        )
+
+        return ConfigItem(
+            config_key=new_config.config_key,
+            config_value=new_config.config_value,
+            description=new_config.description,
         )
 
     old_value = config.config_value
