@@ -197,7 +197,7 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 账号已创建 / Account Created - {display_name}"
-        login_url = getattr(settings, "PROJECT_NAME", "SQL Monitor")
+        login_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
 
         html = _HTML_HEAD
         html += _html_header("欢迎加入 SQL Monitor", "Welcome to SQL Monitor", "#1890ff")

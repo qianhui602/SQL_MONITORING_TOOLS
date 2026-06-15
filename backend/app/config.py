@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.11"
     DEBUG: bool = False
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    FRONTEND_URL: str = ""
 
     # ---------- PostgreSQL（存储监控数据和配置） ----------
     PG_HOST: str = "127.0.0.1"
