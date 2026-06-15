@@ -27,6 +27,15 @@
             />
             <span class="config-desc">登录页和侧边栏显示的系统标题</span>
           </div>
+          <div class="config-item">
+            <label class="config-label">通知声音</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="notifSoundEnabled" class="toggle-input" @change="onNotifSoundToggle" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ notifSoundEnabled ? '已开启' : '已关闭' }}</span>
+            </label>
+            <span class="config-desc">有新通知时播放提示音</span>
+          </div>
           <div class="config-item brand-logo-item">
             <label class="config-label">Logo 图片</label>
             <div class="logo-upload-area">
@@ -382,6 +391,11 @@ let toastTimer = null
 const brandTitle = ref('数据库监控平台')
 const logoPreviewUrl = ref('')
 const logoCacheBust = ref('')
+const notifSoundEnabled = ref(localStorage.getItem('notif_sound_enabled') !== 'false')
+
+function onNotifSoundToggle() {
+  localStorage.setItem('notif_sound_enabled', notifSoundEnabled.value)
+}
 
 // 数据采集配置
 const collectConfigs = reactive({
