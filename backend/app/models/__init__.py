@@ -16,6 +16,7 @@ from app.models.index_analysis import MissingIndex, IndexFragmentation
 from app.models.alert_rule import AlertRule as AlertRuleModel
 from app.models.audit_log import AuditLog
 from app.models.report import ReportRecord
+from app.models.notification_read import NotificationRead
 
 __all__ = [
     "MetricRecord",
@@ -34,4 +35,5 @@ __all__ = [
     "AlertRuleModel",
     "AuditLog",
     "ReportRecord",
+    "NotificationRead",
 ]
