@@ -6,7 +6,8 @@ APScheduler 定时任务管理
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select, text
@@ -29,6 +30,101 @@ _CONFIG_KEY_MAP = {
     "mssql_password": "MSSQL_PASSWORD",
     "mssql_database": "MSSQL_DATABASE",
     "scheduler_interval_seconds": "SCHEDULER_INTERVAL_SECONDS",
+}
+
+
+# ---------------------------------------------------------------------------
+# 通用批量存储工具
+# ---------------------------------------------------------------------------
+
+def batch_store_handler(table_name: str):
+    """批量数据存储的异常处理装饰器
+
+    统一处理批量数据存储的异常处理和日志记录，
+    消除各个存储方法中重复的 try-catch 代码。
+
+    Args:
+        table_name: 表名，用于错误日志
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(
+            self, session, data_list: list[Dict[str, Any]], server_address: str
+        ) -> None:
+            if not data_list:
+                return
+
+            now = datetime.now(timezone.utc)
+            success_count = 0
+            error_count = 0
+
+            for item in data_list:
+                try:
+                    await func(self, session, item, server_address, now)
+                    success_count += 1
+                except Exception as e:
+                    error_count += 1
+                    logger.warning("Failed to store %s record: %s", table_name, e)
+
+            if error_count > 0:
+                logger.info(
+                    "Stored %s: %d success, %d failed",
+                    table_name, success_count, error_count
+                )
+        return wrapper
+    return decorator
+
+
+def build_field_params(
+    data: Dict[str, Any],
+    field_map: Dict[str, Tuple[str, Any]],
+    extra_params: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """根据字段映射构建参数字典
+
+    Args:
+        data: 原始数据字典
+        field_map: 字段映射配置 {source_field: (db_field, default_value)}
+        extra_params: 额外的参数（如时间戳、服务器地址等）
+
+    Returns:
+        构建好的参数字典
+    """
+    params = extra_params.copy() if extra_params else {}
+    for source_field, (db_field, default_value) in field_map.items():
+        params[db_field] = data.get(source_field, default_value)
+    return params
+
+
+# 字段映射配置
+SLOW_QUERY_FIELD_MAP: Dict[str, Tuple[str, Any]] = {
+    "sql_hash": ("sql_hash", ""),
+    "sql_text": ("sql_text", ""),
+    "execution_count": ("execution_count", 0),
+    "total_cpu_ms": ("total_cpu_ms", 0.0),
+    "total_logical_reads": ("total_logical_reads", 0),
+    "total_elapsed_ms": ("total_elapsed_ms", 0.0),
+    "avg_elapsed_ms": ("avg_elapsed_ms", 0.0),
+}
+
+DISK_SPACE_FIELD_MAP: Dict[str, Tuple[str, Any]] = {
+    "database_name": ("database_name", ""),
+    "data_file_mb": ("data_file_mb", 0.0),
+    "log_file_mb": ("log_file_mb", 0.0),
+    "total_mb": ("total_mb", 0.0),
+    "used_mb": ("used_mb", 0.0),
+    "free_mb": ("free_mb", 0.0),
+    "usage_pct": ("usage_pct", 0.0),
+}
+
+BLOCKING_EVENT_FIELD_MAP: Dict[str, Tuple[str, Any]] = {
+    "blocked_spid": ("blocked_spid", 0),
+    "blocking_spid": ("blocking_spid", 0),
+    "wait_type": ("wait_type", ""),
+    "wait_time_ms": ("wait_time_ms", 0),
+    "blocked_sql": ("blocked_sql", None),
+    "blocking_sql": ("blocking_sql", None),
+    "blocked_db": ("blocked_db", None),
 }
 
 
@@ -296,115 +392,79 @@ class SchedulerManager:
             }
             await self._run_alert_checks(aggregated_data)
 
+    @batch_store_handler("slow_query")
     async def _store_slow_queries(
-        self, session, slow_queries: list[Dict[str, Any]], server_address: str
+        self, session, sq: Dict[str, Any], server_address: str, now: datetime
     ) -> None:
-        """将慢查询数据写入 PostgreSQL"""
-        now = datetime.now(timezone.utc)
-        for sq in slow_queries:
-            try:
-                last_exec = sq.get("last_execution_time")
-                if isinstance(last_exec, str):
-                    last_exec = datetime.fromisoformat(last_exec)
+        """存储单条慢查询记录"""
+        last_exec = sq.get("last_execution_time")
+        if isinstance(last_exec, str):
+            last_exec = datetime.fromisoformat(last_exec)
 
-                stmt = text("""
-                    INSERT INTO slow_queries (
-                        sql_hash, sql_text, execution_count,
-                        total_cpu_ms, total_logical_reads, total_elapsed_ms,
-                        avg_elapsed_ms, last_execution_time, collected_at, server_address
-                    ) VALUES (
-                        :sql_hash, :sql_text, :execution_count,
-                        :total_cpu_ms, :total_logical_reads, :total_elapsed_ms,
-                        :avg_elapsed_ms, :last_execution_time, :collected_at, :server_address
-                    )
-                """)
-                await session.execute(
-                    stmt,
-                    {
-                        "sql_hash": sq.get("sql_hash", ""),
-                        "sql_text": sq.get("sql_text", ""),
-                        "execution_count": sq.get("execution_count", 0),
-                        "total_cpu_ms": sq.get("total_cpu_ms", 0.0),
-                        "total_logical_reads": sq.get("total_logical_reads", 0),
-                        "total_elapsed_ms": sq.get("total_elapsed_ms", 0.0),
-                        "avg_elapsed_ms": sq.get("avg_elapsed_ms", 0.0),
-                        "last_execution_time": last_exec,
-                        "collected_at": now,
-                        "server_address": server_address,
-                    },
-                )
-            except Exception as e:
-                logger.warning("Failed to store slow query record: %s", e)
+        params = build_field_params(sq, SLOW_QUERY_FIELD_MAP, {
+            "last_execution_time": last_exec,
+            "collected_at": now,
+            "server_address": server_address,
+        })
 
+        stmt = text("""
+            INSERT INTO slow_queries (
+                sql_hash, sql_text, execution_count,
+                total_cpu_ms, total_logical_reads, total_elapsed_ms,
+                avg_elapsed_ms, last_execution_time, collected_at, server_address
+            ) VALUES (
+                :sql_hash, :sql_text, :execution_count,
+                :total_cpu_ms, :total_logical_reads, :total_elapsed_ms,
+                :avg_elapsed_ms, :last_execution_time, :collected_at, :server_address
+            )
+        """)
+        await session.execute(stmt, params)
+
+    @batch_store_handler("disk_space")
     async def _store_disk_space(
-        self, session, disk_space: list[Dict[str, Any]], server_address: str
+        self, session, disk: Dict[str, Any], server_address: str, now: datetime
     ) -> None:
-        """将磁盘空间数据写入 PostgreSQL"""
-        now = datetime.now(timezone.utc)
-        for disk in disk_space:
-            try:
-                stmt = text("""
-                    INSERT INTO disk_space_records (
-                        database_name, data_file_mb, log_file_mb,
-                        total_mb, used_mb, free_mb, usage_pct,
-                        collected_at, server_address
-                    ) VALUES (
-                        :database_name, :data_file_mb, :log_file_mb,
-                        :total_mb, :used_mb, :free_mb, :usage_pct,
-                        :collected_at, :server_address
-                    )
-                """)
-                await session.execute(
-                    stmt,
-                    {
-                        "database_name": disk.get("database_name", ""),
-                        "data_file_mb": disk.get("data_file_mb", 0.0),
-                        "log_file_mb": disk.get("log_file_mb", 0.0),
-                        "total_mb": disk.get("total_mb", 0.0),
-                        "used_mb": disk.get("used_mb", 0.0),
-                        "free_mb": disk.get("free_mb", 0.0),
-                        "usage_pct": disk.get("usage_pct", 0.0),
-                        "collected_at": now,
-                        "server_address": server_address,
-                    },
-                )
-            except Exception as e:
-                logger.warning("Failed to store disk space record: %s", e)
+        """存储单条磁盘空间记录"""
+        params = build_field_params(disk, DISK_SPACE_FIELD_MAP, {
+            "collected_at": now,
+            "server_address": server_address,
+        })
 
+        stmt = text("""
+            INSERT INTO disk_space_records (
+                database_name, data_file_mb, log_file_mb,
+                total_mb, used_mb, free_mb, usage_pct,
+                collected_at, server_address
+            ) VALUES (
+                :database_name, :data_file_mb, :log_file_mb,
+                :total_mb, :used_mb, :free_mb, :usage_pct,
+                :collected_at, :server_address
+            )
+        """)
+        await session.execute(stmt, params)
+
+    @batch_store_handler("blocking_event")
     async def _store_blocking_events(
-        self, session, blocking_events: list[Dict[str, Any]], server_address: str
+        self, session, event: Dict[str, Any], server_address: str, now: datetime
     ) -> None:
-        """将阻塞事件数据写入 PostgreSQL"""
-        now = datetime.now(timezone.utc)
-        for event in blocking_events:
-            try:
-                stmt = text("""
-                    INSERT INTO blocking_events (
-                        blocked_spid, blocking_spid, wait_type, wait_time_ms,
-                        blocked_sql, blocking_sql, blocked_db,
-                        collected_at, server_address
-                    ) VALUES (
-                        :blocked_spid, :blocking_spid, :wait_type, :wait_time_ms,
-                        :blocked_sql, :blocking_sql, :blocked_db,
-                        :collected_at, :server_address
-                    )
-                """)
-                await session.execute(
-                    stmt,
-                    {
-                        "blocked_spid": event.get("blocked_spid", 0),
-                        "blocking_spid": event.get("blocking_spid", 0),
-                        "wait_type": event.get("wait_type", ""),
-                        "wait_time_ms": event.get("wait_time_ms", 0),
-                        "blocked_sql": event.get("blocked_sql"),
-                        "blocking_sql": event.get("blocking_sql"),
-                        "blocked_db": event.get("blocked_db"),
-                        "collected_at": now,
-                        "server_address": server_address,
-                    },
-                )
-            except Exception as e:
-                logger.warning("Failed to store blocking event: %s", e)
+        """存储单条阻塞事件记录"""
+        params = build_field_params(event, BLOCKING_EVENT_FIELD_MAP, {
+            "collected_at": now,
+            "server_address": server_address,
+        })
+
+        stmt = text("""
+            INSERT INTO blocking_events (
+                blocked_spid, blocking_spid, wait_type, wait_time_ms,
+                blocked_sql, blocking_sql, blocked_db,
+                collected_at, server_address
+            ) VALUES (
+                :blocked_spid, :blocking_spid, :wait_type, :wait_time_ms,
+                :blocked_sql, :blocking_sql, :blocked_db,
+                :collected_at, :server_address
+            )
+        """)
+        await session.execute(stmt, params)
 
     async def _store_missing_indexes(
         self, session: AsyncSession, data: List[Dict[str, Any]], server_address: str
