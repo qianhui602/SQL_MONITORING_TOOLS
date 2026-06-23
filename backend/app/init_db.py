@@ -295,6 +295,22 @@ async def _run_migrations() -> None:
                         text(f"ALTER TABLE deadlock_sqls ADD COLUMN {col} {typ}")
                     )
                     logger.info("迁移: deadlock_sqls 表添加 %s 列", col)
+            # 添加 metrics 表复合索引，加速 history 查询
+            result = await conn.execute(
+                text(
+                    "SELECT indexname FROM pg_indexes "
+                    "WHERE tablename = 'metrics' AND indexname = 'ix_metrics_category_collected'"
+                )
+            )
+            if not result.first():
+                await conn.execute(
+                    text(
+                        "CREATE INDEX ix_metrics_category_collected "
+                        "ON metrics (category, collected_at DESC)"
+                    )
+                )
+                logger.info("迁移: metrics 表添加复合索引 (category, collected_at DESC)")
+
     except Exception:
         logger.exception("数据库迁移失败")
 

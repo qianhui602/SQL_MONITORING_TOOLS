@@ -24,6 +24,12 @@
       </div>
     </div>
 
+    <!-- loading overlay -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <span>数据加载中…</span>
+    </div>
+
     <div class="chart-toolbar">
       <div class="chart-toolbar-left">
         <!-- 实例选择 -->
@@ -197,6 +203,7 @@ const modalTitle = ref('')
 const modalType = ref('')
 
 const timeRange = ref('1h')
+const loading = ref(false)
 const compareMode = ref(false)
 const compareRange = ref('yesterday')
 const refreshInterval = ref(10000)
@@ -438,7 +445,9 @@ function getCompareTimeRange() {
 }
 
 function getHistoryLimit() {
-  return 5000
+  // 根据时间范围调整数据量：图表宽度约 600px，约 500 个数据点即可流畅显示
+  const limitMap = { '1h': 800, '6h': 1500, '24h': 2500, '7d': 3000 }
+  return limitMap[timeRange.value] || 2500
 }
 
 function getRefreshInterval() {
@@ -636,6 +645,7 @@ function extractMetricValues(historyData, metricName) {
 }
 
 async function fetchData() {
+  loading.value = true
   try {
     const range = getTimeRange()
     const limit = getHistoryLimit()
@@ -805,6 +815,8 @@ async function fetchData() {
     }
   } catch (e) {
     console.error('获取数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -965,20 +977,49 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+}
+
+/* loading overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 50;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.dark .loading-overlay {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color, #e8e8e8);
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
-}
-
-@media (max-width: 1200px) {
-  .stat-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 640px) {
-  .stat-grid { grid-template-columns: 1fr; }
+  width: 100%;
 }
 
 .stat-card {

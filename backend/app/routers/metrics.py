@@ -163,17 +163,44 @@ async def get_metric_history(
 
     where_clause = " AND ".join(conditions)
 
-    stmt = text(f"""
-        SELECT collected_at, metric_value, metric_name
-        FROM (
-            SELECT collected_at, metric_value, metric_name,
-                   ROW_NUMBER() OVER (ORDER BY collected_at DESC) AS rn
+    # 根据时间跨度自动选择聚合粒度，确保数据在图表上均匀分布
+    duration_hours = (end_time - start_time).total_seconds() / 3600
+
+    if duration_hours > 48:
+        # > 48 小时：按小时聚合
+        stmt = text(f"""
+            SELECT date_trunc('hour', collected_at) AS collected_at,
+                   AVG(metric_value) AS metric_value,
+                   metric_name
             FROM metrics
             WHERE {where_clause}
-        ) sub
-        WHERE sub.rn <= :limit
-        ORDER BY collected_at ASC
-    """)
+            GROUP BY date_trunc('hour', collected_at), metric_name
+            ORDER BY collected_at ASC
+        """)
+        params.pop("limit", None)
+    elif duration_hours > 6:
+        # 6 ~ 48 小时：按 10 分钟聚合
+        stmt = text(f"""
+            SELECT date_trunc('hour', collected_at)
+                   + INTERVAL '1 minute' * (EXTRACT(minute FROM collected_at)::int / 10 * 10)
+                   AS collected_at,
+                   AVG(metric_value) AS metric_value,
+                   metric_name
+            FROM metrics
+            WHERE {where_clause}
+            GROUP BY 1, metric_name
+            ORDER BY collected_at ASC
+        """)
+        params.pop("limit", None)
+    else:
+        # <= 6 小时：原始数据，LIMIT 限制返回量
+        stmt = text(f"""
+            SELECT collected_at, metric_value, metric_name
+            FROM metrics
+            WHERE {where_clause}
+            ORDER BY collected_at DESC
+            LIMIT :limit
+        """)
 
     try:
         result = await db.execute(stmt, params)
@@ -182,6 +209,10 @@ async def get_metric_history(
         raise HTTPException(
             status_code=500, detail=f"查询历史指标数据失败: {str(e)}"
         )
+
+    # 短时间范围的查询结果是倒序的，需要反转
+    if duration_hours <= 6:
+        rows.reverse()
 
     return [
         MetricHistoryItem(
