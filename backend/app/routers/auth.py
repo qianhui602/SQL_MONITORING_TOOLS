@@ -61,6 +61,7 @@ class CurrentUserResponse(BaseModel):
     username: str
     role: str
     full_name: str | None = None
+    email: str | None = None
     is_active: bool
     last_login_at: datetime | None = None
 
@@ -68,6 +69,11 @@ class CurrentUserResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=6, max_length=100)
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = Field(default=None, max_length=100)
+    email: str | None = Field(default=None, max_length=200)
 
 
 @router.post("/login", response_model=LoginResponse, summary="登录")
@@ -118,6 +124,48 @@ async def get_me(current_user: User = Depends(get_current_user)) -> CurrentUserR
         username=current_user.username,
         role=current_user.role,
         full_name=current_user.full_name,
+        email=current_user.email,
+        is_active=current_user.is_active,
+        last_login_at=current_user.last_login_at,
+    )
+
+
+@router.put("/me", response_model=CurrentUserResponse, summary="更新当前用户个人信息")
+async def update_profile(
+    payload: UpdateProfileRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUserResponse:
+    changed = []
+    if payload.full_name is not None and payload.full_name != current_user.full_name:
+        current_user.full_name = payload.full_name or None
+        changed.append("full_name")
+    if payload.email is not None and payload.email != current_user.email:
+        email_val = payload.email.strip().lower() if payload.email else None
+        if email_val:
+            from sqlalchemy import select
+            stmt = select(User).where(User.email == email_val, User.id != current_user.id)
+            existing = await db.execute(stmt)
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="该邮箱已被其他用户使用")
+        current_user.email = email_val
+        changed.append("email")
+
+    if changed:
+        await db.commit()
+        client_ip = request.client.host if request.client else ""
+        await log_action(
+            db, current_user.username, "UPDATE", "Profile",
+            f"{current_user.username} 更新了个人信息: {', '.join(changed)}", client_ip,
+        )
+
+    return CurrentUserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        role=current_user.role,
+        full_name=current_user.full_name,
+        email=current_user.email,
         is_active=current_user.is_active,
         last_login_at=current_user.last_login_at,
     )

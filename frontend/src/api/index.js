@@ -81,6 +81,10 @@ export function changePassword(oldPassword, newPassword) {
   })
 }
 
+export function updateProfile(data) {
+  return request.put('/auth/me', data)
+}
+
 export function forgotPassword(email) {
   return request.post('/auth/forgot_password', { email })
 }
