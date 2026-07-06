@@ -13,6 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import os
 import uuid
 
+SENSITIVE_KEYS = {"password", "secret", "token", "key"}
+
+
+def mask_sensitive_value(config_key: str, config_value: str) -> str:
+    """对敏感配置值进行脱敏处理"""
+    if any(key in config_key.lower() for key in SENSITIVE_KEYS):
+        return "***"
+    return config_value
+
 from app.database import get_db
 from app.models.config import SystemConfig
 from app.models.user import User
@@ -73,7 +82,7 @@ async def get_all_configs(
     return [
         ConfigItem(
             config_key=cfg.config_key,
-            config_value=cfg.config_value,
+            config_value=mask_sensitive_value(cfg.config_key, cfg.config_value),
             description=cfg.description,
         )
         for cfg in configs
@@ -108,7 +117,7 @@ async def get_config_by_key(
 
     return ConfigItem(
         config_key=config.config_key,
-        config_value=config.config_value,
+        config_value=mask_sensitive_value(config.config_key, config.config_value),
         description=config.description,
     )
 
@@ -149,12 +158,12 @@ async def update_config(
         client_ip = request.client.host if request.client else ""
         await log_action(
             db, current_user.username, "CREATE", "Config",
-            f"创建配置: {key} = {body.config_value}", client_ip,
+            f"创建配置: {key} = {mask_sensitive_value(key, body.config_value)}", client_ip,
         )
 
         return ConfigItem(
             config_key=new_config.config_key,
-            config_value=new_config.config_value,
+            config_value=mask_sensitive_value(new_config.config_key, new_config.config_value),
             description=new_config.description,
         )
 
@@ -162,7 +171,7 @@ async def update_config(
     if old_value == body.config_value:
         return ConfigItem(
             config_key=config.config_key,
-            config_value=config.config_value,
+            config_value=mask_sensitive_value(config.config_key, config.config_value),
             description=config.description,
         )
 
@@ -186,12 +195,12 @@ async def update_config(
     client_ip = request.client.host if request.client else ""
     await log_action(
         db, current_user.username, "UPDATE", "Config",
-        f"更新配置: {key}, 旧值: {old_value}, 新值: {body.config_value}", client_ip,
+        f"更新配置: {key}, 旧值: {mask_sensitive_value(key, old_value)}, 新值: {mask_sensitive_value(key, body.config_value)}", client_ip,
     )
 
     return ConfigItem(
         config_key=updated_config.config_key,
-        config_value=updated_config.config_value,
+        config_value=mask_sensitive_value(updated_config.config_key, updated_config.config_value),
         description=updated_config.description,
     )
 
@@ -241,7 +250,7 @@ LOGO_FILENAME = "logo"
 
 def _get_logo_path() -> str:
     """查找当前 logo 文件的完整路径"""
-    for ext in (".png", ".jpg", ".jpeg", ".svg", ".webp"):
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
         path = os.path.join(UPLOAD_DIR, LOGO_FILENAME + ext)
         if os.path.isfile(path):
             return path
@@ -275,15 +284,14 @@ async def upload_logo(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin),
 ) -> dict:
-    """上传 Logo 图片，保存到 uploads 目录。支持 png/jpg/svg/webp。"""
-    allowed = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
+    """上传 Logo 图片，保存到 uploads 目录。支持 png/jpg/webp。"""
+    allowed = {"image/png", "image/jpeg", "image/webp"}
     if file.content_type not in allowed:
-        raise HTTPException(status_code=400, detail="仅支持 PNG、JPG、SVG、WebP 格式")
+        raise HTTPException(status_code=400, detail="仅支持 PNG、JPG、WebP 格式")
 
     ext_map = {
         "image/png": ".png",
         "image/jpeg": ".jpg",
-        "image/svg+xml": ".svg",
         "image/webp": ".webp",
     }
     ext = ext_map.get(file.content_type, ".png")

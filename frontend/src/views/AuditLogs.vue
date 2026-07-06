@@ -30,7 +30,19 @@
       <button class="btn-primary" @click="onSearch">查询</button>
     </div>
 
-    <div class="card">
+    <div v-if="error" class="error-state">
+      <div class="error-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f5222d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <p class="error-text">{{ error }}</p>
+      <button class="btn-primary" @click="fetchList">重试</button>
+    </div>
+
+    <div class="card" v-else>
       <table class="data-table">
         <thead>
           <tr>
@@ -93,6 +105,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
+const error = ref(null)
 
 const filter = reactive({
   username: '',
@@ -119,6 +132,7 @@ function formatDate(d) {
 
 async function fetchList() {
   loading.value = true
+  error.value = null
   try {
     const params = {
       page: page.value,
@@ -134,6 +148,9 @@ async function fetchList() {
     total.value = data.total || 0
   } catch (e) {
     console.error('获取审计日志失败', e)
+    error.value = '获取审计日志失败，请稍后重试'
+    list.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }

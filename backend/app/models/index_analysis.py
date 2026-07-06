@@ -24,7 +24,7 @@ class MissingIndex(Base):
         Integer, primary_key=True, autoincrement=True, comment="主键 ID"
     )
     database_name: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="数据库名称"
+        String(255), nullable=False, index=True, comment="数据库名称"
     )
     schema_name: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="架构名称"
@@ -54,7 +54,7 @@ class MissingIndex(Base):
         DateTime(timezone=True), nullable=False, index=True, comment="采集时间"
     )
     server_address: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="被监控的 SQL Server 地址"
+        String(255), nullable=False, index=True, comment="被监控的 SQL Server 地址"
     )
 
     def __repr__(self) -> str:
@@ -77,7 +77,7 @@ class IndexFragmentation(Base):
         Integer, primary_key=True, autoincrement=True, comment="主键 ID"
     )
     database_name: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="数据库名称"
+        String(255), nullable=False, index=True, comment="数据库名称"
     )
     schema_name: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="架构名称"
@@ -101,7 +101,7 @@ class IndexFragmentation(Base):
         DateTime(timezone=True), nullable=False, index=True, comment="采集时间"
     )
     server_address: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="被监控的 SQL Server 地址"
+        String(255), nullable=False, index=True, comment="被监控的 SQL Server 地址"
     )
 
     def __repr__(self) -> str:

@@ -5,6 +5,7 @@
 
 import logging
 from datetime import datetime, timezone
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -16,7 +17,12 @@ from app.services.auth_service import (
     authenticate_user,
     create_access_token,
     get_current_user,
+    get_user_by_email,
+    get_user_by_id,
     hash_password,
+    generate_reset_token,
+    verify_reset_token,
+    invalidate_reset_token,
     verify_password,
 )
 from app.services.audit_service import log_action
@@ -24,6 +30,19 @@ from app.services.audit_service import log_action
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_LOGIN_ATTEMPTS = defaultdict(list)
+_MAX_LOGIN_ATTEMPTS = 5
+_LOGIN_WINDOW_SECONDS = 60
+
+
+def _check_login_rate_limit(ip: str) -> bool:
+    now = datetime.now().timestamp()
+    _LOGIN_ATTEMPTS[ip] = [t for t in _LOGIN_ATTEMPTS[ip] if now - t < _LOGIN_WINDOW_SECONDS]
+    if len(_LOGIN_ATTEMPTS[ip]) >= _MAX_LOGIN_ATTEMPTS:
+        return False
+    _LOGIN_ATTEMPTS[ip].append(now)
+    return True
 
 
 class LoginRequest(BaseModel):
@@ -57,6 +76,13 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> LoginResponse:
+    client_ip = request.client.host if request.client else ""
+    if not _check_login_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="登录尝试过于频繁，请稍后再试",
+        )
+
     user = await authenticate_user(db, payload.username, payload.password)
     if not user:
         raise HTTPException(
@@ -115,3 +141,61 @@ async def change_password(
     await log_action(db, current_user.username, "UPDATE", "Auth", f"{current_user.username} 修改了密码", client_ip)
 
     return {"message": "密码修改成功"}
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., max_length=200)
+
+
+class ResetPasswordConfirmRequest(BaseModel):
+    token: str = Field(...)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
+@router.post("/forgot_password", summary="请求密码重置")
+async def forgot_password(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_user_by_email(db, payload.email)
+    if not user or not user.is_active:
+        return {"message": "如果该邮箱已注册，将收到重置链接"}
+
+    token = generate_reset_token(user.id)
+
+    try:
+        from app.services.notification import NotificationService
+        ns = NotificationService()
+        await ns.email_notifier.send_password_reset_email(
+            username=user.username,
+            email=user.email,
+            token=token,
+            full_name=user.full_name or "",
+        )
+    except Exception as e:
+        logger.error("Failed to send password reset email: %s", e)
+
+    return {"message": "如果该邮箱已注册，将收到重置链接"}
+
+
+@router.post("/reset_password", summary="重置密码")
+async def reset_password(
+    payload: ResetPasswordConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = verify_reset_token(payload.token)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="重置链接无效或已过期")
+
+    user = await get_user_by_id(db, user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="用户不存在或已禁用")
+
+    user.password_hash = hash_password(payload.new_password)
+    await db.commit()
+
+    invalidate_reset_token(payload.token)
+
+    logger.info("Password reset for user: %s", user.username)
+
+    return {"message": "密码重置成功"}

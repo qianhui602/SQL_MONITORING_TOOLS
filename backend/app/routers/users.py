@@ -43,7 +43,7 @@ class UserResponse(BaseModel):
 
 class CreateUserRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
-    password: str = Field(..., min_length=6, max_length=100)
+    password: Optional[str] = Field(default=None, min_length=6, max_length=100)
     role: str = Field(default=UserRole.VIEWER.value)
     full_name: Optional[str] = Field(default=None, max_length=100)
     email: Optional[str] = Field(default=None, max_length=200)
@@ -94,9 +94,11 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="用户名已存在（不区分大小写）")
 
+    import secrets
+    temp_password = payload.password or secrets.token_urlsafe(12)
     user = User(
         username=payload.username,
-        password_hash=hash_password(payload.password),
+        password_hash=hash_password(temp_password),
         role=payload.role,
         full_name=payload.full_name,
         email=payload.email,
@@ -120,7 +122,6 @@ async def create_user(
             ns = NotificationService()
             await ns.email_notifier.send_welcome_email(
                 username=payload.username,
-                password=payload.password,
                 full_name=payload.full_name or "",
                 to_email=payload.email,
             )
@@ -148,6 +149,8 @@ async def update_user(
             raise HTTPException(status_code=403, detail="超级管理员角色不可修改")
         if payload.is_active is False:
             raise HTTPException(status_code=403, detail="超级管理员账号不可禁用")
+        if payload.password and current_user.role != UserRole.SUPER_ADMIN.value:
+            raise HTTPException(status_code=403, detail="只有超级管理员可以修改超级管理员密码")
 
     if payload.role is not None:
         _validate_role(payload.role)

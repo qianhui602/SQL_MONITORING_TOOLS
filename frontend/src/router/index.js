@@ -2,6 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { authStore } from '@/stores/auth'
 import { getSetupStatus } from '@/api'
 
+let setupStatusCache = null
+let setupStatusCacheTime = 0
+const CACHE_TTL = 5 * 60 * 1000
+
 const routes = [
   {
     path: '/login',
@@ -114,9 +118,18 @@ router.beforeEach(async (to, from, next) => {
   // 系统初始化检查（除 /setup 本身外均检测）
   if (to.path !== '/setup') {
     try {
-      const status = await getSetupStatus()
-      if (!status.initialized) {
-        return next({ path: '/setup' })
+      const now = Date.now()
+      if (setupStatusCache && now - setupStatusCacheTime < CACHE_TTL) {
+        if (!setupStatusCache.initialized) {
+          return next({ path: '/setup' })
+        }
+      } else {
+        const status = await getSetupStatus()
+        setupStatusCache = status
+        setupStatusCacheTime = now
+        if (!status.initialized) {
+          return next({ path: '/setup' })
+        }
       }
     } catch {
       // 如果请求失败，继续正常导航

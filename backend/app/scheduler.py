@@ -21,6 +21,7 @@ from app.database import async_session_factory
 from app.models.instance import MonitoredInstance
 from app.models.slow_query import SlowQueryRecord
 from app.services.alert_service import AlertEngine
+from app.services.cache import cache_configs, get_cached_configs, cache_instances, get_cached_instances
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,9 @@ class SchedulerManager:
 
     async def _load_runtime_config(self) -> Optional[Dict[str, str]]:
         """从数据库加载运行时配置（SQL Server 连接信息等）"""
+        cached = get_cached_configs()
+        if cached:
+            return cached
         try:
             async with async_session_factory() as session:
                 result = await session.execute(
@@ -178,6 +182,7 @@ class SchedulerManager:
                 config = {}
                 for row in result:
                     config[row[0]] = row[1]
+                cache_configs(config)
                 return config
         except Exception as e:
             logger.error("Failed to load runtime config: %s", e)
@@ -207,6 +212,9 @@ class SchedulerManager:
 
     async def _load_active_instances(self) -> List[MonitoredInstance]:
         """加载所有启用的监控实例"""
+        cached = get_cached_instances()
+        if cached:
+            return cached
         try:
             async with async_session_factory() as session:
                 result = await session.execute(
@@ -215,8 +223,10 @@ class SchedulerManager:
                     ).order_by(MonitoredInstance.id)
                 )
                 instances = result.scalars().all()
-                logger.info("Loaded %d active monitored instance(s)", len(instances))
-                return list(instances)
+                instances_list = list(instances)
+                cache_instances(instances_list)
+                logger.info("Loaded %d active monitored instance(s)", len(instances_list))
+                return instances_list
         except Exception as e:
             logger.error("Failed to load active instances: %s", e)
             return []
@@ -532,13 +542,13 @@ class SchedulerManager:
     async def _store_metrics(
         self, session, metrics: list[Dict[str, Any]], server_address: str
     ) -> None:
-        """将指标数据写入 PostgreSQL"""
+        """将指标数据批量写入 PostgreSQL"""
+        all_params = []
         for metric in metrics:
             category = metric["category"]
             timestamp = metric["timestamp"]
             values = metric["values"]
 
-            # Parse ISO format timestamp to datetime
             if isinstance(timestamp, str):
                 timestamp = datetime.fromisoformat(timestamp)
 
@@ -546,25 +556,27 @@ class SchedulerManager:
                 if value is None:
                     continue
                 try:
-                    stmt = text("""
-                        INSERT INTO metrics (category, metric_name, metric_value, collected_at, server_address)
-                        VALUES (:category, :metric_name, :metric_value, :collected_at, :server_address)
-                    """)
-                    await session.execute(
-                        stmt,
-                        {
-                            "category": category,
-                            "metric_name": key,
-                            "metric_value": float(value),
-                            "collected_at": timestamp,
-                            "server_address": server_address,
-                        },
-                    )
+                    all_params.append({
+                        "category": category,
+                        "metric_name": key,
+                        "metric_value": float(value),
+                        "collected_at": timestamp,
+                        "server_address": server_address,
+                    })
                 except (TypeError, ValueError) as e:
                     logger.warning(
                         "Skip metric %s/%s: invalid value %r - %s",
                         category, key, value, e,
                     )
+
+        if not all_params:
+            return
+
+        stmt = text("""
+            INSERT INTO metrics (category, metric_name, metric_value, collected_at, server_address)
+            VALUES (:category, :metric_name, :metric_value, :collected_at, :server_address)
+        """)
+        await session.execute(stmt, all_params)
 
     async def _store_deadlocks(
         self, session, deadlocks: list[Dict[str, Any]], server_address: str
@@ -656,7 +668,7 @@ class SchedulerManager:
         logger.info("Cleanup job added: daily at 03:00")
 
     async def _cleanup_old_data(self) -> None:
-        """清理超过保留天数的旧监控数据"""
+        """清理超过保留天数的旧监控数据（分批删除，避免锁表）"""
         try:
             async with async_session_factory() as session:
                 result = await session.execute(
@@ -673,35 +685,73 @@ class SchedulerManager:
                 ) - timedelta(days=retention_days)
 
                 tables = [
-                    "metrics",
-                    "slow_queries",
-                    "disk_space_records",
-                    "blocking_events",
+                    ("metrics", "collected_at"),
+                    ("slow_queries", "collected_at"),
+                    ("disk_space_records", "collected_at"),
+                    ("blocking_events", "collected_at"),
+                    ("deadlocks", "occur_at"),
+                    ("deadlock_sqls", "event_id"),
+                    ("missing_indexes", "collected_at"),
+                    ("index_fragmentation", "collected_at"),
                 ]
+                batch_size = 1000
                 total_deleted = 0
-                for table in tables:
+
+                for table, date_column in tables:
                     try:
-                        result = await session.execute(
-                            text(f"DELETE FROM {table} WHERE collected_at < :cutoff"),
-                            {"cutoff": cutoff},
-                        )
-                        deleted = result.rowcount
-                        total_deleted += deleted
-                        if deleted > 0:
-                            logger.info("Cleanup %s: deleted %d rows older than %d days", table, deleted, retention_days)
+                        if table == "deadlock_sqls":
+                            result = await session.execute(
+                                text("SELECT id FROM deadlocks WHERE occur_at < :cutoff"),
+                                {"cutoff": cutoff},
+                            )
+                            deadlock_ids = [row[0] for row in result]
+                            if deadlock_ids:
+                                deleted = 0
+                                while deadlock_ids:
+                                    batch_ids = deadlock_ids[:batch_size]
+                                    deadlock_ids = deadlock_ids[batch_size:]
+                                    result = await session.execute(
+                                        text(f"DELETE FROM {table} WHERE event_id IN ({','.join([':id_%d' % i for i in range(len(batch_ids))])})"),
+                                        {f"id_{i}": id_val for i, id_val in enumerate(batch_ids)},
+                                    )
+                                    deleted += result.rowcount
+                                total_deleted += deleted
+                                if deleted > 0:
+                                    logger.info("Cleanup %s: deleted %d rows", table, deleted)
+                        else:
+                            deleted = 0
+                            while True:
+                                result = await session.execute(
+                                    text(f"DELETE FROM {table} WHERE {date_column} < :cutoff LIMIT :batch_size"),
+                                    {"cutoff": cutoff, "batch_size": batch_size},
+                                )
+                                batch_deleted = result.rowcount
+                                if batch_deleted == 0:
+                                    break
+                                deleted += batch_deleted
+                                await session.commit()
+                            total_deleted += deleted
+                            if deleted > 0:
+                                logger.info("Cleanup %s: deleted %d rows older than %d days", table, deleted, retention_days)
                     except Exception as e:
                         logger.warning("Failed to clean table %s: %s", table, e)
 
-                # 清理旧的告警日志（保留 180 天）
                 alert_cutoff = datetime.now(timezone.utc) - timedelta(days=180)
                 try:
-                    result = await session.execute(
-                        text("DELETE FROM alert_logs WHERE triggered_at < :cutoff"),
-                        {"cutoff": alert_cutoff},
-                    )
-                    if result.rowcount > 0:
-                        total_deleted += result.rowcount
-                        logger.info("Cleanup alert_logs: deleted %d rows", result.rowcount)
+                    deleted = 0
+                    while True:
+                        result = await session.execute(
+                            text("DELETE FROM alert_logs WHERE triggered_at < :cutoff LIMIT :batch_size"),
+                            {"cutoff": alert_cutoff, "batch_size": batch_size},
+                        )
+                        batch_deleted = result.rowcount
+                        if batch_deleted == 0:
+                            break
+                        deleted += batch_deleted
+                        await session.commit()
+                    total_deleted += deleted
+                    if deleted > 0:
+                        logger.info("Cleanup alert_logs: deleted %d rows", deleted)
                 except Exception as e:
                     logger.warning("Failed to clean alert_logs: %s", e)
 

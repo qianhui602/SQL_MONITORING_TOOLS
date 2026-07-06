@@ -173,6 +173,8 @@ let lockChart = null
 let batchChart = null
 let modalChart = null
 let timer = null
+let fetching = false
+let resizeTimeout = null
 
 const cpuTimeData = ref([])
 const cpuValueData = ref([])
@@ -634,13 +636,18 @@ function initBatchChart() {
 }
 
 function resizeCharts() {
-  cpuChart?.resize()
-  memoryChart?.resize()
-  connChart?.resize()
-  ioChart?.resize()
-  lockChart?.resize()
-  batchChart?.resize()
-  modalChart?.resize()
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = setTimeout(() => {
+    cpuChart?.resize()
+    memoryChart?.resize()
+    connChart?.resize()
+    ioChart?.resize()
+    lockChart?.resize()
+    batchChart?.resize()
+    modalChart?.resize()
+  }, 200)
 }
 
 function formatTimeLabels(items) {
@@ -656,6 +663,8 @@ function extractMetricValues(historyData, metricName) {
 }
 
 async function fetchData() {
+  if (fetching) return
+  fetching = true
   loading.value = true
   try {
     const range = getTimeRange()
@@ -828,6 +837,7 @@ async function fetchData() {
     console.error('获取数据失败', e)
   } finally {
     loading.value = false
+    fetching = false
   }
 }
 

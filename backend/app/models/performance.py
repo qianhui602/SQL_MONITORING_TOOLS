@@ -26,7 +26,7 @@ class MetricRecord(Base):
         String(50), nullable=False, index=True, comment="指标分类：cpu / memory / connection / io"
     )
     metric_name: Mapped[str] = mapped_column(
-        String(100), nullable=False, comment="指标名称，如 cpu_usage_percent"
+        String(100), nullable=False, index=True, comment="指标名称，如 cpu_usage_percent"
     )
     metric_value: Mapped[float] = mapped_column(
         Float, nullable=False, comment="指标数值"

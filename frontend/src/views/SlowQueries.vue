@@ -23,7 +23,19 @@
       <button class="btn-primary" @click="onSearch">查询</button>
     </div>
 
-    <div class="table-card">
+    <div v-if="error" class="error-state">
+      <div class="error-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f5222d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <p class="error-text">{{ error }}</p>
+      <button class="btn-primary" @click="fetchList">重试</button>
+    </div>
+
+    <div class="table-card" v-else>
       <table class="data-table">
         <thead>
           <tr>
@@ -175,6 +187,7 @@ const expandedId = ref(null)
 const expandedQuery = ref('')
 const sortField = ref('total_elapsed_ms')
 const sortOrder = ref('desc')
+const error = ref(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
@@ -187,6 +200,7 @@ function getTimeRange() {
 }
 
 async function fetchList() {
+  error.value = null
   try {
     const range = getTimeRange()
     const params = {
@@ -204,6 +218,9 @@ async function fetchList() {
     total.value = data.total || 0
   } catch (e) {
     console.error('获取慢查询列表失败', e)
+    error.value = '获取慢查询列表失败，请稍后重试'
+    list.value = []
+    total.value = 0
   }
 }
 
@@ -599,5 +616,27 @@ onMounted(() => {
   outline: none;
   background: var(--bg-card, #fff);
   color: var(--text-primary, #333);
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: var(--bg-card, #fff);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  gap: 12px;
+}
+
+.error-icon {
+  color: #f5222d;
+}
+
+.error-text {
+  font-size: 14px;
+  color: #f5222d;
+  margin: 0;
 }
 </style>

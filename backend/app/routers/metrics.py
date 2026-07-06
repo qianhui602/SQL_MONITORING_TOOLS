@@ -298,9 +298,9 @@ async def get_metrics_summary(
         if server_address:
             disk_conditions.append(DiskSpaceRecord.server_address == server_address)
         disk_stmt = (
-            select(func.max(DiskSpaceRecord.usage_pct))
+            select(sa_func.max(DiskSpaceRecord.usage_pct))
             .where(*disk_conditions) if disk_conditions
-            else select(func.max(DiskSpaceRecord.usage_pct))
+            else select(sa_func.max(DiskSpaceRecord.usage_pct))
         )
         disk_result = await db.execute(disk_stmt)
         disk_usage = disk_result.scalar()

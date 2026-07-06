@@ -185,7 +185,7 @@ class EmailNotifier:
             logger.info("Email sent to %s: %s", self.recipients, subject)
         return ok
 
-    async def send_welcome_email(self, username: str, password: str, full_name: str = "", to_email: str = "") -> bool:
+    async def send_welcome_email(self, username: str, full_name: str = "", to_email: str = "") -> bool:
         """发送新用户欢迎邮件（中英双语 HTML）"""
         await self._load_db_config()
         if not self._is_configured():
@@ -197,17 +197,20 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 账号已创建 / Account Created - {display_name}"
-        login_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
+        frontend_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
+        reset_url = f"{frontend_url}/reset-password" if frontend_url else ""
 
         html = _HTML_HEAD
         html += _html_header("欢迎加入 SQL Monitor", "Welcome to SQL Monitor", "#1890ff")
         html += _html_section("账号信息", "Account Information")
         html += _html_body_row("姓名", "Name", display_name)
         html += _html_body_row("用户名", "Username", username)
-        html += _html_body_row("初始密码", "Initial Password",
-                               f'<span style="background:#fff1f0;padding:3px 8px;border-radius:4px;color:#cf1322;font-family:monospace;">{password}</span>')
-        html += _html_section("登录地址", "Login URL")
-        html += _html_button(login_url, "立即登录", "Login Now")
+        html += _html_section("设置密码", "Set Your Password")
+        html += f'<tr><td style="padding:12px 32px;">'
+        html += f'<p style="margin:0;color:#666;font-size:13px;line-height:1.6;">'
+        html += f'请点击下方按钮设置您的登录密码。<br>'
+        html += f'Please click the button below to set your login password.</p></td></tr>'
+        html += _html_button(reset_url, "设置密码", "Set Password")
         html += _html_footer_note()
         html += _HTML_FOOT
 
@@ -217,6 +220,47 @@ class EmailNotifier:
             logger.info("Welcome email sent to %s", recipients)
         else:
             logger.error("Failed to send welcome email to %s", recipients)
+        return ok
+
+    async def send_password_reset_email(self, username: str, email: str, token: str, full_name: str = "") -> bool:
+        """发送密码重置邮件（中英双语 HTML）"""
+        await self._load_db_config()
+        if not self._is_configured():
+            return False
+
+        recipients = [email]
+        if not recipients:
+            return False
+
+        display_name = full_name or username
+        subject = f"SQL Monitor 密码重置 / Password Reset - {display_name}"
+        frontend_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
+        reset_url = f"{frontend_url}/reset-password?token={token}" if frontend_url else f"/api/auth/reset_password?token={token}"
+
+        html = _HTML_HEAD
+        html += _html_header("密码重置", "Password Reset", "#fa8c16")
+        html += _html_section("尊敬的用户", "Dear User")
+        html += f'<tr><td style="padding:12px 32px;">'
+        html += f'<p style="margin:0;color:#666;font-size:13px;line-height:1.6;">'
+        html += f'您收到此邮件是因为有人请求重置您的 SQL Monitor 账户密码。<br>'
+        html += f'如果这不是您本人操作，请忽略此邮件。</p></td></tr>'
+        html += _html_section("重置密码", "Reset Password")
+        html += f'<tr><td style="padding:12px 32px;">'
+        html += f'<p style="margin:0;color:#666;font-size:13px;line-height:1.6;">'
+        html += f'请点击下方按钮重置您的密码，此链接将在 30 分钟后失效。<br>'
+        html += f'Please click the button below to reset your password. This link will expire in 30 minutes.</p></td></tr>'
+        html += _html_button(reset_url, "重置密码", "Reset Password")
+        html += _html_section("用户名", "Username")
+        html += _html_body_row("用户名", "Username", username)
+        html += _html_footer_note()
+        html += _HTML_FOOT
+
+        msg = self._build_message(subject, html, recipients)
+        ok = self._send_msg(msg, recipients)
+        if ok:
+            logger.info("Password reset email sent to %s", recipients)
+        else:
+            logger.error("Failed to send password reset email to %s", recipients)
         return ok
 
     async def send_alert_email(self, subject: str, alert_type: str, alert_detail: str,

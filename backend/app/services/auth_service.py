@@ -4,6 +4,7 @@
 """
 
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -20,30 +21,25 @@ from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
-# OAuth2 Bearer 用于从 Authorization Header 提取 token
+_PASSWORD_RESET_TOKENS = {}
+_RESET_TOKEN_EXPIRE_MINUTES = 30
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
-# ===== 密码工具 =====
-
 def hash_password(plain: str) -> str:
-    """使用 bcrypt 哈希密码"""
     salt = bcrypt.gensalt(rounds=12)
     return bcrypt.hashpw(plain.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """验证密码"""
     try:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     except (ValueError, TypeError):
         return False
 
 
-# ===== JWT 工具 =====
-
 def create_access_token(user_id: int, username: str, role: str) -> str:
-    """生成 JWT access token"""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
@@ -56,7 +52,6 @@ def create_access_token(user_id: int, username: str, role: str) -> str:
 
 
 def decode_token(token: str) -> Optional[dict]:
-    """解码 JWT token，失败返回 None"""
     try:
         return jwt.decode(
             token,
@@ -71,15 +66,9 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-# ===== 用户操作 =====
-
 async def authenticate_user(
     db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
-    """根据用户名和密码验证用户（用户名不区分大小写）
-
-    返回 User 对象或 None
-    """
     if not username:
         return None
     stmt = select(User).where(func.lower(User.username) == username.lower())
@@ -87,6 +76,7 @@ async def authenticate_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        verify_password(password, "fake_hash_for_timing_attack_prevention_0123456789")
         return None
     if not user.is_active:
         return None
@@ -101,13 +91,37 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
-# ===== FastAPI 依赖 =====
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    stmt = select(User).where(func.lower(User.email) == email.lower())
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+def generate_reset_token(user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=_RESET_TOKEN_EXPIRE_MINUTES)
+    _PASSWORD_RESET_TOKENS[token] = {"user_id": user_id, "expires_at": expires_at}
+    return token
+
+
+def verify_reset_token(token: str) -> Optional[int]:
+    data = _PASSWORD_RESET_TOKENS.get(token)
+    if not data:
+        return None
+    if datetime.now(timezone.utc) > data["expires_at"]:
+        del _PASSWORD_RESET_TOKENS[token]
+        return None
+    return data["user_id"]
+
+
+def invalidate_reset_token(token: str) -> None:
+    _PASSWORD_RESET_TOKENS.pop(token, None)
+
 
 async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """从请求中解析当前登录用户"""
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,7 +148,6 @@ async def get_current_user(
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """要求管理员（含超级管理员）权限"""
     if current_user.role not in (UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -144,7 +157,6 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
-    """要求超级管理员权限"""
     if current_user.role != UserRole.SUPER_ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

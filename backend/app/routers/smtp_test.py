@@ -2,11 +2,12 @@
 SMTP 邮件测试路由
 """
 
-from fastapi import APIRouter, Depends
+import ipaddress
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
-from app.services.auth_service import get_current_user
+from app.services.auth_service import require_admin
 from app.services.notification import EmailNotifier, _HTML_HEAD, _HTML_FOOT, _html_header, _html_body_row
 
 router = APIRouter()
@@ -20,11 +21,26 @@ class SmtpTestRequest(BaseModel):
     recipients: str = ""
 
 
+def _is_internal_address(host: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        internal_hostnames = {
+            "localhost", "127.0.0.1", "0.0.0.0",
+            "localhost.localdomain", "local",
+        }
+        return host.lower() in internal_hostnames
+
+
 @router.post("/test", summary="测试 SMTP 邮件发送")
 async def test_smtp(
     payload: SmtpTestRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_admin),
 ):
+    if _is_internal_address(payload.server):
+        raise HTTPException(status_code=400, detail="不允许使用内网地址作为 SMTP 服务器")
+
     notifier = EmailNotifier()
     notifier.server = payload.server
     notifier.port = payload.port
@@ -50,7 +66,7 @@ async def test_smtp(
 
     import asyncio
     success = await asyncio.get_event_loop().run_in_executor(
-        None, lambda: notifier._send_sync(subject, html)
+        None, lambda: notifier._send_msg(notifier._build_message(subject, html, notifier.recipients), notifier.recipients)
     )
 
     if success:

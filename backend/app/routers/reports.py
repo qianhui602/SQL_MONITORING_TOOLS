@@ -522,17 +522,25 @@ async def get_report_summary(
     # 避免 AI 分析期间长时间持有数据库连接。
     async with async_session_factory() as query_session:
         server_address = await _resolve_server_address(query_session, instance_id)
-        summary = await _query_summary(query_session, server_address)
-        trends = await _query_trends(query_session, start_dt, end_dt, server_address)
-        deadlocks = await _query_deadlocks(query_session, start_dt, end_dt, server_address)
-        slow_queries = await _query_slow_queries(
-            query_session, start_dt, end_dt, server_address
+        (
+            summary,
+            trends,
+            deadlocks,
+            slow_queries,
+            blocking,
+            disk,
+            indexes,
+            deepseek_config,
+        ) = await asyncio.gather(
+            _query_summary(query_session, server_address),
+            _query_trends(query_session, start_dt, end_dt, server_address),
+            _query_deadlocks(query_session, start_dt, end_dt, server_address),
+            _query_slow_queries(query_session, start_dt, end_dt, server_address),
+            _query_blocking(query_session, start_dt, end_dt, server_address),
+            _query_disk(query_session, server_address),
+            _query_indexes(query_session, server_address),
+            get_deepseek_config(query_session),
         )
-        blocking = await _query_blocking(query_session, start_dt, end_dt, server_address)
-        disk = await _query_disk(query_session, server_address)
-        indexes = await _query_indexes(query_session, server_address)
-        # deepseek 配置也需要 db session，在查询阶段一并获取
-        deepseek_config = await get_deepseek_config(query_session)
 
     # 数据查询完成后 session 已关闭，再调用 AI 分析（耗时操作不占用 db 连接）
     report_data_for_ai = {
