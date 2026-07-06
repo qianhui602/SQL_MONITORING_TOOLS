@@ -215,7 +215,11 @@ frontend/
 │   │   ├── Settings.vue       # 系统设置
 │   │   ├── Report.vue         # 系统报告
 │   │   ├── Upgrade.vue        # 在线升级
-│   │   └── Login.vue          # 登录页面
+│   │   ├── Login.vue          # 登录页面
+│   │   ├── ForgotPassword.vue  # 找回密码
+│   │   ├── ResetPassword.vue   # 重置密码（重定向到找回密码）
+│   │   ├── Profile.vue         # 个人设置
+│   │   └── Setup.vue           # 安装引导
 │   ├── App.vue                # 根组件
 │   └── main.js                # 应用入口
 ├── Dockerfile                 # Docker 构建文件
@@ -538,6 +542,30 @@ class AuthService:
             return None
 ```
 
+#### 密码重置验证码
+
+密码重置采用验证码方式，验证码存储在内存中（30 分钟过期）：
+
+```python
+def generate_reset_code(user_id: int) -> str:
+    """生成 6 位数字验证码"""
+    code = "".join(random.choices(string.digits, k=6))
+    _PASSWORD_RESET_CODES[code] = {
+        "user_id": user_id,
+        "expires_at": now + timedelta(minutes=30),
+    }
+    return code
+
+def verify_reset_code(code: str) -> Optional[int]:
+    """验证验证码，返回 user_id"""
+    data = _PASSWORD_RESET_CODES.get(code)
+    if not data or datetime.now(timezone.utc) > data["expires_at"]:
+        return None
+    return data["user_id"]
+```
+
+验证码使用后立即失效，同一用户重新生成时会清除旧验证码。
+
 ### 3.6 AI 分析服务 (deepseek.py)
 
 AI 分析服务集成 DeepSeek API 进行智能分析：
@@ -586,8 +614,9 @@ async def analyze_deadlock(deadlock_info: dict) -> Optional[str]:
 │ password_hash   │       │ config_value    │
 │ role            │       │ description     │
 │ full_name       │       │ created_at      │
-│ is_active       │       │ updated_at      │
-│ last_login_at   │       └─────────────────┘
+│ email           │       │ updated_at      │
+│ is_active       │       └─────────────────┘
+│ last_login_at   │
 │ created_at      │
 │ updated_at      │
 └─────────────────┘
@@ -819,6 +848,7 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
     "username": "string",
     "role": "string",
     "full_name": "string",
+    "email": "string",
     "is_active": true,
     "last_login_at": "2024-01-01T00:00:00Z"
   }
@@ -840,6 +870,44 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
     "message": "密码修改成功"
   }
   ```
+
+**POST /api/auth/forgot_password**
+- 描述：请求密码重置验证码
+- 请求体：
+  ```json
+  { "email": "string" }
+  ```
+- 响应：
+  ```json
+  { "message": "如果该邮箱已注册，将收到验证码" }
+  ```
+
+**POST /api/auth/reset_password**
+- 描述：通过验证码重置密码
+- 请求体：
+  ```json
+  {
+    "email": "string",
+    "code": "6位数字验证码",
+    "new_password": "string"
+  }
+  ```
+- 响应：
+  ```json
+  { "message": "密码重置成功" }
+  ```
+
+**PUT /api/auth/me**
+- 描述：更新当前用户个人信息（姓名、邮箱）
+- 请求头：`Authorization: Bearer <token>`
+- 请求体：
+  ```json
+  {
+    "full_name": "string",
+    "email": "string"
+  }
+  ```
+- 响应：返回更新后的用户信息
 
 #### 5.3.2 性能指标接口
 
@@ -1585,7 +1653,11 @@ App.vue
         ├── AuditLogs.vue
         ├── Settings.vue
         ├── Report.vue
-        └── Login.vue
+        ├── Login.vue
+        ├── Profile.vue
+        ├── ForgotPassword.vue
+        ├── ResetPassword.vue
+        └── Setup.vue
 ```
 
 ### 6.2 路由配置
@@ -1728,13 +1800,19 @@ request.interceptors.request.use(
 )
 
 // 响应拦截器：处理 401 错误
+// 公开路径白名单：/login、/forgot-password、/reset-password、/setup
+// 在公开页面上的 401 不再强制跳转登录页
 request.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response && error.response.status === 401) {
-      clearAuth()
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      const publicPaths = ['/login', '/forgot-password', '/reset-password', '/setup']
+      const isPublicPath = publicPaths.some((p) => window.location.pathname.startsWith(p))
+      if (!isPublicPath) {
+        clearAuth()
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
       }
     }
     console.error('API Error:', error)
@@ -2207,6 +2285,15 @@ A: 检查以下配置：
 - 新增数据导出功能
 - 新增审计日志功能
 - 优化用户体验
+
+### v1.4.0 (2026-01-01)
+- 新增密码找回功能（邮箱验证码方式）
+- 新增个人设置页面（修改姓名、邮箱）
+- 新增安装引导页面（首次部署向导）
+- 新增通知声音提醒功能
+- 新增品牌定制（自定义标题和 Logo）
+- 新增前端访问地址配置项
+- 优化：公开页面 401 不再强制跳转登录页
 
 ## 14. 未来规划
 
