@@ -80,6 +80,17 @@ export function changePassword(oldPassword, newPassword) {
   })
 }
 
+export function forgotPassword(email) {
+  return request.post('/auth/forgot_password', { email })
+}
+
+export function resetPassword(token, newPassword) {
+  return request.post('/auth/reset_password', {
+    token,
+    new_password: newPassword
+  })
+}
+
 // ===== 用户管理 =====
 export function listUsers() {
   return request.get('/users')

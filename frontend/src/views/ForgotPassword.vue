@@ -1,0 +1,458 @@
+<template>
+  <div class="login-page">
+    <div class="login-left">
+      <div class="left-content">
+        <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="left-logo" />
+        <h1 class="left-title">{{ brandTitle }}</h1>
+        <p class="left-desc">实时监控 · 智能告警 · 深度分析</p>
+        <div class="left-features">
+          <div class="feature-item">
+            <span class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            </span>
+            <span>全方位性能指标监控</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span>智能告警与多渠道通知</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </span>
+            <span>AI 驱动的分析报告</span>
+          </div>
+        </div>
+      </div>
+      <div class="left-footer">太阳谷信息技术部 &copy; 2026</div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-card">
+        <h2 class="login-title">找回密码</h2>
+        <p class="login-subtitle">请输入您的注册邮箱，我们将发送重置链接</p>
+
+        <form v-if="!sent" class="login-form" @submit.prevent="onSubmit">
+          <div class="form-item">
+            <label>邮箱地址</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <input
+                v-model="form.email"
+                type="email"
+                autocomplete="email"
+                placeholder="请输入注册邮箱"
+                :disabled="loading"
+                required
+              />
+            </div>
+          </div>
+
+          <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+
+          <button type="submit" class="login-btn" :disabled="loading">
+            <span v-if="loading" class="btn-spinner"></span>
+            {{ loading ? '发送中...' : '发送重置链接' }}
+          </button>
+
+          <p class="form-footer">
+            想起密码了？
+            <router-link to="/login" class="link">返回登录</router-link>
+          </p>
+        </form>
+
+        <div v-else class="success-state">
+          <div class="success-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3 class="success-title">邮件已发送</h3>
+          <p class="success-desc">
+            如果该邮箱已注册，我们已向 <strong>{{ form.email }}</strong> 发送了密码重置链接。<br>
+            链接有效期为 30 分钟，请注意查收。
+          </p>
+          <button class="login-btn" @click="goToLogin">返回登录</button>
+          <p class="form-footer" style="margin-top: 16px;">
+            没有收到邮件？
+            <a href="#" class="link" @click.prevent="resend">{{ countdown > 0 ? `${countdown}s 后可重发` : '重新发送' }}</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { forgotPassword, getConfig, getLogoUrl } from '@/api'
+
+const router = useRouter()
+const loading = ref(false)
+const errorMsg = ref('')
+const sent = ref(false)
+const countdown = ref(0)
+let countdownTimer = null
+
+const brandTitle = ref('数据库监控平台')
+const customLogoUrl = ref('')
+
+const form = reactive({
+  email: ''
+})
+
+async function fetchBrandConfig() {
+  try {
+    const title = await getConfig('brand_title')
+    if (title) brandTitle.value = title
+
+    const logoUrl = getLogoUrl()
+    const resp = await fetch(logoUrl, { method: 'HEAD' })
+    if (resp.ok) {
+      customLogoUrl.value = logoUrl + '?t=' + Date.now()
+    }
+  } catch (e) {
+    console.debug('品牌配置获取失败')
+  }
+}
+
+function startCountdown() {
+  countdown.value = 60
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
+async function onSubmit() {
+  if (loading.value) return
+  errorMsg.value = ''
+  loading.value = true
+  try {
+    await forgotPassword(form.email.trim())
+    sent.value = true
+    startCountdown()
+  } catch (e) {
+    errorMsg.value =
+      e?.response?.data?.detail || e.message || '发送失败，请稍后再试'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function resend() {
+  if (countdown.value > 0 || loading.value) return
+  await onSubmit()
+}
+
+function goToLogin() {
+  router.replace('/login')
+}
+
+onMounted(fetchBrandConfig)
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
+</script>
+
+<style scoped>
+.login-page {
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.login-left {
+  width: 45%;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-left::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: transparent;
+  pointer-events: none;
+}
+
+.left-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 0 48px;
+}
+
+.left-logo {
+  max-width: 220px;
+  max-height: 80px;
+  object-fit: contain;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.left-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #f0f4ff;
+  margin: 0 0 8px;
+  letter-spacing: 2px;
+}
+
+.left-desc {
+  font-size: 14px;
+  color: rgba(148, 163, 184, 0.9);
+  margin: 0 0 40px;
+  letter-spacing: 4px;
+}
+
+.left-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(203, 213, 225, 0.85);
+  font-size: 14px;
+}
+
+.feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.left-footer {
+  position: absolute;
+  bottom: 24px;
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.4);
+}
+
+.login-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.login-card {
+  width: 420px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 48px 40px 40px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.login-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0 0 32px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-item label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.input-wrap input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input-wrap input::placeholder {
+  color: #cbd5e1;
+}
+
+.input-wrap input:focus {
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.error-msg {
+  color: #dc2626;
+  font-size: 13px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.login-btn {
+  height: 46px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 2px;
+  width: 100%;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.form-footer {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.success-state {
+  text-align: center;
+}
+
+.success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.success-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 12px;
+}
+
+.success-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.8;
+  margin: 0 0 24px;
+}
+
+.success-desc strong {
+  color: #0f172a;
+}
+
+@media (max-width: 900px) {
+  .login-left {
+    display: none;
+  }
+  .login-right {
+    width: 100%;
+    background: #0f172a;
+  }
+  .login-card {
+    width: 90%;
+    max-width: 400px;
+  }
+}
+</style>

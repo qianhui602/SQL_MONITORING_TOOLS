@@ -71,6 +71,10 @@
             </div>
           </div>
 
+          <div class="forgot-password-row">
+            <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link>
+          </div>
+
           <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 
           <button type="submit" class="login-btn" :disabled="loading">
@@ -319,6 +323,22 @@ onMounted(fetchBrandConfig)
   border: 1px solid #fecaca;
   padding: 10px 14px;
   border-radius: 8px;
+}
+
+.forgot-password-row {
+  text-align: right;
+  margin-top: -8px;
+}
+
+.forgot-link {
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
 }
 
 .login-btn {
