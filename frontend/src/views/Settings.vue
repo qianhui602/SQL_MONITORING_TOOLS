@@ -88,6 +88,16 @@
             />
             <span class="config-desc">超过此天数的监控数据将被自动清理（建议 90-365 天）</span>
           </div>
+          <div class="config-item">
+            <label class="config-label">前端访问地址</label>
+            <input
+              type="text"
+              v-model="frontendUrl"
+              class="config-input"
+              placeholder="https://monitor.example.com"
+            />
+            <span class="config-desc">系统对外访问地址，用于密码重置邮件等链接生成</span>
+          </div>
         </div>
       </div>
 
@@ -381,6 +391,7 @@ const aiConfigs = reactive({
 })
 const timezone = ref('Asia/Shanghai')
 const dataRetentionDays = ref(90)
+const frontendUrl = ref('')
 const message = ref('')
 const messageType = ref('success')
 const smtpTesting = ref(false)
@@ -502,6 +513,7 @@ async function fetchConfigs() {
     // 系统设置
     timezone.value = find('timezone') || 'Asia/Shanghai'
     dataRetentionDays.value = find('data_retention_days') || '90'
+    frontendUrl.value = find('frontend_url') || ''
     setTimezone(timezone.value)
 
     // 采集配置
@@ -548,6 +560,7 @@ async function saveAll() {
     { key: 'ai_base_url', value: String(aiConfigs.ai_base_url) },
     { key: 'timezone', value: timezone.value },
     { key: 'data_retention_days', value: String(dataRetentionDays.value) },
+    { key: 'frontend_url', value: frontendUrl.value },
     { key: 'mssql_instances_enabled', value: collectConfigs.mssql_instances_enabled },
     { key: 'scheduler_interval_seconds', value: collectConfigs.scheduler_interval_seconds },
     { key: 'memory_alert_threshold_pct', value: alertConfigs.memory_alert_threshold_pct },

@@ -103,10 +103,11 @@ class EmailNotifier:
         self.user: str = ""
         self.password: str = ""
         self.recipients: List[str] = []
+        self.frontend_url: str = ""
         self._db_loaded = False
 
     async def _load_db_config(self) -> None:
-        """从数据库加载 SMTP 配置"""
+        """从数据库加载 SMTP 和前端 URL 配置"""
         if self._db_loaded:
             return
         try:
@@ -115,9 +116,12 @@ class EmailNotifier:
 
             async with async_session_factory() as session:
                 result = await session.execute(
-                    text("SELECT config_key, config_value FROM system_configs WHERE config_key IN ('smtp_server', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_recipients', 'smtp_enabled')")
+                    text("SELECT config_key, config_value FROM system_configs WHERE config_key IN ('smtp_server', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_recipients', 'smtp_enabled', 'frontend_url')")
                 )
                 config = {row[0]: row[1] for row in result}
+
+                self.frontend_url = config.get("frontend_url", "") or getattr(settings, "FRONTEND_URL", "")
+
                 if config.get("smtp_enabled", "false").lower() != "true":
                     self._db_loaded = True
                     return
@@ -128,12 +132,13 @@ class EmailNotifier:
                 raw_recipients = config.get("smtp_recipients", "")
                 self.recipients = [r.strip() for r in raw_recipients.split(",") if r.strip()]
         except Exception as e:
-            logger.warning("Failed to load SMTP config from DB: %s", e)
+            logger.warning("Failed to load config from DB: %s", e)
             self.server = settings.SMTP_SERVER
             self.port = settings.SMTP_PORT
             self.user = settings.SMTP_USER
             self.password = settings.SMTP_PASSWORD
             self.recipients = settings.ALERT_EMAILS
+            self.frontend_url = getattr(settings, "FRONTEND_URL", "")
         self._db_loaded = True
 
     def _is_configured(self) -> bool:
@@ -197,8 +202,7 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 账号已创建 / Account Created - {display_name}"
-        frontend_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
-        reset_url = f"{frontend_url}/reset-password" if frontend_url else ""
+        reset_url = f"{self.frontend_url}/reset-password" if self.frontend_url else ""
 
         html = _HTML_HEAD
         html += _html_header("欢迎加入 SQL Monitor", "Welcome to SQL Monitor", "#1890ff")
@@ -234,8 +238,7 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 密码重置 / Password Reset - {display_name}"
-        frontend_url = getattr(settings, "FRONTEND_URL", "") or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "")
-        reset_url = f"{frontend_url}/reset-password?token={token}" if frontend_url else f"/api/auth/reset_password?token={token}"
+        reset_url = f"{self.frontend_url}/reset-password?token={token}" if self.frontend_url else f"/api/auth/reset_password?token={token}"
 
         html = _HTML_HEAD
         html += _html_header("密码重置", "Password Reset", "#fa8c16")
