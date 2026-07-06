@@ -159,6 +159,13 @@ async def update_config(
         )
 
     old_value = config.config_value
+    if old_value == body.config_value:
+        return ConfigItem(
+            config_key=config.config_key,
+            config_value=config.config_value,
+            description=config.description,
+        )
+
     update_stmt = (
         update(SystemConfig)
         .where(SystemConfig.config_key == key)
@@ -176,7 +183,6 @@ async def update_config(
     result = await db.execute(check_stmt)
     updated_config = result.scalar_one()
 
-    # 记录审计日志
     client_ip = request.client.host if request.client else ""
     await log_action(
         db, current_user.username, "UPDATE", "Config",
