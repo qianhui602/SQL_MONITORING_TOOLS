@@ -1545,12 +1545,6 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 }
 
 /* 响应式 */
-.stat-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
 @media (max-width: 900px) {
   .chart-card {
     flex: 1 1 100%;
@@ -1573,8 +1567,7 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 }
 
 @media (max-width: 768px) {
-  .stat-cards {
-    display: grid;
+  .stat-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1595,7 +1588,7 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 }
 
 @media (max-width: 480px) {
-  .stat-cards {
+  .stat-grid {
     grid-template-columns: 1fr;
   }
 
