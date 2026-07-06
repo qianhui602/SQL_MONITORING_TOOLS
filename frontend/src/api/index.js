@@ -89,9 +89,10 @@ export function forgotPassword(email) {
   return request.post('/auth/forgot_password', { email })
 }
 
-export function resetPassword(token, newPassword) {
+export function resetPassword(email, code, newPassword) {
   return request.post('/auth/reset_password', {
-    token,
+    email,
+    code,
     new_password: newPassword
   })
 }

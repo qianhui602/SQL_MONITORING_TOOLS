@@ -20,9 +20,9 @@ from app.services.auth_service import (
     get_user_by_email,
     get_user_by_id,
     hash_password,
-    generate_reset_token,
-    verify_reset_token,
-    invalidate_reset_token,
+    generate_reset_code,
+    verify_reset_code,
+    invalidate_reset_code,
     verify_password,
 )
 from app.services.audit_service import log_action
@@ -208,22 +208,21 @@ class ResetPasswordRequest(BaseModel):
 
 
 class ResetPasswordConfirmRequest(BaseModel):
-    token: str = Field(...)
+    email: str = Field(..., max_length=200)
+    code: str = Field(..., min_length=6, max_length=6)
     new_password: str = Field(..., min_length=6, max_length=100)
 
 
 @router.post("/forgot_password", summary="请求密码重置")
 async def forgot_password(
     payload: ResetPasswordRequest,
-    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_user_by_email(db, payload.email)
     if not user or not user.is_active:
-        return {"message": "如果该邮箱已注册，将收到重置链接"}
+        return {"message": "如果该邮箱已注册，将收到验证码"}
 
-    token = generate_reset_token(user.id)
-    base_url = _get_base_url(request)
+    code = generate_reset_code(user.id)
 
     try:
         from app.services.notification import NotificationService
@@ -231,14 +230,13 @@ async def forgot_password(
         await ns.email_notifier.send_password_reset_email(
             username=user.username,
             email=user.email,
-            token=token,
+            code=code,
             full_name=user.full_name or "",
-            base_url=base_url,
         )
     except Exception as e:
         logger.error("Failed to send password reset email: %s", e)
 
-    return {"message": "如果该邮箱已注册，将收到重置链接"}
+    return {"message": "如果该邮箱已注册，将收到验证码"}
 
 
 @router.post("/reset_password", summary="重置密码")
@@ -246,18 +244,22 @@ async def reset_password(
     payload: ResetPasswordConfirmRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    user_id = verify_reset_token(payload.token)
+    user_id = verify_reset_code(payload.code)
     if not user_id:
-        raise HTTPException(status_code=400, detail="重置链接无效或已过期")
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
 
     user = await get_user_by_id(db, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=400, detail="用户不存在或已禁用")
 
+    # 额外校验邮箱匹配
+    if user.email and user.email.lower() != payload.email.strip().lower():
+        raise HTTPException(status_code=400, detail="邮箱与验证码不匹配")
+
     user.password_hash = hash_password(payload.new_password)
     await db.commit()
 
-    invalidate_reset_token(payload.token)
+    invalidate_reset_code(payload.code)
 
     logger.info("Password reset for user: %s", user.username)
 

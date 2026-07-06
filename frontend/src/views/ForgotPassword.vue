@@ -31,54 +31,139 @@
 
     <div class="login-right">
       <div class="login-card">
-        <h2 class="login-title">找回密码</h2>
-        <p class="login-subtitle">请输入您的注册邮箱，我们将发送重置链接</p>
+        <!-- 步骤 1：输入邮箱 -->
+        <template v-if="step === 1">
+          <h2 class="login-title">找回密码</h2>
+          <p class="login-subtitle">请输入您的注册邮箱，我们将发送验证码</p>
 
-        <form v-if="!sent" class="login-form" @submit.prevent="onSubmit">
-          <div class="form-item">
-            <label>邮箱地址</label>
-            <div class="input-wrap">
-              <span class="input-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </span>
-              <input
-                v-model="form.email"
-                type="email"
-                autocomplete="email"
-                placeholder="请输入注册邮箱"
-                :disabled="loading"
-                required
-              />
+          <form class="login-form" @submit.prevent="sendCode">
+            <div class="form-item">
+              <label>邮箱地址</label>
+              <div class="input-wrap">
+                <span class="input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </span>
+                <input
+                  v-model="email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="请输入注册邮箱"
+                  :disabled="loading"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+            <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 
-          <button type="submit" class="login-btn" :disabled="loading">
-            <span v-if="loading" class="btn-spinner"></span>
-            {{ loading ? '发送中...' : '发送重置链接' }}
-          </button>
+            <button type="submit" class="login-btn" :disabled="loading">
+              <span v-if="loading" class="btn-spinner"></span>
+              {{ loading ? '发送中...' : '发送验证码' }}
+            </button>
 
-          <p class="form-footer">
-            想起密码了？
-            <router-link to="/login" class="link">返回登录</router-link>
-          </p>
-        </form>
+            <p class="form-footer">
+              想起密码了？
+              <router-link to="/login" class="link">返回登录</router-link>
+            </p>
+          </form>
+        </template>
 
+        <!-- 步骤 2：输入验证码和新密码 -->
+        <template v-else-if="step === 2">
+          <h2 class="login-title">重置密码</h2>
+          <p class="login-subtitle">验证码已发送至 <strong>{{ email }}</strong></p>
+
+          <form class="login-form" @submit.prevent="onReset">
+            <div class="form-item">
+              <label>验证码</label>
+              <div class="input-wrap code-wrap">
+                <span class="input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                </span>
+                <input
+                  v-model="code"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="请输入 6 位验证码"
+                  :disabled="loading"
+                  required
+                  class="code-input"
+                />
+                <button type="button" class="resend-btn" :disabled="countdown > 0 || loading" @click="sendCode">
+                  {{ countdown > 0 ? `${countdown}s` : '重发' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="form-item">
+              <label>新密码</label>
+              <div class="input-wrap">
+                <span class="input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </span>
+                <input
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="请输入新密码（至少 6 位）"
+                  :disabled="loading"
+                  required
+                  minlength="6"
+                />
+                <button type="button" class="toggle-pwd" @click="showPassword = !showPassword">
+                  <svg v-if="!showPassword" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-item">
+              <label>确认新密码</label>
+              <div class="input-wrap">
+                <span class="input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </span>
+                <input
+                  v-model="confirmPassword"
+                  :type="showConfirm ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="请再次输入新密码"
+                  :disabled="loading"
+                  required
+                  minlength="6"
+                />
+                <button type="button" class="toggle-pwd" @click="showConfirm = !showConfirm">
+                  <svg v-if="!showConfirm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+
+            <button type="submit" class="login-btn" :disabled="loading">
+              <span v-if="loading" class="btn-spinner"></span>
+              {{ loading ? '重置中...' : '确认重置' }}
+            </button>
+
+            <p class="form-footer">
+              <a href="#" class="link" @click.prevent="step = 1">返回上一步</a>
+            </p>
+          </form>
+        </template>
+
+        <!-- 步骤 3：成功 -->
         <div v-else class="success-state">
           <div class="success-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
-          <h3 class="success-title">邮件已发送</h3>
+          <h3 class="success-title">密码重置成功</h3>
           <p class="success-desc">
-            如果该邮箱已注册，我们已向 <strong>{{ form.email }}</strong> 发送了密码重置链接。<br>
-            链接有效期为 30 分钟，请注意查收。
+            您的密码已成功重置。<br>
+            请使用新密码重新登录系统。
           </p>
-          <button class="login-btn" @click="goToLogin">返回登录</button>
-          <p class="form-footer" style="margin-top: 16px;">
-            没有收到邮件？
-            <a href="#" class="link" @click.prevent="resend">{{ countdown > 0 ? `${countdown}s 后可重发` : '重新发送' }}</a>
-          </p>
+          <button class="login-btn" @click="goToLogin">立即登录</button>
         </div>
       </div>
     </div>
@@ -86,23 +171,26 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { forgotPassword, getConfig, getLogoUrl } from '@/api'
+import { forgotPassword, resetPassword, getConfig, getLogoUrl } from '@/api'
 
 const router = useRouter()
 const loading = ref(false)
 const errorMsg = ref('')
-const sent = ref(false)
+const step = ref(1)
+
+const email = ref('')
+const code = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirm = ref(false)
 const countdown = ref(0)
 let countdownTimer = null
 
 const brandTitle = ref('数据库监控平台')
 const customLogoUrl = ref('')
-
-const form = reactive({
-  email: ''
-})
 
 async function fetchBrandConfig() {
   try {
@@ -130,13 +218,13 @@ function startCountdown() {
   }, 1000)
 }
 
-async function onSubmit() {
+async function sendCode() {
   if (loading.value) return
   errorMsg.value = ''
   loading.value = true
   try {
-    await forgotPassword(form.email.trim())
-    sent.value = true
+    await forgotPassword(email.value.trim())
+    step.value = 2
     startCountdown()
   } catch (e) {
     errorMsg.value =
@@ -146,9 +234,33 @@ async function onSubmit() {
   }
 }
 
-async function resend() {
-  if (countdown.value > 0 || loading.value) return
-  await onSubmit()
+async function onReset() {
+  if (loading.value) return
+
+  if (!/^\d{6}$/.test(code.value)) {
+    errorMsg.value = '请输入 6 位数字验证码'
+    return
+  }
+  if (password.value.length < 6) {
+    errorMsg.value = '密码长度不能少于 6 位'
+    return
+  }
+  if (password.value !== confirmPassword.value) {
+    errorMsg.value = '两次输入的密码不一致'
+    return
+  }
+
+  errorMsg.value = ''
+  loading.value = true
+  try {
+    await resetPassword(email.value.trim(), code.value.trim(), password.value)
+    step.value = 3
+  } catch (e) {
+    errorMsg.value =
+      e?.response?.data?.detail || e.message || '重置失败，请稍后再试'
+  } finally {
+    loading.value = false
+  }
 }
 
 function goToLogin() {
@@ -287,6 +399,10 @@ onUnmounted(() => {
   margin: 0 0 32px;
 }
 
+.login-subtitle strong {
+  color: #2563eb;
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -316,10 +432,27 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+.toggle-pwd {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.toggle-pwd:hover {
+  color: #3b82f6;
+}
+
 .input-wrap input {
   width: 100%;
   height: 44px;
-  padding: 0 14px 0 40px;
+  padding: 0 40px 0 40px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 14px;
@@ -337,6 +470,36 @@ onUnmounted(() => {
   border-color: #3b82f6;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.code-wrap input {
+  padding-right: 70px;
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+
+.resend-btn {
+  position: absolute;
+  right: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.resend-btn:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .error-msg {
@@ -436,10 +599,6 @@ onUnmounted(() => {
   color: #64748b;
   line-height: 1.8;
   margin: 0 0 24px;
-}
-
-.success-desc strong {
-  color: #0f172a;
 }
 
 @media (max-width: 900px) {

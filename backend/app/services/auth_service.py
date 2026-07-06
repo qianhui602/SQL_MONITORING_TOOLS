@@ -4,7 +4,8 @@
 """
 
 import logging
-import secrets
+import random
+import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -21,8 +22,8 @@ from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
-_PASSWORD_RESET_TOKENS = {}
-_RESET_TOKEN_EXPIRE_MINUTES = 30
+_PASSWORD_RESET_CODES = {}  # code -> {"user_id": int, "expires_at": datetime}
+_RESET_CODE_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -97,25 +98,39 @@ async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
-def generate_reset_token(user_id: int) -> str:
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=_RESET_TOKEN_EXPIRE_MINUTES)
-    _PASSWORD_RESET_TOKENS[token] = {"user_id": user_id, "expires_at": expires_at}
-    return token
+def generate_reset_code(user_id: int) -> str:
+    """生成 6 位数字验证码，关联用户 ID，有效期 30 分钟"""
+    now = datetime.now(timezone.utc)
+    # 清理过期验证码
+    expired = [k for k, v in _PASSWORD_RESET_CODES.items() if v["expires_at"] < now]
+    for k in expired:
+        del _PASSWORD_RESET_CODES[k]
+    # 移除该用户之前的验证码
+    to_remove = [k for k, v in _PASSWORD_RESET_CODES.items() if v["user_id"] == user_id]
+    for k in to_remove:
+        del _PASSWORD_RESET_CODES[k]
+    # 生成 6 位数字验证码
+    code = "".join(random.choices(string.digits, k=6))
+    _PASSWORD_RESET_CODES[code] = {
+        "user_id": user_id,
+        "expires_at": now + timedelta(minutes=_RESET_CODE_EXPIRE_MINUTES),
+    }
+    return code
 
 
-def verify_reset_token(token: str) -> Optional[int]:
-    data = _PASSWORD_RESET_TOKENS.get(token)
+def verify_reset_code(code: str) -> Optional[int]:
+    """验证验证码，返回 user_id 或 None"""
+    data = _PASSWORD_RESET_CODES.get(code)
     if not data:
         return None
     if datetime.now(timezone.utc) > data["expires_at"]:
-        del _PASSWORD_RESET_TOKENS[token]
+        del _PASSWORD_RESET_CODES[code]
         return None
     return data["user_id"]
 
 
-def invalidate_reset_token(token: str) -> None:
-    _PASSWORD_RESET_TOKENS.pop(token, None)
+def invalidate_reset_code(code: str) -> None:
+    _PASSWORD_RESET_CODES.pop(code, None)
 
 
 async def get_current_user(

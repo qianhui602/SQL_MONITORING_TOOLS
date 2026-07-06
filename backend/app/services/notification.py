@@ -227,8 +227,8 @@ class EmailNotifier:
             logger.error("Failed to send welcome email to %s", recipients)
         return ok
 
-    async def send_password_reset_email(self, username: str, email: str, token: str, full_name: str = "", base_url: str = "") -> bool:
-        """发送密码重置邮件（中英双语 HTML）"""
+    async def send_password_reset_email(self, username: str, email: str, code: str, full_name: str = "") -> bool:
+        """发送密码重置验证码邮件（中英双语 HTML）"""
         await self._load_db_config()
         if not self._is_configured():
             return False
@@ -238,13 +238,7 @@ class EmailNotifier:
             return False
 
         display_name = full_name or username
-        subject = f"SQL Monitor 密码重置 / Password Reset - {display_name}"
-        effective_url = (self.frontend_url or base_url or "").rstrip("/")
-        if effective_url:
-            reset_url = f"{effective_url}/reset-password?token={token}"
-        else:
-            logger.warning("frontend_url not configured, password reset link will be empty in email")
-            reset_url = ""
+        subject = f"SQL Monitor 密码重置验证码 / Password Reset Code - {display_name}"
 
         html = _HTML_HEAD
         html += _html_header("密码重置", "Password Reset", "#fa8c16")
@@ -253,12 +247,14 @@ class EmailNotifier:
         html += f'<p style="margin:0;color:#666;font-size:13px;line-height:1.6;">'
         html += f'您收到此邮件是因为有人请求重置您的 SQL Monitor 账户密码。<br>'
         html += f'如果这不是您本人操作，请忽略此邮件。</p></td></tr>'
-        html += _html_section("重置密码", "Reset Password")
-        html += f'<tr><td style="padding:12px 32px;">'
-        html += f'<p style="margin:0;color:#666;font-size:13px;line-height:1.6;">'
-        html += f'请点击下方按钮重置您的密码，此链接将在 30 分钟后失效。<br>'
-        html += f'Please click the button below to reset your password. This link will expire in 30 minutes.</p></td></tr>'
-        html += _html_button(reset_url, "重置密码", "Reset Password")
+        html += _html_section("验证码", "Verification Code")
+        html += f'<tr><td style="padding:12px 32px;text-align:center;">'
+        html += f'<p style="margin:0 0 16px;color:#666;font-size:13px;line-height:1.6;">'
+        html += f'请使用以下验证码重置您的密码，验证码将在 30 分钟后失效。<br>'
+        html += f'Please use the verification code below to reset your password. The code will expire in 30 minutes.</p>'
+        html += f'<div style="display:inline-block;padding:16px 40px;background:#fff3e0;border:2px dashed #fa8c16;border-radius:8px;">'
+        html += f'<span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#fa8c16;font-family:monospace;">{code}</span>'
+        html += f'</div></td></tr>'
         html += _html_section("用户名", "Username")
         html += _html_body_row("用户名", "Username", username)
         html += _html_footer_note()
