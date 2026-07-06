@@ -371,6 +371,7 @@ import request, { getConfigs, updateConfig, getAiProviders, getLogoUrl, uploadLo
 import { setTimezone } from '@/utils/datetime'
 
 const configList = ref([])
+const originalConfigs = ref({})
 const aiProviders = ref({})
 const aiConfigs = reactive({
   ai_provider: 'deepseek',
@@ -487,6 +488,11 @@ async function fetchConfigs() {
 
     const find = key => configList.value.find(c => c.config_key === key)?.config_value || ''
 
+    // 保存原始配置快照，用于对比变化
+    const originals = {}
+    configList.value.forEach(c => { originals[c.config_key] = c.config_value })
+    originalConfigs.value = originals
+
     // AI 配置（兼容旧 deepseek_ 前缀）
     aiConfigs.ai_provider = find('ai_provider') || 'deepseek'
     aiConfigs.ai_api_key = find('ai_api_key') || find('deepseek_api_key') || ''
@@ -559,21 +565,37 @@ async function saveAll() {
     { key: 'smtp_recipients', value: alertConfigs.smtp_recipients },
     { key: 'brand_title', value: brandTitle.value },
   ]
+
+  const changedConfigs = allConfigs.filter(cfg => {
+    const oldVal = originalConfigs.value[cfg.key]
+    const newVal = String(cfg.value)
+    return oldVal !== newVal
+  })
+
+  if (changedConfigs.length === 0) {
+    message.value = '没有检测到配置变更。'
+    messageType.value = 'success'
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { message.value = '' }, 3000)
+    return
+  }
+
   try {
     const results = await Promise.allSettled(
-      allConfigs.map(cfg => updateConfig(cfg.key, String(cfg.value)))
+      changedConfigs.map(cfg => updateConfig(cfg.key, String(cfg.value)))
     )
     const failures = results
-      .map((r, i) => r.status === 'rejected' ? allConfigs[i].key : null)
+      .map((r, i) => r.status === 'rejected' ? changedConfigs[i].key : null)
       .filter(Boolean)
     if (failures.length > 0) {
       message.value = `保存失败: ${failures.join(', ')} 配置项保存异常`
       messageType.value = 'error'
       return
     }
-    message.value = '保存成功！配置将在下一个采集周期自动应用。'
+    message.value = `保存成功！已更新 ${changedConfigs.length} 项配置，将在下一个采集周期自动应用。`
     messageType.value = 'success'
     setTimezone(timezone.value)
+    await fetchConfigs()
   } catch (e) {
     message.value = '保存失败: ' + (e?.response?.data?.detail || e.message || '未知错误')
     messageType.value = 'error'
