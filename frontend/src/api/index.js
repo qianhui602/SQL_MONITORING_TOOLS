@@ -55,7 +55,8 @@ request.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       clearAuth()
-      if (window.location.pathname !== '/login') {
+      const publicPaths = ['/login', '/forgot-password', '/reset-password', '/setup']
+      if (!publicPaths.includes(window.location.pathname)) {
         window.location.href = '/login'
       }
     }
