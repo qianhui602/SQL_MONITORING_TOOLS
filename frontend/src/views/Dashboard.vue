@@ -305,8 +305,11 @@ function loadStatCardOrder() {
     const saved = localStorage.getItem(STORAGE_KEY_STAT_ORDER)
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length === defaultStatCardOrder.length) {
-        return parsed
+      if (Array.isArray(parsed)) {
+        const validKeys = parsed.filter(key => allStatCards[key])
+        if (validKeys.length === defaultStatCardOrder.length) {
+          return validKeys
+        }
       }
     }
   } catch (e) { /* ignore */ }
@@ -321,21 +324,29 @@ const statCardOrderKeys = ref(loadStatCardOrder())
 const dragIndex = ref(null)
 const dragOverIndex = ref(null)
 
+function buildStatCard(key) {
+  const card = allStatCards[key]
+  if (!card) return null
+  const valueStyle = {}
+  if (key === 'cpu')     card.value = cpuUsage.value + '%'
+  else if (key === 'memory')    card.value = memoryUsage.value + ' GB'
+  else if (key === 'connections') card.value = activeConnections.value
+  else if (key === 'cache')     card.value = cacheHitRate.value + '%'
+  else if (key === 'disk')      { card.value = diskUsage.value + '%'; valueStyle.color = diskColor.value }
+  else if (key === 'batch')     card.value = batchRequests.value
+  else if (key === 'locks')     { card.value = lockWaits.value; valueStyle.color = lockColor.value }
+  else if (key === 'deadlock')  card.value = deadlockCount.value
+  return { ...card, valueStyle }
+}
+
 const statCardOrder = computed(() => {
-  return statCardOrderKeys.value.map(key => {
-    const card = allStatCards[key]
-    if (!card) return null
-    const valueStyle = {}
-    if (key === 'cpu')     card.value = cpuUsage.value + '%'
-    else if (key === 'memory')    card.value = memoryUsage.value + ' GB'
-    else if (key === 'connections') card.value = activeConnections.value
-    else if (key === 'cache')     card.value = cacheHitRate.value + '%'
-    else if (key === 'disk')      { card.value = diskUsage.value + '%'; valueStyle.color = diskColor.value }
-    else if (key === 'batch')     card.value = batchRequests.value
-    else if (key === 'locks')     { card.value = lockWaits.value; valueStyle.color = lockColor.value }
-    else if (key === 'deadlock')  card.value = deadlockCount.value
-    return { ...card, valueStyle }
-  }).filter(Boolean)
+  const validCards = statCardOrderKeys.value.map(buildStatCard).filter(Boolean)
+  if (validCards.length !== defaultStatCardOrder.length) {
+    statCardOrderKeys.value = [...defaultStatCardOrder]
+    saveStatCardOrder()
+    return defaultStatCardOrder.map(buildStatCard).filter(Boolean)
+  }
+  return validCards
 })
 
 function onDragStart(e, idx) {
