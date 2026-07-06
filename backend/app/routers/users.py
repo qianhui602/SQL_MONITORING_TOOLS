@@ -119,11 +119,13 @@ async def create_user(
     if payload.email:
         try:
             from app.services.notification import NotificationService
+            from app.routers.auth import _get_base_url
             ns = NotificationService()
             await ns.email_notifier.send_welcome_email(
                 username=payload.username,
                 full_name=payload.full_name or "",
                 to_email=payload.email,
+                base_url=_get_base_url(request),
             )
         except Exception as e:
             logger.debug("Welcome email not sent: %s", e)

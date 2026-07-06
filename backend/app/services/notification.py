@@ -190,7 +190,7 @@ class EmailNotifier:
             logger.info("Email sent to %s: %s", self.recipients, subject)
         return ok
 
-    async def send_welcome_email(self, username: str, full_name: str = "", to_email: str = "") -> bool:
+    async def send_welcome_email(self, username: str, full_name: str = "", to_email: str = "", base_url: str = "") -> bool:
         """发送新用户欢迎邮件（中英双语 HTML）"""
         await self._load_db_config()
         if not self._is_configured():
@@ -202,7 +202,8 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 账号已创建 / Account Created - {display_name}"
-        reset_url = f"{self.frontend_url}/reset-password" if self.frontend_url else ""
+        effective_url = (self.frontend_url or base_url or "").rstrip("/")
+        reset_url = f"{effective_url}/reset-password" if effective_url else ""
 
         html = _HTML_HEAD
         html += _html_header("欢迎加入 SQL Monitor", "Welcome to SQL Monitor", "#1890ff")
@@ -226,7 +227,7 @@ class EmailNotifier:
             logger.error("Failed to send welcome email to %s", recipients)
         return ok
 
-    async def send_password_reset_email(self, username: str, email: str, token: str, full_name: str = "") -> bool:
+    async def send_password_reset_email(self, username: str, email: str, token: str, full_name: str = "", base_url: str = "") -> bool:
         """发送密码重置邮件（中英双语 HTML）"""
         await self._load_db_config()
         if not self._is_configured():
@@ -238,7 +239,12 @@ class EmailNotifier:
 
         display_name = full_name or username
         subject = f"SQL Monitor 密码重置 / Password Reset - {display_name}"
-        reset_url = f"{self.frontend_url}/reset-password?token={token}" if self.frontend_url else f"/api/auth/reset_password?token={token}"
+        effective_url = (self.frontend_url or base_url or "").rstrip("/")
+        if effective_url:
+            reset_url = f"{effective_url}/reset-password?token={token}"
+        else:
+            logger.warning("frontend_url not configured, password reset link will be empty in email")
+            reset_url = ""
 
         html = _HTML_HEAD
         html += _html_header("密码重置", "Password Reset", "#fa8c16")

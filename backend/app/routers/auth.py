@@ -45,6 +45,18 @@ def _check_login_rate_limit(ip: str) -> bool:
     return True
 
 
+def _get_base_url(request: Request) -> str:
+    """从请求头推断前端访问的基础 URL，用于邮件链接生成。
+
+    优先级：X-Forwarded-* 头 > 请求本身 scheme+host
+    """
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    if not host:
+        return ""
+    return f"{scheme}://{host}".rstrip("/")
+
+
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1, max_length=200)
@@ -203,6 +215,7 @@ class ResetPasswordConfirmRequest(BaseModel):
 @router.post("/forgot_password", summary="请求密码重置")
 async def forgot_password(
     payload: ResetPasswordRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_user_by_email(db, payload.email)
@@ -210,6 +223,7 @@ async def forgot_password(
         return {"message": "如果该邮箱已注册，将收到重置链接"}
 
     token = generate_reset_token(user.id)
+    base_url = _get_base_url(request)
 
     try:
         from app.services.notification import NotificationService
@@ -219,6 +233,7 @@ async def forgot_password(
             email=user.email,
             token=token,
             full_name=user.full_name or "",
+            base_url=base_url,
         )
     except Exception as e:
         logger.error("Failed to send password reset email: %s", e)
