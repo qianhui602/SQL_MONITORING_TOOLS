@@ -247,6 +247,9 @@ onMounted(fetchProfile)
 
 .page-header {
   margin-bottom: 20px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .page-header h2 {
@@ -264,6 +267,10 @@ onMounted(fetchProfile)
   border-radius: 4px;
   font-size: 14px;
   animation: slideDown 0.2s ease;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 @keyframes slideDown {
@@ -288,6 +295,8 @@ onMounted(fetchProfile)
   flex-direction: column;
   gap: 20px;
   max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .profile-card {
