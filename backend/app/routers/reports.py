@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, func as sa_func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import async_session_factory, get_db
 from app.models.performance import MetricRecord
 from app.models.deadlock import DeadlockEvent
 from app.models.slow_query import SlowQueryRecord
@@ -125,6 +125,28 @@ class DeleteReportResponse(BaseModel):
     """删除报表响应"""
 
     message: str
+
+
+class ReportHistoryItem(BaseModel):
+    """报表历史列表项（不含 summary_data 大字段）"""
+
+    id: int
+    title: str
+    start_time: datetime
+    end_time: datetime
+    created_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+class PaginatedReportHistoryResponse(BaseModel):
+    """分页报表历史响应"""
+
+    items: List[ReportHistoryItem]
+    total: int
+    page: int
+    page_size: int
 
 
 # ---------------------------------------------------------------------------
@@ -490,25 +512,29 @@ async def get_report_summary(
     start_time: str = Query(..., description="起始时间（ISO 格式，如 2025-01-01T00:00:00）"),
     end_time: str = Query(..., description="结束时间（ISO 格式，如 2025-01-01T23:59:59）"),
     instance_id: Optional[int] = Query(None, description="实例 ID，可选筛选"),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> ReportSummaryResponse:
     """聚合多个模块的数据，生成指定时间范围内的报表汇总。"""
     start_dt = _parse_datetime(start_time, "start_time")
     end_dt = _parse_datetime(end_time, "end_time")
-    server_address = await _resolve_server_address(db, instance_id)
 
-    summary = await _query_summary(db, server_address)
-    trends = await _query_trends(db, start_dt, end_dt, server_address)
-    deadlocks = await _query_deadlocks(db, start_dt, end_dt, server_address)
-    slow_queries = await _query_slow_queries(
-        db, start_dt, end_dt, server_address
-    )
-    blocking = await _query_blocking(db, start_dt, end_dt, server_address)
-    disk = await _query_disk(db, server_address)
-    indexes = await _query_indexes(db, server_address)
+    # 使用独立 session 完成所有数据查询，查询结束后立即释放连接，
+    # 避免 AI 分析期间长时间持有数据库连接。
+    async with async_session_factory() as query_session:
+        server_address = await _resolve_server_address(query_session, instance_id)
+        summary = await _query_summary(query_session, server_address)
+        trends = await _query_trends(query_session, start_dt, end_dt, server_address)
+        deadlocks = await _query_deadlocks(query_session, start_dt, end_dt, server_address)
+        slow_queries = await _query_slow_queries(
+            query_session, start_dt, end_dt, server_address
+        )
+        blocking = await _query_blocking(query_session, start_dt, end_dt, server_address)
+        disk = await _query_disk(query_session, server_address)
+        indexes = await _query_indexes(query_session, server_address)
+        # deepseek 配置也需要 db session，在查询阶段一并获取
+        deepseek_config = await get_deepseek_config(query_session)
 
-    # 构建 AI 分析所需的数据
+    # 数据查询完成后 session 已关闭，再调用 AI 分析（耗时操作不占用 db 连接）
     report_data_for_ai = {
         "summary": summary.model_dump(),
         "deadlocks": {
@@ -538,7 +564,7 @@ async def get_report_summary(
 
     ai_analysis = ""
     try:
-        ai_result = await analyze_report(report_data_for_ai, **await get_deepseek_config(db))
+        ai_result = await analyze_report(report_data_for_ai, **deepseek_config)
         if ai_result:
             ai_analysis = ai_result
     except Exception:
@@ -600,38 +626,62 @@ async def save_report(
 
 @router.get(
     "/history",
-    response_model=List[ReportRecordResponse],
+    response_model=PaginatedReportHistoryResponse,
     summary="获取报表历史列表",
 )
 async def get_report_history(
+    page: int = Query(1, ge=1, description="页码，从 1 开始"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量，最大 100"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> List[ReportRecordResponse]:
-    """获取所有已保存的报表记录列表。"""
-    stmt = (
-        select(ReportRecord)
-        .order_by(ReportRecord.created_at.desc())
-    )
+) -> PaginatedReportHistoryResponse:
+    """分页获取已保存的报表记录列表（不返回 summary_data 大字段）。"""
+    offset = (page - 1) * page_size
 
     try:
+        # 查询总数
+        count_stmt = select(sa_func.count()).select_from(ReportRecord)
+        total = (await db.execute(count_stmt)).scalar() or 0
+
+        # 查询列表（不加载 summary_data 大字段）
+        stmt = (
+            select(
+                ReportRecord.id,
+                ReportRecord.title,
+                ReportRecord.start_time,
+                ReportRecord.end_time,
+                ReportRecord.created_at,
+                ReportRecord.created_by,
+            )
+            .order_by(ReportRecord.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
         result = await db.execute(stmt)
-        records = result.scalars().all()
+        rows = result.all()
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"查询报表历史失败: {str(e)}"
         )
 
-    return [
-        ReportRecordResponse(
-            id=record.id,
-            title=record.title,
-            start_time=record.start_time,
-            end_time=record.end_time,
-            summary_data=record.summary_data,
-            created_at=record.created_at,
+    items = [
+        ReportHistoryItem(
+            id=row.id,
+            title=row.title,
+            start_time=row.start_time,
+            end_time=row.end_time,
+            created_at=row.created_at,
+            created_by=row.created_by,
         )
-        for record in records
+        for row in rows
     ]
+
+    return PaginatedReportHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.delete(

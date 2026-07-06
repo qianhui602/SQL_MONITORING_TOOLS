@@ -3,7 +3,10 @@
 从环境变量 / .env 文件中读取所有配置
 """
 
-
+import base64
+import os
+import secrets
+import warnings
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -67,9 +70,6 @@ class Settings(BaseSettings):
     DINGTALK_WEBHOOK_URL: str = ""
     FEISHU_WEBHOOK_URL: str = ""
 
-    # ---------- 升级 / GitHub ----------
-    GITHUB_TOKEN: str = ""
-
     # ---------- 日志 ----------
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = (
@@ -77,12 +77,37 @@ class Settings(BaseSettings):
     )
 
     # ---------- 认证 / JWT ----------
-    JWT_SECRET_KEY: str = "sql-monitor-secret-key-change-me-in-production"
+    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", "")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 24
 
-    DEFAULT_ADMIN_USERNAME: str = "Admin"
-    DEFAULT_ADMIN_PASSWORD: str = "Chuz0001"
+    DEFAULT_ADMIN_USERNAME: str = os.environ.get("DEFAULT_ADMIN_USERNAME", "Admin")
+    DEFAULT_ADMIN_PASSWORD: str = os.environ.get("DEFAULT_ADMIN_PASSWORD", "")
+
+    # ---------- 密码加密 ----------
+    # 用于加密/解密 SQL Server 密码的密钥（Fernet 对称加密）
+    # 生产环境务必通过环境变量配置固定值，否则重启后无法解密已有密码
+    ENCRYPTION_KEY: str = os.environ.get("ENCRYPTION_KEY", "")
 
 
 settings = Settings()
+
+# 确保 JWT 密钥存在：未配置时生成随机密钥并警告
+if not settings.JWT_SECRET_KEY:
+    settings.JWT_SECRET_KEY = secrets.token_urlsafe(32)
+    warnings.warn(
+        "JWT_SECRET_KEY 未设置，已生成随机密钥。"
+        "请在 .env 中配置固定值以保证重启后 token 仍有效。"
+    )
+
+# 确保加密密钥存在：未配置时生成随机密钥并强烈警告
+# 注意：随机密钥会导致重启后无法解密已有密码，生产环境务必配置固定值
+if not settings.ENCRYPTION_KEY:
+    settings.ENCRYPTION_KEY = base64.urlsafe_b64encode(
+        secrets.token_bytes(32)
+    ).decode()
+    warnings.warn(
+        "ENCRYPTION_KEY 未设置，已生成随机密钥。"
+        "重启后将无法解密已加密存储的 SQL Server 密码，"
+        "请在 .env 中配置固定值。"
+    )

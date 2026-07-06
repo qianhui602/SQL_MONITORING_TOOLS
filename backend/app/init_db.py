@@ -350,6 +350,7 @@ async def _seed_default_admin() -> None:
     """创建默认超级管理员账号（若不存在）
 
     用户名/密码取自配置：DEFAULT_ADMIN_USERNAME / DEFAULT_ADMIN_PASSWORD
+    若 DEFAULT_ADMIN_PASSWORD 未配置（为空），则跳过创建并提示通过安装接口设置。
     """
     try:
         from sqlalchemy.ext.asyncio import AsyncSession
@@ -358,6 +359,13 @@ async def _seed_default_admin() -> None:
 
         username = settings.DEFAULT_ADMIN_USERNAME
         password = settings.DEFAULT_ADMIN_PASSWORD
+
+        if not password:
+            logger.warning(
+                "DEFAULT_ADMIN_PASSWORD 未配置，跳过默认管理员创建。"
+                "请通过 /api/setup/admin 接口或环境变量设置管理员密码。"
+            )
+            return
 
         async with AsyncSession(async_engine) as session:
             result = await session.execute(

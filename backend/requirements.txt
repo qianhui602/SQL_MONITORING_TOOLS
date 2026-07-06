@@ -34,5 +34,8 @@ python-dateutil>=2.8.0,<3.0.0
 bcrypt>=4.1.0,<5.0.0
 PyJWT>=2.8.0,<3.0.0
 
+# 对称加密（用于加密存储 SQL Server 密码）
+cryptography>=42.0.0,<46.0.0
+
 # FastAPI 文件上传支持
 python-multipart>=0.0.9,<1.0.0

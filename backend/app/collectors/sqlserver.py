@@ -4,12 +4,14 @@ SQL Server 连接管理器
 """
 
 import logging
+import time
 from contextlib import contextmanager
 from typing import Generator, Optional
 
 import pymssql
 
 from app.config import settings
+from app.services.crypto import decrypt_password
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +73,7 @@ class MSSQLConnectionManager:
             host=host,
             port=port,
             user=user,
-            password=password,
+            password=decrypt_password(password),
             database=database,
         )
 
@@ -120,8 +122,6 @@ class MSSQLConnectionManager:
                     e,
                 )
                 if attempt < _RETRY_MAX:
-                    import time
-
                     time.sleep(2 ** attempt)
 
         raise MSSQLConnectionError(

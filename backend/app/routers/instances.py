@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.instance import MonitoredInstance
 from app.models.user import User
 from app.services.auth_service import get_current_user, require_admin
+from app.services.crypto import decrypt_password, encrypt_password
 
 router = APIRouter()
 
@@ -125,7 +126,7 @@ async def create_instance(
         host=body.host,
         port=body.port,
         username=body.username,
-        password=body.password,
+        password=encrypt_password(body.password),
         database_name=body.database_name,
         is_active=body.is_active,
         description=body.description,
@@ -174,6 +175,9 @@ async def update_instance(
 
     # 只更新传入了的字段
     update_data = body.model_dump(exclude_unset=True)
+    # 如果包含密码字段，加密后存储
+    if "password" in update_data and update_data["password"]:
+        update_data["password"] = encrypt_password(update_data["password"])
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc)
         update_stmt = (
@@ -265,7 +269,7 @@ async def test_instance_connection(
             server=instance.host,
             port=instance.port,
             user=instance.username,
-            password=instance.password,
+            password=decrypt_password(instance.password),
             database=instance.database_name,
             timeout=10,
             login_timeout=10,

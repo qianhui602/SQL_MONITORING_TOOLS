@@ -194,6 +194,10 @@ watch(selectedInstance, () => {
   fetchHistory()
 })
 
+function handleResize() {
+  chart?.resize()
+}
+
 onMounted(async () => {
   await nextTick()
   if (chartRef.value) {
@@ -201,10 +205,11 @@ onMounted(async () => {
   }
   selectedMetrics.value = availableMetrics.value.length > 0 ? [availableMetrics.value[0].value] : []
   await fetchHistory()
-  window.addEventListener('resize', () => chart?.resize())
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
   chart?.dispose()
 })
 </script>

@@ -597,6 +597,12 @@ function makeOption(trend, color) {
 }
 
 function renderCharts() {
+  // 先清理旧的图表实例，避免重复渲染导致内存泄漏
+  chartInstances.forEach(c => {
+    try { c.dispose() } catch (e) { /* ignore */ }
+  })
+  chartInstances.length = 0
+
   if (!hasTrendData.value) return
   const trends = reportData.value?.trends || {}
   const charts = [
@@ -832,7 +838,8 @@ function renderMarkdown(text) {
 // ---- 历史记录 ----
 async function loadHistory() {
   try {
-    historyList.value = await getReportHistory()
+    const res = await getReportHistory()
+    historyList.value = res.items || res || []
   } catch { /* ignore */ }
 }
 
@@ -875,13 +882,24 @@ async function fetchInstances() {
 }
 
 // ---- 生命周期 ----
+function handleResize() {
+  chartInstances.forEach(c => {
+    try { c.resize() } catch (e) { /* ignore */ }
+  })
+}
+
 onMounted(() => {
   loadHistory()
   fetchInstances()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  chartInstances.forEach((c) => c.dispose())
+  window.removeEventListener('resize', handleResize)
+  chartInstances.forEach(c => {
+    try { c.dispose() } catch (e) { /* ignore */ }
+  })
+  chartInstances.length = 0
 })
 </script>
 

@@ -4,6 +4,7 @@ APScheduler 定时任务管理
 支持单实例（兼容旧模式）和多实例模式。
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -160,6 +161,8 @@ class SchedulerManager:
             name="Collect SQL Server metrics",
             replace_existing=True,
             misfire_grace_time=30,
+            max_instances=1,
+            coalesce=True,
         )
         logger.info("Collect job added with interval=%ds", interval_seconds)
 
@@ -248,7 +251,7 @@ class SchedulerManager:
         server_address = runtime_config.get("mssql_host", "unknown")
 
         try:
-            data = self._collector.collect_all_metrics()
+            data = await asyncio.to_thread(self._collector.collect_all_metrics)
         except Exception as e:
             logger.error("Metrics collection failed: %s", e)
             return
@@ -313,7 +316,7 @@ class SchedulerManager:
                     database=instance.database_name,
                 )
                 collector = MetricsCollector(connection_manager=conn_mgr)
-                data = collector.collect_all_metrics()
+                data = await asyncio.to_thread(collector.collect_all_metrics)
 
                 # 为该实例的指标打上 server_address
                 instance_metrics = data.get("metrics", [])

@@ -25,7 +25,6 @@ files = [
     ("frontend/src/views/Dashboard.vue", "feat: Dashboard自动刷新频率可配置+统计卡片去AI化"),
     ("frontend/src/views/Login.vue", "style: Login页面去AI化(移除渐变背景/大圆角)"),
     ("frontend/src/views/Report.vue", "style: Report页面去AI化(移除渐变/大圆角/悬浮效果)"),
-    ("frontend/src/views/Upgrade.vue", "style: Upgrade页面去AI化"),
     ("frontend/src/views/Settings.vue", "style: Settings页面去AI化"),
     ("frontend/src/views/Blocking.vue", "style: Blocking页面去AI化"),
     ("frontend/src/views/Users.vue", "style: Users页面去AI化"),
