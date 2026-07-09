@@ -165,7 +165,7 @@
         <slot />
       </main>
       <footer class="footer">
-        太阳谷信息技术部 2026 ｜ helpdesk@sunvalleyco.com
+        太阳谷信息技术部 2026
       </footer>
     </div>
   </div>
