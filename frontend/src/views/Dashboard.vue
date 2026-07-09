@@ -17,6 +17,9 @@
         <div class="stat-drag-handle" @click.stop title="拖拽排序">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
         </div>
+        <div class="stat-icon-wrapper" :class="'icon-' + card.key">
+          <svg v-html="card.icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+        </div>
         <div class="stat-info">
           <div class="stat-label">{{ card.label }}</div>
           <div class="stat-value" :style="card.valueStyle || {}">{{ card.value }}</div>
@@ -27,18 +30,31 @@
     <!-- 数据库连接状态概览 -->
     <div class="db-status-section" v-if="instances.length > 0">
       <div class="db-status-header">
-        <span class="db-status-title">数据库连接状态</span>
-        <span class="db-status-summary" :class="allInstancesOnline ? 'text-online' : 'text-offline'">
+        <div class="db-status-title-wrapper">
+          <div class="db-status-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"/>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+          </div>
+          <span class="db-status-title">数据库连接状态</span>
+        </div>
+        <span class="db-status-summary" :class="allInstancesOnline ? 'status-badge status-badge-online' : 'status-badge status-badge-offline'">
           {{ instancesOnline }} / {{ instances.length }} 在线
         </span>
       </div>
       <div class="db-status-list">
         <div v-for="inst in instances" :key="inst.id" class="db-status-item" @click="$router.push('/instances')"
              :title="inst.is_active && !inst.is_connected ? (inst.connection_error || '连接异常') : ''">
-          <span :class="['status-dot-sm', inst.is_active ? (inst.is_connected ? 'dot-online' : 'dot-offline') : 'dot-disabled']"></span>
-          <span class="db-instance-name">{{ inst.name }}</span>
-          <span class="db-instance-address">{{ inst.host }}:{{ inst.port }}</span>
-          <span class="db-instance-status" :class="inst.is_active ? (inst.is_connected ? 'text-online' : 'text-offline') : 'text-disabled'">
+          <div class="db-item-left">
+            <span :class="['status-dot-sm', inst.is_active ? (inst.is_connected ? 'dot-online dot-pulse' : 'dot-offline') : 'dot-disabled']"></span>
+            <div class="db-item-info">
+              <span class="db-instance-name">{{ inst.name }}</span>
+              <span class="db-instance-address">{{ inst.host }}:{{ inst.port }}</span>
+            </div>
+          </div>
+          <span class="db-instance-status" :class="inst.is_active ? (inst.is_connected ? 'status-tag status-tag-online' : 'status-tag status-tag-offline') : 'status-tag status-tag-disabled'">
             {{ inst.is_active ? (inst.is_connected ? '在线' : '离线') : '已禁用' }}
           </span>
         </div>
@@ -132,12 +148,20 @@
         v-for="chartKey in chartOrder"
         :key="chartKey"
         class="chart-card"
+        :class="'chart-' + chartKey"
         v-show="visibleCharts[chartKey]"
         @click="openModal(chartKey)"
       >
         <div class="chart-header">
-          <div class="chart-title">{{ chartTitleMap[chartKey] }}{{ chartTitleSuffix }}</div>
-          <span class="chart-zoom-icon">&#x2B3A;</span>
+          <div class="chart-title-bar">
+            <span class="chart-color-dot" :class="'dot-' + chartKey"></span>
+            <span class="chart-title">{{ chartTitleMap[chartKey] }}{{ chartTitleSuffix }}</span>
+          </div>
+          <span class="chart-zoom-btn" title="查看详情">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+          </span>
         </div>
         <div :ref="(el) => { if (el) chartRefInstances[chartKey].value = el }" class="chart-container"></div>
       </div>
@@ -321,16 +345,28 @@ function moveChartDown(index) {
 const defaultStatCardOrder = ['cpu', 'memory', 'connections', 'cache', 'disk', 'batch', 'locks', 'deadlock', 'instances']
 const STORAGE_KEY_STAT_ORDER = 'sql_monitor_stat_order'
 
+const iconPaths = {
+  cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>',
+  memory: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10v.01M10 10v.01M14 10v.01M18 10v.01M6 14v.01M10 14v.01M14 14v.01M18 14v.01"/>',
+  connections: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  cache: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+  disk: '<rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/>',
+  batch: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  locks: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  deadlock: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  instances: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+}
+
 const allStatCards = {
-  cpu:       { key: 'cpu',       label: 'CPU 使用率',   route: '/?focus=cpu' },
-  memory:    { key: 'memory',    label: '内存使用量',   route: '/?focus=memory' },
-  connections:{ key: 'connections', label: '活跃连接',   route: '/?focus=connections' },
-  cache:     { key: 'cache',     label: '缓存命中率',   route: '/?focus=cache' },
-  disk:      { key: 'disk',      label: '磁盘使用率',   route: '/disk-space' },
-  batch:     { key: 'batch',     label: '批处理/秒',    route: '/?focus=batch' },
-  locks:     { key: 'locks',     label: '锁等待',       route: '/?focus=locks' },
-  deadlock:  { key: 'deadlock',  label: '死锁事件',     route: '/deadlocks' },
-  instances: { key: 'instances', label: '数据库实例',   route: '/instances' },
+  cpu:       { key: 'cpu',       label: 'CPU 使用率',   route: '/?focus=cpu',        icon: iconPaths.cpu },
+  memory:    { key: 'memory',    label: '内存使用量',   route: '/?focus=memory',     icon: iconPaths.memory },
+  connections:{ key: 'connections', label: '活跃连接',   route: '/?focus=connections', icon: iconPaths.connections },
+  cache:     { key: 'cache',     label: '缓存命中率',   route: '/?focus=cache',      icon: iconPaths.cache },
+  disk:      { key: 'disk',      label: '磁盘使用率',   route: '/disk-space',        icon: iconPaths.disk },
+  batch:     { key: 'batch',     label: '批处理/秒',    route: '/?focus=batch',      icon: iconPaths.batch },
+  locks:     { key: 'locks',     label: '锁等待',       route: '/?focus=locks',      icon: iconPaths.locks },
+  deadlock:  { key: 'deadlock',  label: '死锁事件',     route: '/deadlocks',         icon: iconPaths.deadlock },
+  instances: { key: 'instances', label: '数据库实例',   route: '/instances',         icon: iconPaths.instances },
 }
 
 function loadStatCardOrder() {
@@ -1048,7 +1084,7 @@ onUnmounted(() => {
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   position: relative;
 }
 
@@ -1059,28 +1095,29 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   z-index: 50;
-  border-radius: 8px;
+  border-radius: 12px;
   pointer-events: none;
 }
 
-.dark .loading-overlay {
-  background: rgba(0, 0, 0, 0.35);
+[data-theme='dark'] .loading-overlay {
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .loading-spinner {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 3px solid var(--border-color, #e8e8e8);
   border-top-color: #1890ff;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
 }
 
 @keyframes spin {
@@ -1089,7 +1126,7 @@ onUnmounted(() => {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   width: 100%;
 }
@@ -1099,24 +1136,50 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   background: var(--bg-card);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 18px 20px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--border-color);
-  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   cursor: pointer;
-  min-height: 72px;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-cpu::before       { background: linear-gradient(90deg, #1890ff, #69c0ff); }
+.stat-memory::before    { background: linear-gradient(90deg, #52c41a, #95de64); }
+.stat-connections::before { background: linear-gradient(90deg, #13c2c2, #5cdbd3); }
+.stat-cache::before     { background: linear-gradient(90deg, #722ed1, #b37feb); }
+.stat-disk::before      { background: linear-gradient(90deg, #fa8c16, #ffc069); }
+.stat-batch::before     { background: linear-gradient(90deg, #eb2f96, #ff85c0); }
+.stat-locks::before     { background: linear-gradient(90deg, #f5222d, #ff7875); }
+.stat-deadlock::before  { background: linear-gradient(90deg, #faad14, #ffd666); }
+.stat-instances::before { background: linear-gradient(90deg, #1890ff, #69c0ff); }
+
 .stat-card.drag-over {
-  border-left-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.4), 0 8px 24px rgba(24, 144, 255, 0.15);
+  transform: translateY(-3px) scale(1.02);
 }
 
 .stat-card[draggable="true"] {
@@ -1124,18 +1187,9 @@ onUnmounted(() => {
 }
 .stat-card[draggable="true"]:active {
   cursor: grabbing;
-  opacity: 0.7;
+  opacity: 0.8;
+  transform: scale(0.98);
 }
-
-.stat-cpu       { border-left-color: #1890ff; }
-.stat-memory    { border-left-color: #52c41a; }
-.stat-connections { border-left-color: #13c2c2; }
-.stat-cache     { border-left-color: #722ed1; }
-.stat-disk      { border-left-color: #fa8c16; }
-.stat-batch     { border-left-color: #eb2f96; }
-.stat-locks     { border-left-color: #f5222d; }
-.stat-deadlock  { border-left-color: #faad14; }
-.stat-instances { border-left-color: #1890ff; }
 
 .stat-drag-handle {
   color: #bfbfbf;
@@ -1145,6 +1199,10 @@ onUnmounted(() => {
   border-radius: 3px;
   opacity: 0;
   transition: opacity 0.2s;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
 }
 .stat-card:hover .stat-drag-handle {
   opacity: 1;
@@ -1154,13 +1212,47 @@ onUnmounted(() => {
   color: #1890ff;
 }
 
-.stat-icon { display: none; }
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover .stat-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.icon-cpu       { background: linear-gradient(135deg, #e6f7ff, #bae7ff); color: #1890ff; }
+.icon-memory    { background: linear-gradient(135deg, #f6ffed, #d9f7be); color: #52c41a; }
+.icon-connections { background: linear-gradient(135deg, #e6fffb, #b5f5ec); color: #13c2c2; }
+.icon-cache     { background: linear-gradient(135deg, #f9f0ff, #efdbff); color: #722ed1; }
+.icon-disk      { background: linear-gradient(135deg, #fff7e6, #ffe7ba); color: #fa8c16; }
+.icon-batch     { background: linear-gradient(135deg, #fff0f6, #ffd6e8); color: #eb2f96; }
+.icon-locks     { background: linear-gradient(135deg, #fff1f0, #ffccc7); color: #f5222d; }
+.icon-deadlock  { background: linear-gradient(135deg, #fffbe6, #fff1b8); color: #faad14; }
+.icon-instances { background: linear-gradient(135deg, #e6f7ff, #bae7ff); color: #1890ff; }
+
+[data-theme='dark'] .icon-cpu       { background: linear-gradient(135deg, #112a45, #15395b); color: #40a9ff; }
+[data-theme='dark'] .icon-memory    { background: linear-gradient(135deg, #1a2f1a, #234223); color: #73d13d; }
+[data-theme='dark'] .icon-connections { background: linear-gradient(135deg, #0a2a2a, #134242); color: #36cfc9; }
+[data-theme='dark'] .icon-cache     { background: linear-gradient(135deg, #241533, #392052); color: #9254de; }
+[data-theme='dark'] .icon-disk      { background: linear-gradient(135deg, #2b1d0a, #402a0f); color: #ffa940; }
+[data-theme='dark'] .icon-batch     { background: linear-gradient(135deg, #2b1320, #401e30); color: #f759ab; }
+[data-theme='dark'] .icon-locks     { background: linear-gradient(135deg, #2b1310, #401e1a); color: #ff4d4f; }
+[data-theme='dark'] .icon-deadlock  { background: linear-gradient(135deg, #2b2210, #403315); color: #ffc53d; }
+[data-theme='dark'] .icon-instances { background: linear-gradient(135deg, #112a45, #15395b); color: #40a9ff; }
 
 .stat-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 
 .stat-label {
@@ -1172,11 +1264,12 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
 }
 
 .stat-mini-chart {
@@ -1190,34 +1283,79 @@ onUnmounted(() => {
 /* 数据库状态概览 */
 .db-status-section {
   background: var(--bg-card);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--border-color);
   overflow: hidden;
+  transition: box-shadow 0.3s;
+}
+
+.db-status-section:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .db-status-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, rgba(24, 144, 255, 0.02), transparent);
+}
+
+.db-status-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.db-status-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e6f7ff, #bae7ff);
+  color: #1890ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme='dark'] .db-status-icon {
+  background: linear-gradient(135deg, #112a45, #15395b);
+  color: #40a9ff;
 }
 
 .db-status-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.db-status-summary {
-  font-size: 13px;
-  font-weight: 500;
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
-.text-online { color: #52c41a; }
-.text-offline { color: #ff4d4f; }
-.text-disabled { color: #999; }
+.status-badge-online {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-badge-offline {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+[data-theme='dark'] .status-badge-online {
+  background: rgba(82, 196, 26, 0.15);
+}
+
+[data-theme='dark'] .status-badge-offline {
+  background: rgba(255, 77, 79, 0.15);
+}
 
 .db-status-list {
   display: flex;
@@ -1228,24 +1366,54 @@ onUnmounted(() => {
 .db-status-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-size: 13px;
+  justify-content: space-between;
+  padding: 14px 20px;
   cursor: pointer;
-  transition: background 0.15s;
-  flex: 1 1 280px;
+  transition: all 0.2s;
+  flex: 1 1 300px;
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.db-status-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  border-radius: 0 3px 3px 0;
+  transition: height 0.2s;
 }
 
 .db-status-item:hover {
-  background: var(--table-hover, #f5f5f5);
+  background: var(--bg-primary);
+}
+
+.db-status-item:hover::before {
+  height: 60%;
+  background: #1890ff;
+}
+
+.db-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.db-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .db-instance-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
+  font-size: 13px;
 }
 
 .db-instance-address {
@@ -1254,33 +1422,91 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.db-instance-status {
-  margin-left: auto;
-  font-weight: 500;
+.status-tag {
+  padding: 3px 10px;
+  border-radius: 4px;
   font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
+.status-tag-online {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-tag-offline {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+.status-tag-disabled {
+  background: rgba(153, 153, 153, 0.1);
+  color: #999;
+}
+
+[data-theme='dark'] .status-tag-online {
+  background: rgba(82, 196, 26, 0.15);
+}
+
+[data-theme='dark'] .status-tag-offline {
+  background: rgba(255, 77, 79, 0.15);
+}
+
+[data-theme='dark'] .status-tag-disabled {
+  background: rgba(153, 153, 153, 0.15);
+}
+
 .status-dot-sm {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  position: relative;
 }
 
 .dot-online {
   background: #52c41a;
-  box-shadow: 0 0 3px rgba(82, 196, 26, 0.5);
+  box-shadow: 0 0 6px rgba(82, 196, 26, 0.6);
+}
+
+.dot-pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #52c41a;
+  transform: translate(-50%, -50%);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
 }
 
 .dot-offline {
   background: #ff4d4f;
-  box-shadow: 0 0 3px rgba(255, 77, 79, 0.5);
+  box-shadow: 0 0 6px rgba(255, 77, 79, 0.6);
 }
 
 .dot-disabled {
   background: #d9d9d9;
+  box-shadow: none;
+}
+
+[data-theme='dark'] .dot-disabled {
+  background: #555;
 }
 
 .chart-grid {
@@ -1293,23 +1519,70 @@ onUnmounted(() => {
   flex: 1 1 calc(50% - 8px);
   min-width: 400px;
   background: var(--bg-card);
-  border-radius: 6px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 18px;
   border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--chart-accent, #1890ff), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .chart-card:hover {
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
+
+.chart-card:hover::before {
+  opacity: 1;
+}
+
+.chart-cpu::before       { --chart-accent: #1890ff; }
+.chart-memory::before    { --chart-accent: #52c41a; }
+.chart-connections::before { --chart-accent: #fa8c16; }
+.chart-io::before        { --chart-accent: #13c2c2; }
+.chart-locks::before     { --chart-accent: #f5222d; }
+.chart-batch::before     { --chart-accent: #722ed1; }
 
 .chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
+
+.chart-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-cpu       { background: #1890ff; box-shadow: 0 0 6px rgba(24, 144, 255, 0.5); }
+.dot-memory    { background: #52c41a; box-shadow: 0 0 6px rgba(82, 196, 26, 0.5); }
+.dot-connections { background: #fa8c16; box-shadow: 0 0 6px rgba(250, 140, 22, 0.5); }
+.dot-io        { background: #13c2c2; box-shadow: 0 0 6px rgba(19, 194, 194, 0.5); }
+.dot-locks     { background: #f5222d; box-shadow: 0 0 6px rgba(245, 34, 45, 0.5); }
+.dot-batch     { background: #722ed1; box-shadow: 0 0 6px rgba(114, 46, 209, 0.5); }
 
 .chart-title {
   font-size: 14px;
@@ -1317,15 +1590,22 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.chart-zoom-icon {
-  font-size: 16px;
+.chart-zoom-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
   opacity: 0.6;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
-.chart-card:hover .chart-zoom-icon {
+.chart-card:hover .chart-zoom-btn {
   opacity: 1;
+  background: var(--bg-primary);
+  color: #1890ff;
 }
 
 .chart-container {
@@ -1335,9 +1615,10 @@ onUnmounted(() => {
 
 .chart-toolbar {
   background: var(--bg-card);
-  border-radius: 8px;
-  padding: 12px 20px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1365,29 +1646,32 @@ onUnmounted(() => {
 
 .range-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  background: var(--bg-primary);
+  padding: 3px;
+  border-radius: 8px;
 }
 
 .range-tab {
-  padding: 5px 14px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  background: var(--bg-card);
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
 .range-tab:hover {
-  color: #1890ff;
-  border-color: #1890ff;
+  color: var(--text-primary);
 }
 
 .range-tab.active {
-  color: #fff;
-  background: #1890ff;
-  border-color: #1890ff;
+  color: #1890ff;
+  background: var(--bg-card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .chart-toolbar-divider {
@@ -1398,17 +1682,23 @@ onUnmounted(() => {
 }
 
 .refresh-select {
-  padding: 5px 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   font-size: 13px;
   color: var(--text-primary);
   background: var(--bg-card);
   cursor: pointer;
   outline: none;
+  transition: all 0.2s;
+  height: 32px;
+}
+.refresh-select:hover {
+  border-color: #1890ff;
 }
 .refresh-select:focus {
   border-color: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
 }
 
 /* 对比模式 */
@@ -1421,8 +1711,8 @@ onUnmounted(() => {
 .compare-switch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 22px;
+  width: 44px;
+  height: 24px;
 }
 .compare-switch input { opacity: 0; width: 0; height: 0; }
 .compare-slider {
@@ -1433,32 +1723,42 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-color: var(--border-color);
-  transition: .3s;
-  border-radius: 11px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
 }
 .compare-slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 18px;
+  width: 18px;
   left: 3px;
   bottom: 3px;
   background-color: white;
-  transition: .3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 input:checked + .compare-slider { background-color: #1890ff; }
-input:checked + .compare-slider:before { transform: translateX(18px); }
+input:checked + .compare-slider:before { transform: translateX(20px); }
 
 .compare-select {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  background: var(--input-bg);
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 13px;
   outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.compare-select:hover {
+  border-color: #1890ff;
+}
+.compare-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
 }
 
 /* 图表自定义 */
@@ -1468,9 +1768,9 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
 .custom-btn {
   height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 13px;
@@ -1479,29 +1779,43 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   align-items: center;
   gap: 6px;
   transition: all 0.2s;
+  font-weight: 500;
 }
 .custom-btn:hover {
   color: #1890ff;
   border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.04);
 }
 .custom-btn.active {
   color: #1890ff;
   border-color: #1890ff;
-  background: rgba(24, 144, 255, 0.06);
+  background: rgba(24, 144, 255, 0.08);
 }
 
 .custom-panel {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
-  min-width: 200px;
+  margin-top: 6px;
+  min-width: 220px;
   background: var(--bg-card);
-  border-radius: 6px;
-  box-shadow: var(--shadow-md);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border: 1px solid var(--border-color);
-  padding: 12px;
+  padding: 14px;
   z-index: 20;
+  animation: panelFadeIn 0.2s ease-out;
+}
+
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .custom-panel-title {
@@ -1509,38 +1823,40 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 10px;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .custom-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
+  gap: 10px;
+  padding: 8px 8px;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
+  border-radius: 6px;
+  transition: all 0.15s;
 }
 .custom-checkbox:hover {
   background: var(--bg-primary);
+  color: var(--text-primary);
 }
 .custom-checkbox input {
   cursor: pointer;
+  accent-color: #1890ff;
 }
 
 /* 排序面板 */
 .order-panel {
-  min-width: 260px;
+  min-width: 280px;
 }
 
 .order-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 300px;
+  gap: 6px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -1548,14 +1864,15 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  transition: background 0.15s;
+  transition: all 0.15s;
 }
 .order-item:hover {
-  background: var(--table-hover);
+  border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.04);
 }
 
 .order-item-label {
@@ -1566,7 +1883,7 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
 .order-item-actions {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .order-arrow-btn {
@@ -1575,8 +1892,8 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
@@ -1586,6 +1903,7 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 .order-arrow-btn:hover:not(:disabled) {
   color: #1890ff;
   border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.06);
 }
 .order-arrow-btn:disabled {
   opacity: 0.35;
@@ -1597,36 +1915,43 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
 .order-reset-btn {
   width: 100%;
-  margin-top: 10px;
-  padding: 7px 12px;
-  border: 1px dashed var(--input-border);
-  border-radius: 4px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 500;
 }
 .order-reset-btn:hover {
   color: #1890ff;
   border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.04);
 }
 
 /* 实例选择下拉框 */
 .instance-select {
   height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 13px;
   outline: none;
-  transition: border-color 0.2s;
-  min-width: 180px;
+  transition: all 0.2s;
+  min-width: 200px;
+  cursor: pointer;
+}
+.instance-select:hover {
+  border-color: #1890ff;
 }
 .instance-select:focus {
   border-color: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
 }
 .instance-select:disabled {
   opacity: 0.6;
@@ -1646,25 +1971,48 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
   background: var(--bg-card);
-  border-radius: 6px;
+  border-radius: 12px;
   width: 90%;
   max-width: 1200px;
   height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
+  animation: modalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -1683,13 +2031,13 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   cursor: pointer;
   line-height: 1;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
 .modal-close:hover {
@@ -1699,10 +2047,16 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
 .modal-chart-container {
   flex: 1;
-  padding: 16px 24px 24px;
+  padding: 20px 24px 24px;
 }
 
 /* 响应式 */
+@media (max-width: 1200px) {
+  .stat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .chart-card {
     flex: 1 1 100%;
@@ -1713,6 +2067,12 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
     min-width: 140px;
   }
 
+  .stat-icon-wrapper {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+
   .modal-content {
     width: 95%;
     height: 70vh;
@@ -1721,6 +2081,10 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
   .chart-toolbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .db-status-item {
+    flex: 1 1 100%;
   }
 }
 
@@ -1739,9 +2103,66 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
     min-width: 0;
   }
 
-  .deadlock-bar {
-    flex-direction: column;
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .db-status-header {
+    padding: 14px 16px;
+  }
+
+  .db-status-item {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+    min-height: 70px;
+  }
+
+  .stat-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .stat-icon-wrapper svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .chart-toolbar {
+    padding: 12px 16px;
+  }
+
+  .chart-toolbar-left,
+  .chart-toolbar-right {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .range-tabs {
+    flex-wrap: wrap;
+  }
+
+  .instance-select {
+    min-width: 140px;
+    flex: 1;
   }
 }
 
@@ -1752,15 +2173,25 @@ input:checked + .compare-slider:before { transform: translateX(18px); }
 
   .stat-card {
     min-width: 0;
-    padding: 14px 16px;
+    padding: 16px;
+  }
+
+  .stat-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
   }
 
   .stat-value {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .chart-toolbar-left {
     flex-wrap: wrap;
+  }
+
+  .db-status-item {
+    flex: 1 1 100%;
   }
 }
 </style>
