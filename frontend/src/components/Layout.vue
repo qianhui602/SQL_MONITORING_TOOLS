@@ -130,7 +130,6 @@
       <div class="tab-bar" ref="tabBarRef">
         <div class="tab-list" ref="tabListRef">
           <div v-for="tab in tabs" :key="tab.path" class="tab-item" :class="{ active: isActive(tab.path) }" @click="switchTab(tab)" @contextmenu.prevent="openTabMenu($event, tab)">
-            <span class="tab-icon" v-html="tab.icon" v-if="tab.icon"></span>
             <span class="tab-label">{{ tab.label }}</span>
             <span v-if="tab.closable" class="tab-close" @click.stop="closeTab(tab)">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -156,7 +155,7 @@
         <slot />
       </main>
       <footer class="footer">
-        太阳谷信息技术部 2026
+        太阳谷信息技术部 2026 ｜ helpdesk@sunvalleyco.com
       </footer>
     </div>
   </div>
@@ -205,7 +204,7 @@ function addTab(tabRoute) {
   const exists = tabs.value.find(t => t.path === tabRoute.path)
   if (!exists) {
     const menuItem = visibleMenuItems.value.find(m => m.path === tabRoute.path)
-    tabs.value.push({ path: tabRoute.path, label: tabRoute.meta?.title || '未知页面', icon: menuItem?.icon || '', closable: tabRoute.path !== '/dashboard' })
+    tabs.value.push({ path: tabRoute.path, label: tabRoute.meta?.title || '未知页面', closable: tabRoute.path !== '/dashboard' })
   }
 }
 function switchTab(tab) { router.push(tab.path) }
@@ -459,7 +458,7 @@ onBeforeUnmount(() => {
 .tab-bar { display: flex; align-items: center; height: 38px; padding: 0 8px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); position: relative; flex-shrink: 0; }
 .tab-list { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .tab-list::-webkit-scrollbar { display: none; }
-.tab-item { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); background: transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; border: 1px solid transparent; flex-shrink: 0; }
+.tab-item { display: inline-flex; align-items: center; gap: 0; height: 28px; padding: 0 12px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); background: transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; border: 1px solid transparent; flex-shrink: 0; }
 .tab-item:hover { color: var(--text-primary); background: var(--bg-hover); }
 .tab-item.active { color: #1890ff; background: #e6f7ff; border-color: #91d5ff; font-weight: 500; }
 .tab-close { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; margin-left: 2px; color: #999; transition: all 0.15s ease; }
