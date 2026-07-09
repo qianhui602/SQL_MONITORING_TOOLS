@@ -124,6 +124,12 @@ const routes = [
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),
     meta: { title: '个人设置', hideInMenu: true }
+  },
+  {
+    path: '/help',
+    name: 'Help',
+    component: () => import('@/views/Help.vue'),
+    meta: { title: '帮助', icon: 'help' }
   }
 ]
 
