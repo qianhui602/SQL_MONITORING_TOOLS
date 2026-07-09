@@ -24,6 +24,27 @@
       </div>
     </div>
 
+    <!-- 数据库连接状态概览 -->
+    <div class="db-status-section" v-if="instances.length > 0">
+      <div class="db-status-header">
+        <span class="db-status-title">数据库连接状态</span>
+        <span class="db-status-summary" :class="allInstancesOnline ? 'text-online' : 'text-offline'">
+          {{ instancesOnline }} / {{ instances.length }} 在线
+        </span>
+      </div>
+      <div class="db-status-list">
+        <div v-for="inst in instances" :key="inst.id" class="db-status-item" @click="$router.push('/instances')"
+             :title="inst.is_active && !inst.is_connected ? (inst.connection_error || '连接异常') : ''">
+          <span :class="['status-dot-sm', inst.is_active ? (inst.is_connected ? 'dot-online' : 'dot-offline') : 'dot-disabled']"></span>
+          <span class="db-instance-name">{{ inst.name }}</span>
+          <span class="db-instance-address">{{ inst.host }}:{{ inst.port }}</span>
+          <span class="db-instance-status" :class="inst.is_active ? (inst.is_connected ? 'text-online' : 'text-offline') : 'text-disabled'">
+            {{ inst.is_active ? (inst.is_connected ? '在线' : '离线') : '已禁用' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- loading overlay -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner"></div>
@@ -157,6 +178,15 @@ const instances = ref([])
 const selectedInstance = ref('')
 const loadingInstances = ref(false)
 
+// 在线实例数计算属性
+const instancesOnline = computed(() => {
+  return instances.value.filter(i => i.is_active && i.is_connected).length
+})
+const allInstancesOnline = computed(() => {
+  const active = instances.value.filter(i => i.is_active)
+  return active.length > 0 && active.every(i => i.is_connected)
+})
+
 const cpuChartRef = ref(null)
 const memoryChartRef = ref(null)
 const connChartRef = ref(null)
@@ -288,7 +318,7 @@ function moveChartDown(index) {
 }
 
 // ---------- 指标卡片排序 ----------
-const defaultStatCardOrder = ['cpu', 'memory', 'connections', 'cache', 'disk', 'batch', 'locks', 'deadlock']
+const defaultStatCardOrder = ['cpu', 'memory', 'connections', 'cache', 'disk', 'batch', 'locks', 'deadlock', 'instances']
 const STORAGE_KEY_STAT_ORDER = 'sql_monitor_stat_order'
 
 const allStatCards = {
@@ -300,6 +330,7 @@ const allStatCards = {
   batch:     { key: 'batch',     label: '批处理/秒',    route: '/?focus=batch' },
   locks:     { key: 'locks',     label: '锁等待',       route: '/?focus=locks' },
   deadlock:  { key: 'deadlock',  label: '死锁事件',     route: '/deadlocks' },
+  instances: { key: 'instances', label: '数据库实例',   route: '/instances' },
 }
 
 function loadStatCardOrder() {
@@ -338,6 +369,16 @@ function buildStatCard(key) {
   else if (key === 'batch')     card.value = batchRequests.value
   else if (key === 'locks')     { card.value = lockWaits.value; valueStyle.color = lockColor.value }
   else if (key === 'deadlock')  card.value = deadlockCount.value
+  else if (key === 'instances') {
+    const active = instances.value.filter(i => i.is_active)
+    if (active.length === 0) {
+      card.value = '无实例'
+      valueStyle.color = '#999'
+    } else {
+      card.value = `${instancesOnline.value}/${instances.value.length}`
+      valueStyle.color = allInstancesOnline.value ? '#52c41a' : '#ff4d4f'
+    }
+  }
   return { ...card, valueStyle }
 }
 
@@ -667,6 +708,16 @@ async function fetchData() {
   fetching = true
   loading.value = true
   try {
+    // 同步刷新实例连接状态
+    if (instances.value.length > 0) {
+      try {
+        const data = await getInstances()
+        instances.value = Array.isArray(data) ? data : (data.items || [])
+      } catch (e) {
+        console.warn('刷新实例状态失败', e)
+      }
+    }
+
     const range = getTimeRange()
     const limit = getHistoryLimit()
     const serverAddr = selectedInstance.value || undefined
@@ -1084,6 +1135,7 @@ onUnmounted(() => {
 .stat-batch     { border-left-color: #eb2f96; }
 .stat-locks     { border-left-color: #f5222d; }
 .stat-deadlock  { border-left-color: #faad14; }
+.stat-instances { border-left-color: #1890ff; }
 
 .stat-drag-handle {
   color: #bfbfbf;
@@ -1133,6 +1185,102 @@ onUnmounted(() => {
 
 .stat-deadlock .stat-value.deadlock-val {
   font-variant-numeric: tabular-nums;
+}
+
+/* 数据库状态概览 */
+.db-status-section {
+  background: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.db-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.db-status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.db-status-summary {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.text-online { color: #52c41a; }
+.text-offline { color: #ff4d4f; }
+.text-disabled { color: #999; }
+
+.db-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.db-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex: 1 1 280px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.db-status-item:hover {
+  background: var(--table-hover, #f5f5f5);
+}
+
+.db-instance-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.db-instance-address {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.db-instance-status {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-dot-sm {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot-online {
+  background: #52c41a;
+  box-shadow: 0 0 3px rgba(82, 196, 26, 0.5);
+}
+
+.dot-offline {
+  background: #ff4d4f;
+  box-shadow: 0 0 3px rgba(255, 77, 79, 0.5);
+}
+
+.dot-disabled {
+  background: #d9d9d9;
 }
 
 .chart-grid {
