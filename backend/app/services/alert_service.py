@@ -96,6 +96,36 @@ class AlertEngine:
         has_deadlocks = bool(metrics_data.get("deadlocks"))
         return not has_metrics and not has_deadlocks
 
+    @staticmethod
+    def _condition_connection_lost(metrics_data: Dict[str, Any]) -> bool:
+        """判断是否有实例连接断开
+
+        Args:
+            metrics_data: 采集的完整指标数据（含 connection_status）
+
+        Returns:
+            bool: 存在连接断开的实例返回 True
+        """
+        for conn_status in metrics_data.get("connection_status", []):
+            if not conn_status.get("is_connected", True):
+                return True
+        return False
+
+    @staticmethod
+    def _condition_connection_recovered(metrics_data: Dict[str, Any]) -> bool:
+        """判断是否有实例连接恢复（前次断开，本次连接成功）
+
+        Args:
+            metrics_data: 采集的完整指标数据（含 connection_status）
+
+        Returns:
+            bool: 存在连接恢复的实例返回 True
+        """
+        for conn_status in metrics_data.get("connection_status", []):
+            if conn_status.get("is_connected", True) and conn_status.get("previous_was_disconnected", False):
+                return True
+        return False
+
     def __init__(self, db_session_factory) -> None:
         """初始化告警引擎
 
@@ -105,7 +135,10 @@ class AlertEngine:
         self.session_factory = db_session_factory
         self.notification_service = NotificationService()
 
-        # 内置 3 条告警规则
+        # 跟踪每个实例的前次连接状态（server_address -> was_disconnected）
+        self._last_connection_state: Dict[str, bool] = {}
+
+        # 内置 5 条告警规则
         self._builtin_rules: List[AlertRule] = [
             AlertRule(
                 alert_type="memory_high",
@@ -145,6 +178,33 @@ class AlertEngine:
                     "请检查 SQL Server 连接状态或网络连通性。"
                 ),
                 cooldown_minutes=15,
+            ),
+            AlertRule(
+                alert_type="connection_lost",
+                severity="critical",
+                condition_func=self._condition_connection_lost,
+                message_template=(
+                    "## SQL Server 连接断开\n\n"
+                    "- **实例**: {server_address}\n"
+                    "- **错误信息**: {error_message}\n"
+                    "- **最后连接时间**: {last_connected_at}\n"
+                    "- **触发时间**: {current_time}\n\n"
+                    "请立即检查 SQL Server 服务状态和网络连通性。"
+                ),
+                cooldown_minutes=10,
+            ),
+            AlertRule(
+                alert_type="connection_recovered",
+                severity="low",
+                condition_func=self._condition_connection_recovered,
+                message_template=(
+                    "## SQL Server 连接已恢复\n\n"
+                    "- **实例**: {server_address}\n"
+                    "- **断开时长**: {down_duration}\n"
+                    "- **恢复时间**: {current_time}\n\n"
+                    "连接已恢复正常。"
+                ),
+                cooldown_minutes=5,
             ),
         ]
 
@@ -209,6 +269,44 @@ class AlertEngine:
                 last_time = await self._get_last_collection_time()
                 message = rule.message_template.format(
                     last_record_time=last_time or "无记录",
+                    current_time=datetime.now(timezone.utc).strftime(
+                        "%Y-%m-%d %H:%M:%S UTC"
+                    ),
+                )
+
+            # ------ 规则 4: 连接断开 ------
+            elif rule.alert_type == "connection_lost":
+                lost_instances = [
+                    s for s in metrics_data.get("connection_status", [])
+                    if not s.get("is_connected", True)
+                ]
+                if not lost_instances:
+                    continue
+
+                # 只报告第一个断开的实例
+                inst = lost_instances[0]
+                message = rule.message_template.format(
+                    server_address=inst.get("server_address", "未知"),
+                    error_message=inst.get("connection_error", "无详细信息"),
+                    last_connected_at=inst.get("last_connected_at", "未知"),
+                    current_time=datetime.now(timezone.utc).strftime(
+                        "%Y-%m-%d %H:%M:%S UTC"
+                    ),
+                )
+
+            # ------ 规则 5: 连接恢复 ------
+            elif rule.alert_type == "connection_recovered":
+                recovered_instances = [
+                    s for s in metrics_data.get("connection_status", [])
+                    if s.get("is_connected", True) and s.get("previous_was_disconnected", False)
+                ]
+                if not recovered_instances:
+                    continue
+
+                inst = recovered_instances[0]
+                message = rule.message_template.format(
+                    server_address=inst.get("server_address", "未知"),
+                    down_duration=inst.get("down_duration", "未知"),
                     current_time=datetime.now(timezone.utc).strftime(
                         "%Y-%m-%d %H:%M:%S UTC"
                     ),

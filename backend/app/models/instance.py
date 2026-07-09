@@ -43,6 +43,18 @@ class MonitoredInstance(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, comment="是否启用采集"
     )
+    is_connected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, comment="当前连接状态：True=在线，False=离线",
+    )
+    last_connected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None, comment="最后成功连接时间",
+    )
+    last_disconnected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None, comment="最后断开时间",
+    )
+    connection_error: Mapped[str] = mapped_column(
+        String(500), nullable=True, default=None, comment="最近的连接错误信息",
+    )
     description: Mapped[str] = mapped_column(
         Text, nullable=True, default=None, comment="实例描述/备注"
     )

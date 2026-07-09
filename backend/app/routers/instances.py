@@ -62,6 +62,10 @@ class InstanceResponse(BaseModel):
     username: str
     database_name: str
     is_active: bool
+    is_connected: bool = True
+    last_connected_at: Optional[datetime] = None
+    last_disconnected_at: Optional[datetime] = None
+    connection_error: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime

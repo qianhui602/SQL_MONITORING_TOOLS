@@ -259,6 +259,40 @@ class SchedulerManager:
             return
 
         server_address = runtime_config.get("mssql_host", "unknown")
+        connection_status_list: List[Dict[str, Any]] = []
+
+        # 连接预检
+        if self._collector.connection_manager:
+            is_connected = self._collector.connection_manager.ping()
+            if is_connected:
+                conn_status = {
+                    "server_address": server_address,
+                    "is_connected": True,
+                    "connection_error": None,
+                    "previous_was_disconnected": False,
+                    "last_connected_at": "无记录",
+                }
+                # 单实例模式无法跟踪前次状态，仅当采集失败时会触发 collection_interrupted
+            else:
+                logger.warning(
+                    "Single-instance connection check failed for %s, skipping collection",
+                    server_address,
+                )
+                conn_status = {
+                    "server_address": server_address,
+                    "is_connected": False,
+                    "connection_error": f"Connection failed: {server_address}",
+                    "previous_was_disconnected": False,
+                    "last_connected_at": "无记录",
+                }
+                connection_status_list.append(conn_status)
+                aggregated_data: Dict[str, Any] = {
+                    "metrics": [],
+                    "deadlocks": [],
+                    "connection_status": connection_status_list,
+                }
+                await self._run_alert_checks(aggregated_data)
+                return
 
         try:
             data = await asyncio.to_thread(self._collector.collect_all_metrics)
@@ -294,7 +328,40 @@ class SchedulerManager:
                 logger.error("Failed to store collected data: %s", e)
                 return
 
+        data["connection_status"] = connection_status_list if connection_status_list else []
         await self._run_alert_checks(data)
+
+    async def _update_instance_connection(
+        self, instance: MonitoredInstance, is_connected: bool,
+        server_address: str, error_message: Optional[str] = None,
+    ) -> None:
+        """更新实例连接状态到数据库"""
+        now = datetime.now(timezone.utc)
+        async with async_session_factory() as session:
+            try:
+                stmt = (
+                    select(MonitoredInstance)
+                    .where(MonitoredInstance.id == instance.id)
+                )
+                result = await session.execute(stmt)
+                db_instance = result.scalar_one_or_none()
+                if db_instance is None:
+                    return
+
+                db_instance.is_connected = is_connected
+                if is_connected:
+                    db_instance.last_connected_at = now
+                    db_instance.connection_error = None
+                else:
+                    db_instance.last_disconnected_at = now
+                    db_instance.connection_error = error_message
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.warning(
+                    "Failed to update connection status for %s: %s",
+                    server_address, e,
+                )
 
     async def _collect_multi_instance(self, runtime_config: Dict[str, str]) -> None:
         """多实例采集模式：遍历所有活跃实例逐个采集"""
@@ -306,29 +373,77 @@ class SchedulerManager:
 
         all_metrics: List[Dict[str, Any]] = []
         all_deadlocks: List[Dict[str, Any]] = []
+        connection_status_list: List[Dict[str, Any]] = []
         success_count = 0
         fail_count = 0
+
+        now = datetime.now(timezone.utc)
 
         for instance in instances:
             server_address = f"{instance.name}({instance.host}:{instance.port})"
             logger.info(
-                "Collecting metrics from instance: %s (host=%s:%s db=%s)",
+                "Checking connection for instance: %s (host=%s:%s db=%s)",
                 server_address, instance.host, instance.port, instance.database_name,
             )
 
-            try:
-                # 为每个实例创建独立的连接管理器
-                conn_mgr = MSSQLConnectionManager.get_connection_for_instance(
-                    host=instance.host,
-                    port=instance.port,
-                    user=instance.username,
-                    password=instance.password,
-                    database=instance.database_name,
+            conn_mgr = MSSQLConnectionManager.get_connection_for_instance(
+                host=instance.host,
+                port=instance.port,
+                user=instance.username,
+                password=instance.password,
+                database=instance.database_name,
+            )
+
+            # 连接预检
+            previous_was_disconnected = not instance.is_connected
+            is_connected = conn_mgr.ping()
+
+            # 记录连接状态
+            conn_status = {
+                "server_address": server_address,
+                "is_connected": is_connected,
+                "connection_error": None,
+                "previous_was_disconnected": previous_was_disconnected,
+                "last_connected_at": str(instance.last_connected_at) if instance.last_connected_at else "无记录",
+            }
+
+            # 更新实例连接状态到数据库
+            if is_connected:
+                await self._update_instance_connection(
+                    instance, True, server_address,
                 )
+                conn_status["connection_error"] = None
+
+                # 检测连接恢复
+                if previous_was_disconnected:
+                    conn_status["previous_was_disconnected"] = True
+                    conn_status["down_duration"] = "未知"
+                    connection_status_list.append(conn_status)
+            else:
+                error_msg = f"Connection failed: {instance.host}:{instance.port}"
+                await self._update_instance_connection(
+                    instance, False, server_address, error_msg,
+                )
+                conn_status["connection_error"] = error_msg
+                connection_status_list.append(conn_status)
+                fail_count += 1
+                logger.warning(
+                    "Instance %s is offline, skipping data collection",
+                    server_address,
+                )
+                conn_mgr.close()
+                continue
+
+            # 连接成功，执行采集
+            logger.info(
+                "Collecting metrics from instance: %s",
+                server_address,
+            )
+
+            try:
                 collector = MetricsCollector(connection_manager=conn_mgr)
                 data = await asyncio.to_thread(collector.collect_all_metrics)
 
-                # 为该实例的指标打上 server_address
                 instance_metrics = data.get("metrics", [])
                 instance_deadlocks = data.get("deadlocks", [])
 
@@ -378,18 +493,17 @@ class SchedulerManager:
                 all_deadlocks.extend(instance_deadlocks)
                 success_count += 1
 
-                # 关闭该实例的连接
-                try:
-                    conn_mgr.close()
-                except Exception:
-                    pass
-
             except Exception as e:
                 fail_count += 1
                 logger.error(
                     "Failed to collect metrics from instance %s: %s",
                     server_address, e, exc_info=True,
                 )
+            finally:
+                try:
+                    conn_mgr.close()
+                except Exception:
+                    pass
 
         logger.info(
             "Multi-instance collection cycle completed: %d success, %d failed, "
@@ -397,13 +511,14 @@ class SchedulerManager:
             success_count, fail_count, len(all_metrics), len(all_deadlocks),
         )
 
-        # 汇总所有实例的数据执行告警检查
-        if all_metrics or all_deadlocks:
-            aggregated_data = {
-                "metrics": all_metrics,
-                "deadlocks": all_deadlocks,
-            }
-            await self._run_alert_checks(aggregated_data)
+        # 汇总所有实例的数据和连接状态执行告警检查
+        aggregated_data: Dict[str, Any] = {
+            "metrics": all_metrics,
+            "deadlocks": all_deadlocks,
+        }
+        if connection_status_list:
+            aggregated_data["connection_status"] = connection_status_list
+        await self._run_alert_checks(aggregated_data)
 
     @batch_store_handler("slow_query")
     async def _store_slow_queries(

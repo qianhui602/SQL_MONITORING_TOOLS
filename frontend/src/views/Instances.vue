@@ -12,28 +12,35 @@
             <th>实例名称</th>
             <th>服务器地址</th>
             <th>端口</th>
-            <th>状态</th>
+            <th>连接状态</th>
+            <th>最后连接时间</th>
             <th>最后采集时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="empty-cell">加载中...</td>
+            <td colspan="7" class="empty-cell">加载中...</td>
           </tr>
           <tr v-else-if="instances.length === 0">
-            <td colspan="6" class="empty-cell">暂无实例</td>
+            <td colspan="7" class="empty-cell">暂无实例</td>
           </tr>
           <tr v-for="inst in instances" :key="inst.id">
             <td>{{ inst.name }}</td>
             <td>{{ inst.host }}</td>
             <td>{{ inst.port }}</td>
             <td>
-              <span class="status-indicator" :class="inst.is_active ? 'status-active' : 'status-inactive'">
+              <span v-if="inst.is_active" :class="['status-indicator', inst.is_connected ? 'status-active' : 'status-error']"
+                    :title="inst.is_connected ? '' : (inst.connection_error || '连接异常')">
                 <span class="status-dot"></span>
-                {{ inst.is_active ? '启用' : '禁用' }}
+                {{ inst.is_connected ? '在线' : '离线' }}
+              </span>
+              <span v-else class="status-inactive">
+                <span class="status-dot"></span>
+                禁用
               </span>
             </td>
+            <td>{{ inst.last_connected_at ? formatDate(inst.last_connected_at) : '-' }}</td>
             <td>{{ formatDate(inst.last_collect_at) }}</td>
             <td>
               <button class="btn-text" @click="openEditDialog(inst)">编辑</button>
@@ -349,6 +356,15 @@ onMounted(fetchInstances)
 
 .status-active {
   color: #52c41a;
+}
+
+.status-error .status-dot {
+  background: #ff4d4f;
+  box-shadow: 0 0 4px rgba(255, 77, 79, 0.5);
+}
+
+.status-error {
+  color: #ff4d4f;
 }
 
 .status-inactive {

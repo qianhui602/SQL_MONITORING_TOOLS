@@ -311,6 +311,27 @@ async def _run_migrations() -> None:
                 )
                 logger.info("迁移: metrics 表添加复合索引 (category, collected_at DESC)")
 
+            # 为 monitored_instances 表添加连接状态字段
+            for col, typ, default in [
+                ("is_connected", "BOOLEAN", "TRUE"),
+                ("last_connected_at", "TIMESTAMPTZ", "NULL"),
+                ("last_disconnected_at", "TIMESTAMPTZ", "NULL"),
+                ("connection_error", "VARCHAR(500)", "NULL"),
+            ]:
+                result = await conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'monitored_instances' AND column_name = :col"
+                    ),
+                    {"col": col},
+                )
+                if not result.first():
+                    alter = f"ALTER TABLE monitored_instances ADD COLUMN {col} {typ}"
+                    if default != "NULL":
+                        alter += f" DEFAULT {default}"
+                    await conn.execute(text(alter))
+                    logger.info("迁移: monitored_instances 表添加 %s 列", col)
+
     except Exception:
         logger.exception("数据库迁移失败")
 

@@ -160,6 +160,25 @@ class MSSQLConnectionManager:
             logger.error("SQL Server connection test failed: %s", e)
             return False
 
+    def ping(self) -> bool:
+        """快速检测连接是否存活
+
+        轻量级检测，执行 SELECT 1 验证连接有效性。
+        与 _test_connection_alive 不同，ping 会尝试重新建立断开的连接。
+
+        Returns:
+            bool: 连接正常返回 True，否则返回 False
+        """
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+            return True
+        except (MSSQLConnectionError, pymssql.Error, Exception):
+            return False
+
     def close(self) -> None:
         """关闭连接"""
         if self._connection is not None:
