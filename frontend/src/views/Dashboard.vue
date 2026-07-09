@@ -110,7 +110,13 @@
             自定义
           </button>
           <div v-if="showCustomPanel" class="custom-panel" @click.stop>
-            <div class="custom-panel-title">选择显示的图表</div>
+            <div class="custom-panel-title">统计卡片</div>
+            <label v-for="item in statCardVisibilityOptions" :key="item.key" class="custom-checkbox">
+              <input type="checkbox" v-model="visibleStatCards[item.key]" @change="saveStatCardVisibility">
+              <span>{{ item.label }}</span>
+            </label>
+            <div class="custom-panel-divider"></div>
+            <div class="custom-panel-title">图表</div>
             <label v-for="item in chartVisibilityOptions" :key="item.key" class="custom-checkbox">
               <input type="checkbox" v-model="visibleCharts[item.key]">
               <span>{{ item.label }}</span>
@@ -369,6 +375,32 @@ const allStatCards = {
   instances: { key: 'instances', label: '数据库实例',   route: '/instances',         icon: iconPaths.instances },
 }
 
+const STORAGE_KEY_STAT_VISIBILITY = 'sql_monitor_stat_visibility'
+function loadStatCardVisibility() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_STAT_VISIBILITY)
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (e) { /* ignore */ }
+  const defaultVisibility = {}
+  defaultStatCardOrder.forEach(key => {
+    defaultVisibility[key] = true
+  })
+  return defaultVisibility
+}
+
+function saveStatCardVisibility() {
+  localStorage.setItem(STORAGE_KEY_STAT_VISIBILITY, JSON.stringify(visibleStatCards.value))
+}
+
+const visibleStatCards = ref(loadStatCardVisibility())
+
+const statCardVisibilityOptions = Object.entries(allStatCards).map(([key, card]) => ({
+  key,
+  label: card.label
+}))
+
 function loadStatCardOrder() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_STAT_ORDER)
@@ -419,12 +451,10 @@ function buildStatCard(key) {
 }
 
 const statCardOrder = computed(() => {
-  const validCards = statCardOrderKeys.value.map(buildStatCard).filter(Boolean)
-  if (validCards.length !== defaultStatCardOrder.length) {
-    statCardOrderKeys.value = [...defaultStatCardOrder]
-    saveStatCardOrder()
-    return defaultStatCardOrder.map(buildStatCard).filter(Boolean)
-  }
+  const validCards = statCardOrderKeys.value
+    .filter(key => visibleStatCards.value[key] !== false)
+    .map(buildStatCard)
+    .filter(Boolean)
   return validCards
 })
 
@@ -1825,6 +1855,12 @@ input:checked + .compare-slider:before { transform: translateX(20px); }
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.custom-panel-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 12px 0;
 }
 
 .custom-checkbox {
