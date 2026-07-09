@@ -131,6 +131,46 @@
         </div>
       </header>
 
+      <!-- 多标签页导航 -->
+      <div class="tab-bar" ref="tabBarRef">
+        <div class="tab-list" ref="tabListRef">
+          <div
+            v-for="tab in tabs"
+            :key="tab.path"
+            class="tab-item"
+            :class="{ active: isActive(tab.path) }"
+            @click="switchTab(tab)"
+            @contextmenu.prevent="openTabMenu($event, tab)"
+          >
+            <span class="tab-icon" v-html="tab.icon" v-if="tab.icon"></span>
+            <span class="tab-label">{{ tab.label }}</span>
+            <span
+              v-if="tab.closable"
+              class="tab-close"
+              @click.stop="closeTab(tab)"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </span>
+          </div>
+        </div>
+        <div class="tab-actions">
+          <button class="tab-action-btn" @click="closeOtherTabs" title="关闭其他">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+        <!-- 右键菜单 -->
+        <div v-if="tabMenuVisible" class="tab-context-menu" :style="tabMenuStyle" @click.stop>
+          <div class="context-menu-item" @click="closeTab(tabMenuTarget)">关闭当前</div>
+          <div class="context-menu-item" @click="closeOtherTabs">关闭其他</div>
+          <div class="context-menu-item" @click="closeAllTabs">关闭全部</div>
+        </div>
+      </div>
+
       <!-- 内容区 -->
       <main class="content">
         <slot />
@@ -145,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authStore } from '@/stores/auth'
 import { useTheme } from '@/stores/theme'
@@ -172,6 +212,14 @@ const latestVersion = ref('')
 const versionMessage = ref('')
 const showUpdateBanner = ref(false)
 
+// 多标签页
+const tabs = ref([])
+const tabBarRef = ref(null)
+const tabListRef = ref(null)
+const tabMenuVisible = ref(false)
+const tabMenuStyle = ref({})
+const tabMenuTarget = ref(null)
+
 const brandTitle = ref('数据库监控平台')
 const customLogoUrl = ref('')
 
@@ -181,6 +229,58 @@ function severityClass(sev) {
 
 function formatTime(d) {
   return formatDateTime(d, { second: true })
+}
+
+// ===== 多标签页管理 =====
+function addTab(tabRoute) {
+  if (tabRoute.meta?.hideInMenu || tabRoute.meta?.public) return
+  const exists = tabs.value.find(t => t.path === tabRoute.path)
+  if (!exists) {
+    const menuItem = visibleMenuItems.value.find(m => m.path === tabRoute.path)
+    tabs.value.push({
+      path: tabRoute.path,
+      label: tabRoute.meta?.title || '未知页面',
+      icon: menuItem?.icon || '',
+      closable: tabRoute.path !== '/dashboard'
+    })
+  }
+}
+
+function switchTab(tab) {
+  router.push(tab.path)
+}
+
+function closeTab(tab) {
+  const idx = tabs.value.findIndex(t => t.path === tab.path)
+  if (idx === -1) return
+  tabs.value.splice(idx, 1)
+  if (isActive(tab.path)) {
+    const prev = tabs.value[Math.min(idx, tabs.value.length - 1)]
+    if (prev) router.push(prev.path)
+    else router.push('/dashboard')
+  }
+}
+
+function closeOtherTabs() {
+  const current = tabs.value.find(t => isActive(t.path))
+  tabs.value = current ? [current] : []
+  tabMenuVisible.value = false
+}
+
+function closeAllTabs() {
+  tabs.value = []
+  tabMenuVisible.value = false
+  router.push('/dashboard')
+}
+
+function openTabMenu(e, tab) {
+  tabMenuTarget.value = tab
+  tabMenuStyle.value = { left: e.clientX + 'px', top: e.clientY + 'px' }
+  tabMenuVisible.value = true
+}
+
+function closeTabMenu() {
+  tabMenuVisible.value = false
 }
 
 async function fetchNotifications() {
@@ -389,6 +489,9 @@ function handleClickOutside(e) {
   if (userMenuRef.value && !userMenuRef.value.contains(e.target)) {
     userMenuOpen.value = false
   }
+  if (tabMenuVisible.value) {
+    tabMenuVisible.value = false
+  }
   handleNotifOutside(e)
 }
 
@@ -422,12 +525,24 @@ async function fetchVersionCheck() {
   }
 }
 
+// 监听路由变化，自动添加标签页
+watch(() => route.path, (path) => {
+  addTab(route)
+  // 滚动到激活的标签
+  nextTick(() => {
+    const active = tabBarRef.value?.querySelector('.tab-item.active')
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  })
+}, { immediate: true })
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchNotifications()
   startNotifPolling()
   fetchBrandConfig()
   fetchVersionCheck()
+  // 初始化当前路由的标签
+  addTab(route)
 })
 
 onBeforeUnmount(() => {
@@ -1069,6 +1184,145 @@ onBeforeUnmount(() => {
 .dropdown-divider {
   height: 1px;
   background: var(--border-color);
+}
+
+/* ---- Tab Bar ---- */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 8px;
+  background: var(--bg-card, #fff);
+  border-bottom: 1px solid var(--border-color, #e8e8e8);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tab-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tab-list::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.tab-item:hover {
+  color: var(--text-primary, #333);
+  background: var(--bg-hover, #f5f5f5);
+}
+
+.tab-item.active {
+  color: #1890ff;
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  font-weight: 500;
+}
+
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-icon :deep(svg) {
+  width: 12px;
+  height: 12px;
+}
+
+.tab-label {
+  line-height: 1;
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-left: 2px;
+  color: #999;
+  transition: all 0.15s ease;
+}
+
+.tab-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #ff4d4f;
+}
+
+.tab-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.tab-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-action-btn:hover {
+  background: var(--bg-hover, #f5f5f5);
+  color: #666;
+}
+
+/* 右键菜单 */
+.tab-context-menu {
+  position: fixed;
+  z-index: 2000;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  min-width: 120px;
+  border: 1px solid #e8e8e8;
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #333;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.context-menu-item:hover {
+  background: #f0f5ff;
+  color: #1890ff;
 }
 
 .content {
