@@ -30,34 +30,19 @@
             <th>严重级别</th>
             <th>消息</th>
             <th>触发时间</th>
-            <th>确认状态</th>
-            <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in list" :key="row.id" :class="{ acknowledged: row.acknowledged }">
+          <tr v-for="row in list" :key="row.id">
             <td>{{ row.alert_type }}</td>
             <td>
               <span class="severity-tag" :class="severityClass(row.severity)">{{ row.severity }}</span>
             </td>
             <td class="msg-cell">{{ row.message }}</td>
             <td>{{ formatDateTime(row.triggered_at, { second: true }) }}</td>
-            <td>
-              <span :class="row.acknowledged ? 'ack-yes' : 'ack-no'">
-                {{ row.acknowledged ? '已确认' : '未确认' }}
-              </span>
-            </td>
-            <td>
-              <button
-                v-if="!row.acknowledged"
-                class="btn-ack"
-                @click="handleAcknowledge(row)"
-              >确认</button>
-              <span v-else class="ack-done-text">已处理</span>
-            </td>
           </tr>
           <tr v-if="list.length === 0">
-            <td colspan="6" class="empty-cell">暂无数据</td>
+            <td colspan="4" class="empty-cell">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -85,7 +70,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAlerts, acknowledgeAlert } from '@/api'
+import { getAlerts } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
 const list = ref([])
@@ -145,15 +130,6 @@ function goPage(p) {
 function onPageSizeChange() {
   page.value = 1
   fetchList()
-}
-
-async function handleAcknowledge(row) {
-  try {
-    await acknowledgeAlert(row.id)
-    row.acknowledged = true
-  } catch (e) {
-    console.error('确认告警失败', e)
-  }
 }
 
 onMounted(() => {
@@ -301,36 +277,6 @@ onMounted(() => {
 .sev-low {
   background: #e6f7ff;
   color: #096dd9;
-}
-
-.ack-yes {
-  color: #52c41a;
-  font-weight: 500;
-}
-
-.ack-no {
-  color: #fa8c16;
-  font-weight: 500;
-}
-
-.btn-ack {
-  height: 28px;
-  padding: 0 12px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.btn-ack:hover {
-  background: #40a9ff;
-}
-
-.ack-done-text {
-  color: #999;
-  font-size: 12px;
 }
 
 .empty-cell {
