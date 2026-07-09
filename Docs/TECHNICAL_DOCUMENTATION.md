@@ -761,6 +761,10 @@ CREATE INDEX idx_slow_queries_sql_hash ON slow_queries(sql_hash);
 -- 用户表索引
 CREATE UNIQUE INDEX idx_users_username ON users(username);
 
+-- 监控实例表索引
+CREATE INDEX idx_monitored_instances_is_active ON monitored_instances(is_active);
+CREATE INDEX idx_monitored_instances_is_connected ON monitored_instances(is_connected);
+
 -- 审计日志表索引
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
@@ -1164,6 +1168,10 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
       "username": "sa",
       "database_name": "master",
       "is_active": true,
+      "is_connected": true,
+      "last_connected_at": "2024-01-01T00:00:00Z",
+      "last_disconnected_at": null,
+      "connection_error": null,
       "description": "生产环境 SQL Server"
     }
   ]
@@ -2294,6 +2302,20 @@ A: 检查以下配置：
 - 新增品牌定制（自定义标题和 Logo）
 - 新增前端访问地址配置项
 - 优化：公开页面 401 不再强制跳转登录页
+
+### v1.5.0 (2026-07-09)
+- 新增 SQL 断联监控功能
+  - 采集前主动 ping 检测连接存活状态
+  - 连接断开/恢复自动触发告警通知
+  - monitored_instances 表新增连接状态字段
+- 新增 Dashboard 数据库连接状态显示
+  - 显示所有实例的在线/离线状态
+  - 呼吸灯动画指示在线状态
+- UI 优化
+  - Dashboard 统计卡片添加彩色渐变图标
+  - 统计卡片支持显示/隐藏自定义
+  - 登录页面 UI 全面升级（玻璃拟态风格）
+  - 响应式布局优化
 
 ## 14. 未来规划
 
