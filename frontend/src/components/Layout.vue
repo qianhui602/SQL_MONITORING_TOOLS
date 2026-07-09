@@ -122,6 +122,18 @@
                 <span v-html="profileIcon"></span>
                 <span>个人设置</span>
               </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item about-item">
+                <span>版本</span>
+                <span class="version-badge" :class="{ 'has-update': hasUpdate }" @click="hasUpdate && (showUpdateBanner = true)">
+                  v{{ currentVersion }}
+                  <span v-if="hasUpdate" class="update-dot-sm"></span>
+                </span>
+              </div>
+              <div v-if="hasUpdate" class="dropdown-item update-hint" @click="showUpdateBanner = true">
+                <span style="color:#faad14">发现新版本 v{{ latestVersion }}</span>
+              </div>
+              <div class="dropdown-divider"></div>
               <div class="dropdown-item" @click="onLogout">
                 <span v-html="logoutIcon"></span>
                 <span>退出登录</span>
@@ -497,8 +509,9 @@ function handleClickOutside(e) {
 
 async function fetchBrandConfig() {
   try {
-    const title = await getConfig('brand_title')
-    if (title) brandTitle.value = title
+    const titleData = await getConfig('brand_title')
+    if (titleData?.config_value) brandTitle.value = titleData.config_value
+    else if (typeof titleData === 'string' && titleData) brandTitle.value = titleData
 
     const logoUrl = getLogoUrl()
     const resp = await fetch(logoUrl, { method: 'HEAD' })
@@ -1184,6 +1197,38 @@ onBeforeUnmount(() => {
 .dropdown-divider {
   height: 1px;
   background: var(--border-color);
+}
+.about-item {
+  justify-content: space-between;
+  cursor: default;
+}
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.version-badge.has-update {
+  color: #faad14;
+  background: #fffbe6;
+}
+.update-dot-sm {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #faad14;
+  animation: updatePulse 2s infinite;
+}
+.update-hint {
+  cursor: pointer;
+  font-size: 12px;
+}
+.update-hint:hover {
+  background: #fffbe6 !important;
 }
 
 /* ---- Tab Bar ---- */
