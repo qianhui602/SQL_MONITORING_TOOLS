@@ -141,6 +141,139 @@ npm run dev
 - **安装引导**：首次部署访问时自动进入安装向导，引导完成数据库初始化和管理员账号创建
 - **声音提醒**：顶部栏铃铛图标可查看通知，支持开启/关闭声音提醒
 
+## 升级指南
+
+系统会自动检测是否有新版本可用。当发现新版本时，侧边栏底部版本号会显示黄色圆点提示，页面底部也会弹出升级通知横幅。
+
+### 手动升级步骤
+
+#### Docker 部署升级（推荐）
+
+```bash
+# 1. 进入项目目录
+cd SQL_MONITORING_TOOLS
+
+# 2. 拉取最新代码
+git pull origin master
+
+# 3. 重新构建并启动容器（数据自动保留）
+docker-compose up -d --build
+
+# 4. 验证服务状态
+docker-compose ps
+```
+
+#### 本地开发环境升级
+
+```bash
+# 1. 进入项目目录
+cd SQL_MONITORING_TOOLS
+
+# 2. 拉取最新代码
+git pull origin master
+
+# 3. 升级后端依赖
+cd backend
+pip install -r requirements.txt
+
+# 4. 升级前端依赖
+cd ../frontend
+npm install
+
+# 5. 重启后端服务
+cd ../backend
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 6. 重启前端开发服务器（另一个终端）
+cd frontend
+npm run dev
+```
+
+### 升级注意事项
+
+| 项目 | 说明 |
+|------|------|
+| 数据库 | 升级会自动执行数据库迁移，无需手动操作 |
+| 配置文件 | 已有的系统配置（品牌、告警规则等）会保留 |
+| 用户数据 | 所有用户账号、审计日志不会丢失 |
+| Docker 卷 | 使用 Docker 部署时数据存储在卷中，容器重建不会丢失 |
+
+### 升级脚本
+
+可以将以下脚本保存为 `upgrade.sh`（Linux/Mac）或 `upgrade.bat`（Windows）快速升级：
+
+**Linux/Mac (`upgrade.sh`)**
+
+```bash
+#!/bin/bash
+echo "=== SQL 监控平台升级脚本 ==="
+echo ""
+
+# 拉取最新代码
+echo "[1/4] 拉取最新代码..."
+git pull origin master
+
+if [ $? -ne 0 ]; then
+    echo "❌ 代码拉取失败，请检查网络连接"
+    exit 1
+fi
+
+# 检测部署方式
+if [ -f "docker-compose.yml" ] && command -v docker &> /dev/null; then
+    echo "[2/4] 检测到 Docker 部署，重新构建..."
+    docker-compose up -d --build
+    echo "[3/4] 清理旧镜像..."
+    docker image prune -f
+    echo "[4/4] 验证服务状态..."
+    docker-compose ps
+else
+    echo "[2/4] 检测到本地部署，安装依赖..."
+    cd backend && pip install -r requirements.txt
+    cd ../frontend && npm install
+    echo "[3/4] 依赖安装完成"
+    echo "[4/4] 请手动重启后端和前端服务"
+fi
+
+echo ""
+echo "✅ 升级完成！"
+```
+
+**Windows (`upgrade.bat`)**
+
+```bat
+@echo off
+echo === SQL 监控平台升级脚本 ===
+echo.
+
+echo [1/4] 拉取最新代码...
+git pull origin master
+if %errorlevel% neq 0 (
+    echo ❌ 代码拉取失败，请检查网络连接
+    pause
+    exit /b 1
+)
+
+echo [2/4] 检测部署方式...
+if exist "docker-compose.yml" (
+    echo 检测到 Docker 部署，重新构建...
+    docker-compose up -d --build
+    echo [3/4] 清理旧镜像...
+    docker image prune -f
+    echo [4/4] 验证服务状态...
+    docker-compose ps
+) else (
+    echo 检测到本地部署，安装依赖...
+    cd backend && pip install -r requirements.txt
+    cd ../frontend && npm install
+    echo [3/4] 依赖安装完成
+    echo [4/4] 请手动重启后端和前端服务
+)
+
+echo.
+echo ✅ 升级完成！
+pause
+```
+
 ## 常用命令
 
 ```bash

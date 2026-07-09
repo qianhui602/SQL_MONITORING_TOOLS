@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="SQL 监控平台 - 数据库查询性能监控与分析",
-    version="0.1.0",
+    version=settings.VERSION,
     lifespan=lifespan,
 )
 

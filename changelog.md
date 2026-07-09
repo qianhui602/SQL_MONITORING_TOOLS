@@ -2,6 +2,20 @@
 
 ## 2026-07-09
 
+**标题：** 版本检测与升级提醒功能
+**文件：** `backend/app/routers/version.py`, `frontend/src/components/Layout.vue`, `frontend/src/api/index.js`, `README.md`
+**明细：**
+- 新增后端版本检查 API（/api/version/check），对比本地与 GitHub 最新版本
+- 修复 main.py 版本号硬编码问题，统一使用 config.py 的 VERSION
+- 侧边栏底部版本号支持动态获取，有新版本时显示黄色闪烁圆点
+- 底部弹出升级通知横幅，包含版本信息和升级指南链接
+- README 新增完整升级指南（Docker 和本地开发两种方式）
+- 提供 upgrade.sh 和 upgrade.bat 一键升级脚本
+
+---
+
+## 2026-07-09
+
 **标题：** 登录页面 UI 优化
 **文件：** `frontend/src/views/Login.vue`
 **明细：**

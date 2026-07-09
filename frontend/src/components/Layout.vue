@@ -31,9 +31,31 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span class="version-text">v{{ currentVersion }}</span>
+        <span class="version-text" :class="{ 'has-update': hasUpdate }" @click="hasUpdate && (showUpdateBanner = true)">
+          v{{ currentVersion }}
+          <span v-if="hasUpdate" class="update-dot"></span>
+        </span>
       </div>
     </aside>
+
+    <!-- 版本更新提示横幅 -->
+    <div v-if="showUpdateBanner && hasUpdate" class="update-banner" @click.self="showUpdateBanner = false">
+      <div class="update-banner-content">
+        <div class="update-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="update-banner-text">
+          <strong>发现新版本 v{{ latestVersion }}</strong>
+          <span>{{ versionMessage }}</span>
+        </div>
+        <div class="update-banner-actions">
+          <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS" target="_blank" class="update-btn-primary">查看升级指南</a>
+          <button class="update-btn-close" @click="showUpdateBanner = false">稍后再说</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 主区域 -->
     <div class="main-area">
@@ -127,7 +149,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authStore } from '@/stores/auth'
 import { useTheme } from '@/stores/theme'
-import { getUnreadCount, getNotifications, markNotificationRead, deleteNotification, markAllNotificationsRead, getConfig, getLogoUrl } from '@/api'
+import { getUnreadCount, getNotifications, markNotificationRead, deleteNotification, markAllNotificationsRead, getConfig, getLogoUrl, checkVersion } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
 const { theme, toggleTheme } = useTheme()
@@ -145,6 +167,10 @@ const prevUnreadCount = ref(0)
 const soundEnabled = ref(localStorage.getItem('notif_sound_enabled') !== 'false')
 const notifPollTimer = ref(null)
 const currentVersion = ref('1.0.0')
+const hasUpdate = ref(false)
+const latestVersion = ref('')
+const versionMessage = ref('')
+const showUpdateBanner = ref(false)
 
 const brandTitle = ref('数据库监控平台')
 const customLogoUrl = ref('')
@@ -278,7 +304,8 @@ const icons = {
   server: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
   audit: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-  users: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+  users: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  help: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
 }
 
 const collapseIconLeft = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
@@ -303,7 +330,8 @@ const menuItems = [
   { path: '/instances', label: '实例管理', icon: icons.server, requiresAdmin: true },
   { path: '/audit-logs', label: '审计日志', icon: icons.audit, requiresAdmin: true },
   { path: '/settings', label: '系统设置', icon: icons.settings, requiresAdmin: true },
-  { path: '/users', label: '用户管理', icon: icons.users, requiresAdmin: true }
+  { path: '/users', label: '用户管理', icon: icons.users, requiresAdmin: true },
+  { path: '/help', label: '帮助', icon: icons.help, requiresAdmin: false }
 ]
 
 const visibleMenuItems = computed(() =>
@@ -379,11 +407,27 @@ async function fetchBrandConfig() {
   }
 }
 
+async function fetchVersionCheck() {
+  try {
+    const data = await checkVersion()
+    currentVersion.value = data.current_version || '1.0.0'
+    hasUpdate.value = data.has_update || false
+    latestVersion.value = data.latest_version || ''
+    versionMessage.value = data.message || ''
+    if (hasUpdate.value) {
+      showUpdateBanner.value = true
+    }
+  } catch {
+    // 静默失败
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchNotifications()
   startNotifPolling()
   fetchBrandConfig()
+  fetchVersionCheck()
 })
 
 onBeforeUnmount(() => {
@@ -553,6 +597,136 @@ onBeforeUnmount(() => {
 .version-text {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.version-text.has-update {
+  color: #faad14;
+  cursor: pointer;
+}
+
+.update-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #faad14;
+  display: inline-block;
+  animation: updatePulse 2s infinite;
+}
+
+@keyframes updatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 版本更新横幅 */
+.update-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 260px;
+  right: 20px;
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.update-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #fffbe6 0%, #fff7cc 100%);
+  border: 1px solid #ffe58f;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(250, 173, 20, 0.2);
+}
+
+.update-banner-icon {
+  color: #faad14;
+  flex-shrink: 0;
+}
+
+.update-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: #8c6e00;
+}
+
+.update-banner-text strong {
+  color: #614700;
+  font-size: 14px;
+}
+
+.update-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.update-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: #faad14;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.update-btn-primary:hover {
+  background: #ffc53d;
+}
+
+.update-btn-close {
+  padding: 6px 14px;
+  background: transparent;
+  color: #8c6e00;
+  border: 1px solid #ffe58f;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.update-btn-close:hover {
+  background: rgba(250, 173, 20, 0.1);
+}
+
+/* 响应式 - 更新横幅 */
+@media (max-width: 768px) {
+  .update-banner {
+    left: 20px;
+    bottom: 10px;
+    right: 10px;
+  }
+  .update-banner-content {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .update-banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.sidebar.collapsed ~ .update-banner {
+  left: 84px;
 }
 
 /* ---- Main Area ---- */

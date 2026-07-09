@@ -244,4 +244,7 @@ export function saveSetupConfig(data) {
   return request.post('/setup/config', data)
 }
 
+// ===== 版本检查 =====
+export function checkVersion() { return request.get('/version/check') }
+
 export default request
