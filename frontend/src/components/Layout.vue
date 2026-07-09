@@ -85,6 +85,16 @@
                 </div>
                 <div v-if="notifList.length === 0" class="notif-empty">暂无通知</div>
               </div>
+              <div class="notif-footer">
+                <label class="notif-setting">
+                  <input type="checkbox" v-model="soundEnabled" @change="toggleSound" />
+                  <span>声音提醒</span>
+                </label>
+                <label class="notif-setting" v-if="desktopNotifSupported">
+                  <input type="checkbox" v-model="desktopNotifEnabled" @change="toggleDesktopNotif" />
+                  <span>桌面通知</span>
+                </label>
+              </div>
             </div>
           </div>
           <button class="theme-toggle-btn" @click="toggleTheme" :title="theme === 'light' ? '切换到暗色模式' : '切换到浅色模式'">
@@ -251,7 +261,65 @@ function playNotificationSound() {
   } catch {}
 }
 function toggleSound() { soundEnabled.value = !soundEnabled.value; localStorage.setItem('notif_sound_enabled', soundEnabled.value) }
-async function pollUnreadCount() { try { const data = await getUnreadCount(); const newCount = data.unread_count || 0; if (prevUnreadCount.value > 0 && newCount > prevUnreadCount.value) playNotificationSound(); prevUnreadCount.value = newCount; notifUnread.value = newCount } catch {} }
+const desktopNotifSupported = ref(typeof window !== 'undefined' && 'Notification' in window)
+const desktopNotifEnabled = ref(localStorage.getItem('desktop_notif_enabled') === 'true')
+async function toggleDesktopNotif() {
+  if (!desktopNotifSupported.value) return
+  if (desktopNotifEnabled.value) {
+    const perm = await Notification.requestPermission()
+    if (perm === 'granted') {
+      localStorage.setItem('desktop_notif_enabled', 'true')
+      showDesktopNotification('桌面通知已开启', '新告警将通过系统通知提醒您', 'low')
+    } else {
+      desktopNotifEnabled.value = false
+      localStorage.setItem('desktop_notif_enabled', 'false')
+      alert('您已拒绝通知权限，桌面通知无法开启。请在浏览器设置中手动开启。')
+    }
+  } else {
+    localStorage.setItem('desktop_notif_enabled', 'false')
+  }
+}
+function showDesktopNotification(title, body, severity) {
+  if (!desktopNotifSupported.value || !desktopNotifEnabled.value) return
+  if (Notification.permission !== 'granted') return
+  try {
+    const colorMap = { critical: '#ff4d4f', high: '#fa8c16', medium: '#faad14', low: '#52c41a' }
+    const notif = new Notification(title, {
+      body: body,
+      icon: '',
+      badge: '',
+      tag: 'sql-monitor-alert',
+      requireInteraction: severity === 'critical'
+    })
+    notif.onclick = () => {
+      window.focus()
+      router.push('/alerts')
+      notif.close()
+    }
+    setTimeout(() => notif.close(), 8000)
+  } catch {}
+}
+async function pollUnreadCount() {
+  try {
+    const data = await getUnreadCount()
+    const newCount = data.unread_count || 0
+    if (prevUnreadCount.value > 0 && newCount > prevUnreadCount.value) {
+      playNotificationSound()
+      if (desktopNotifSupported.value && desktopNotifEnabled.value && Notification.permission === 'granted') {
+        try {
+          const latest = await getNotifications(1)
+          if (latest.items && latest.items.length > 0) {
+            const item = latest.items[0]
+            const sevLabel = { critical: '严重告警', high: '高级告警', medium: '中级告警', low: '低级告警' }[item.severity] || '告警'
+            showDesktopNotification(sevLabel + ': ' + (item.alert_type || '数据库告警'), item.message || '', item.severity)
+          }
+        } catch {}
+      }
+    }
+    prevUnreadCount.value = newCount
+    notifUnread.value = newCount
+  } catch {}
+}
 function startNotifPolling() { stopNotifPolling(); notifPollTimer.value = setInterval(pollUnreadCount, 30000) }
 function stopNotifPolling() { if (notifPollTimer.value) { clearInterval(notifPollTimer.value); notifPollTimer.value = null } }
 
@@ -434,6 +502,9 @@ onBeforeUnmount(() => {
 .notif-action { width: 24px; height: 24px; border: none; border-radius: 4px; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s; }
 .notif-action.notif-del:hover { color: #ff4d4f; background: rgba(255,77,79,0.08); }
 .notif-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.notif-footer { display: flex; align-items: center; justify-content: space-around; padding: 10px 16px; border-top: 1px solid var(--border-color); background: var(--bg-hover); flex-shrink: 0; }
+.notif-setting { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none; }
+.notif-setting input[type="checkbox"] { cursor: pointer; accent-color: #1890ff; }
 .user-info { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
 .user-info:hover { background-color: var(--bg-primary); }
 .avatar { width: 32px; height: 32px; border-radius: 50%; background: #1890ff; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
