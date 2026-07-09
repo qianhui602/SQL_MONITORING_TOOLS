@@ -1630,6 +1630,22 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   }
   ```
 
+#### 5.3.16 版本检查接口
+
+**GET /api/version/check**
+- 描述：检查是否有新版本可用，对比本地版本与 GitHub 最新版本
+- 请求头：`Authorization: Bearer <token>`
+- 响应：
+  ```json
+  {
+    "current_version": "1.0.11",
+    "latest_version": "1.1.0",
+    "has_update": true,
+    "github_url": "https://github.com/qianhui602/SQL_MONITORING_TOOLS",
+    "message": "发现新版本 v1.1.0，当前版本 v1.0.11，建议升级以获取最新功能和安全修复。"
+  }
+  ```
+
 ## 6. 前端架构
 
 ### 6.1 组件结构
@@ -1640,12 +1656,18 @@ App.vue
     ├── Sidebar (侧边栏)
     │   ├── Logo
     │   ├── Navigation Menu
-    │   └── Collapse Button
+    │   ├── Collapse Button
+    │   └── Version Display (版本号 + 更新提示)
     ├── Topbar (顶部栏)
     │   ├── Page Title
     │   ├── Notification Bell
     │   ├── Theme Toggle
     │   └── User Menu
+    ├── TabBar (多标签页导航)
+    │   ├── Tab Items (标签列表，支持关闭)
+    │   ├── Close Others Button
+    │   └── Context Menu (右键菜单)
+    ├── Update Banner (版本更新横幅)
     └── Main Content (主内容区)
         ├── Dashboard.vue
         ├── Trends.vue
@@ -1661,6 +1683,7 @@ App.vue
         ├── AuditLogs.vue
         ├── Settings.vue
         ├── Report.vue
+        ├── Help.vue
         ├── Login.vue
         ├── Profile.vue
         ├── ForgotPassword.vue
@@ -2311,11 +2334,25 @@ A: 检查以下配置：
 - 新增 Dashboard 数据库连接状态显示
   - 显示所有实例的在线/离线状态
   - 呼吸灯动画指示在线状态
+- 新增多标签页导航栏（参考 Dify 风格）
+  - 自动创建标签，支持点击切换和关闭
+  - 右键菜单支持关闭当前/其他/全部
+- 新增帮助中心页面（/help）
+  - 左侧目录导航 + 搜索过滤
+  - 涵盖所有模块使用说明和 FAQ
+- 新增版本检测与升级提醒
+  - 自动对比本地与 GitHub 最新版本
+  - 侧边栏版本号显示更新提示圆点
+  - 底部弹出升级通知横幅
 - UI 优化
   - Dashboard 统计卡片添加彩色渐变图标
   - 统计卡片支持显示/隐藏自定义
   - 登录页面 UI 全面升级（玻璃拟态风格）
+  - 移除告警管理页面确认按钮
   - 响应式布局优化
+- 文档更新
+  - README 新增升级指南和一键升级脚本
+  - 新增用户手册（Docs/USER_MANUAL.md）
 
 ## 14. 未来规划
 
