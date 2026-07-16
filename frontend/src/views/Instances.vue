@@ -1,29 +1,29 @@
 <template>
   <div class="instances-page">
     <div class="page-header">
-      <h2>实例管理</h2>
-      <button class="btn btn-primary" @click="openCreateDialog">+ 添加实例</button>
+      <h2>{{ t('instances.title') }}</h2>
+      <button class="btn btn-primary" @click="openCreateDialog">{{ t('instances.addInstance') }}</button>
     </div>
 
     <div class="card">
       <table class="data-table">
         <thead>
           <tr>
-            <th>实例名称</th>
-            <th>服务器地址</th>
-            <th>端口</th>
-            <th>连接状态</th>
-            <th>最后连接时间</th>
-            <th>最后采集时间</th>
-            <th>操作</th>
+            <th>{{ t('instances.instanceName') }}</th>
+            <th>{{ t('instances.serverAddress') }}</th>
+            <th>{{ t('instances.port') }}</th>
+            <th>{{ t('instances.connectionStatus') }}</th>
+            <th>{{ t('instances.lastConnectTime') }}</th>
+            <th>{{ t('instances.lastCollectTime') }}</th>
+            <th>{{ t('common.operation') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="empty-cell">加载中...</td>
+            <td colspan="7" class="empty-cell">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="instances.length === 0">
-            <td colspan="7" class="empty-cell">暂无实例</td>
+            <td colspan="7" class="empty-cell">{{ t('instances.noInstances') }}</td>
           </tr>
           <tr v-for="inst in instances" :key="inst.id">
             <td>{{ inst.name }}</td>
@@ -31,21 +31,21 @@
             <td>{{ inst.port }}</td>
             <td>
               <span v-if="inst.is_active" :class="['status-indicator', inst.is_connected ? 'status-active' : 'status-error']"
-                    :title="inst.is_connected ? '' : (inst.connection_error || '连接异常')">
+                    :title="inst.is_connected ? '' : (inst.connection_error || t('common.connectError'))">
                 <span class="status-dot"></span>
-                {{ inst.is_connected ? '在线' : '离线' }}
+                {{ inst.is_connected ? t('common.online') : t('common.offline') }}
               </span>
               <span v-else class="status-inactive">
                 <span class="status-dot"></span>
-                禁用
+                {{ t('common.disabledStatus') }}
               </span>
             </td>
             <td>{{ inst.last_connected_at ? formatDate(inst.last_connected_at) : '-' }}</td>
             <td>{{ formatDate(inst.last_collect_at) }}</td>
             <td>
-              <button class="btn-text" @click="openEditDialog(inst)">编辑</button>
-              <button class="btn-text btn-test" @click="onTestConnection(inst)">测试连接</button>
-              <button class="btn-text btn-danger" @click="onDelete(inst)">删除</button>
+              <button class="btn-text" @click="openEditDialog(inst)">{{ t('common.edit') }}</button>
+              <button class="btn-text btn-test" @click="onTestConnection(inst)">{{ t('instances.testConnection') }}</button>
+              <button class="btn-text btn-danger" @click="onDelete(inst)">{{ t('common.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -61,54 +61,54 @@
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal">
         <div class="modal-header">
-          {{ dialogMode === 'create' ? '添加实例' : '编辑实例' }}
+          {{ dialogMode === 'create' ? t('instances.addTitle') : t('instances.editTitle') }}
         </div>
         <div class="modal-body">
           <div class="form-row">
-            <label>实例名称 <span class="required">*</span></label>
-            <input v-model="form.name" placeholder="例如：生产环境SQL Server" />
+            <label>{{ t('instances.instanceName') }} <span class="required">*</span></label>
+            <input v-model="form.name" :placeholder="t('instances.namePlaceholder')" />
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>主机地址 <span class="required">*</span></label>
-              <input v-model="form.host" placeholder="例如：192.168.1.100" />
+              <label>{{ t('instances.hostAddress') }} <span class="required">*</span></label>
+              <input v-model="form.host" :placeholder="t('instances.hostPlaceholder')" />
             </div>
             <div class="form-row">
-              <label>端口</label>
+              <label>{{ t('instances.port') }}</label>
               <input v-model.number="form.port" type="number" placeholder="1433" />
             </div>
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>用户名</label>
-              <input v-model="form.username" placeholder="SQL Server 账号" />
+              <label>{{ t('instances.username') }}</label>
+              <input v-model="form.username" :placeholder="t('instances.usernamePlaceholder')" />
             </div>
             <div class="form-row">
-              <label>密码</label>
-              <input v-model="form.password" type="password" :placeholder="dialogMode === 'edit' ? '留空则不修改' : '密码'" />
+              <label>{{ t('instances.password') }}</label>
+              <input v-model="form.password" type="password" :placeholder="dialogMode === 'edit' ? t('instances.passwordPlaceholder') : t('instances.password')" />
             </div>
           </div>
           <div class="form-row">
-            <label>数据库</label>
-            <input v-model="form.database" placeholder="默认 master" />
+            <label>{{ t('instances.database') }}</label>
+            <input v-model="form.database" :placeholder="t('instances.dbPlaceholder')" />
           </div>
           <div class="form-row">
-            <label>描述</label>
-            <input v-model="form.description" placeholder="可选" />
+            <label>{{ t('alertRules.description') }}</label>
+            <input v-model="form.description" :placeholder="t('common.optional')" />
           </div>
           <div class="form-row" v-if="dialogMode === 'edit'">
-            <label>启用状态</label>
+            <label>{{ t('instances.enableStatus') }}</label>
             <select v-model="form.is_active">
-              <option :value="true">启用</option>
-              <option :value="false">禁用</option>
+              <option :value="true">{{ t('common.enable') }}</option>
+              <option :value="false">{{ t('common.disable') }}</option>
             </select>
           </div>
           <div v-if="dialogError" class="error-msg">{{ dialogError }}</div>
         </div>
         <div class="modal-footer">
-          <button class="btn" @click="closeDialog">取消</button>
+          <button class="btn" @click="closeDialog">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="onSubmit" :disabled="submitting">
-            {{ submitting ? '提交中...' : '确定' }}
+            {{ submitting ? t('common.submit') : t('common.confirm') }}
           </button>
         </div>
       </div>
@@ -118,8 +118,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getInstances, createInstance, updateInstance, deleteInstance, testInstanceConnection } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const instances = ref([])
 const loading = ref(false)
@@ -216,8 +219,8 @@ function closeDialog() {
 
 async function onSubmit() {
   dialogError.value = ''
-  if (!form.name) { dialogError.value = '请输入实例名称'; return }
-  if (!form.host) { dialogError.value = '请输入主机地址'; return }
+  if (!form.name) { dialogError.value = t('instances.nameRequired'); return }
+  if (!form.host) { dialogError.value = t('instances.hostRequired'); return }
 
   submitting.value = true
   try {
@@ -240,19 +243,19 @@ async function onSubmit() {
     showDialog.value = false
     await fetchInstances()
   } catch (e) {
-    dialogError.value = e?.response?.data?.detail || '操作失败'
+    dialogError.value = e?.response?.data?.detail || t('common.operationFailed')
   } finally {
     submitting.value = false
   }
 }
 
 async function onDelete(inst) {
-  if (!confirm(`确定要删除实例 "${inst.name}" 吗？`)) return
+  if (!confirm(t('common.confirmDelete', { name: inst.name }))) return
   try {
     await deleteInstance(inst.id)
     await fetchInstances()
   } catch (e) {
-    alert(e?.response?.data?.detail || '删除失败')
+    alert(e?.response?.data?.detail || t('common.deleteFailed'))
   }
 }
 
@@ -260,13 +263,13 @@ async function onTestConnection(inst) {
   try {
     const data = await testInstanceConnection(inst.id)
     if (data && data.success !== false) {
-      showToast(`连接成功！${inst.name} (${inst.host}:${inst.port})`, 'success')
+      showToast(t('instances.connectSuccess') + `${inst.name} (${inst.host}:${inst.port})`, 'success')
     } else {
-      showToast(`连接失败: ${data?.error || '未知错误'}`, 'error')
+      showToast(t('instances.connectFailed') + ` ${data?.error || t('instances.unknownError')}`, 'error')
     }
   } catch (e) {
     const detail = e?.response?.data?.detail || e?.response?.data?.error || e.message
-    showToast(`连接失败: ${detail}`, 'error')
+    showToast(t('instances.connectFailed') + ` ${detail}`, 'error')
   }
 }
 

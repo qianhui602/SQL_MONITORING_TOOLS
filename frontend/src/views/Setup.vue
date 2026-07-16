@@ -5,8 +5,8 @@
       <div class="setup-left">
         <div class="left-content">
           <img src="/LOGO.png" alt="Logo" class="left-logo" />
-          <h1 class="left-title">SQL 监控平台</h1>
-          <p class="left-desc">数据库查询性能监控与分析系统</p>
+          <h1 class="left-title">{{ t('setup.platformTitle') }}</h1>
+          <p class="left-desc">{{ t('setup.platformDesc') }}</p>
           <div class="step-indicator">
             <div
               v-for="(step, idx) in steps"
@@ -43,40 +43,40 @@
                   <polyline points="9 12 11 14 15 10" stroke="#52c41a"/>
                 </svg>
               </div>
-              <h2 class="welcome-title">欢迎使用 SQL 监控平台</h2>
+              <h2 class="welcome-title">{{ t('setup.welcomeTitle') }}</h2>
               <p class="welcome-desc">
-                本系统可以帮助您实时监控 SQL Server 数据库的性能指标、<br />
-                检测死锁事件、分析慢查询、管理告警通知，<br />
-                并提供 AI 驱动的智能分析与报告生成。
+                {{ t('setup.welcomeDesc1') }}<br />
+                {{ t('setup.welcomeDesc2') }}<br />
+                {{ t('setup.welcomeDesc3') }}
               </p>
               <div class="feature-list">
                 <div class="feature-row">
                   <span class="feature-check">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#52c41a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                   </span>
-                  <span>全方位性能指标实时监控</span>
+                  <span>{{ t('setup.feature1') }}</span>
                 </div>
                 <div class="feature-row">
                   <span class="feature-check">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#52c41a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                   </span>
-                  <span>智能告警与多渠道通知（邮件、企业微信）</span>
+                  <span>{{ t('setup.feature2') }}</span>
                 </div>
                 <div class="feature-row">
                   <span class="feature-check">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#52c41a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                   </span>
-                  <span>AI 驱动的死锁分析与系统报告</span>
+                  <span>{{ t('setup.feature3') }}</span>
                 </div>
                 <div class="feature-row">
                   <span class="feature-check">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#52c41a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                   </span>
-                  <span>支持多 SQL Server 实例集中管理</span>
+                  <span>{{ t('setup.feature4') }}</span>
                 </div>
               </div>
               <button class="btn-primary btn-large" @click="nextStep">
-                开始安装
+                {{ t('setup.startInstall') }}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                 </svg>
@@ -85,50 +85,50 @@
 
             <!-- Step 2: 创建管理员 -->
             <div v-if="currentStep === 1" key="admin" class="step-content">
-              <h2 class="step-title">创建超级管理员</h2>
-              <p class="step-subtitle">设置系统超级管理员账号，用于首次登录和管理系统</p>
+              <h2 class="step-title">{{ t('setup.createAdmin') }}</h2>
+              <p class="step-subtitle">{{ t('setup.createAdminDesc') }}</p>
 
               <div class="form-group">
-                <label class="form-label">用户名 <span class="required">*</span></label>
+                <label class="form-label">{{ t('setup.username') }} <span class="required">*</span></label>
                 <input
                   v-model="adminForm.username"
                   type="text"
                   class="form-input"
-                  placeholder="请输入管理员用户名"
+                  :placeholder="t('setup.usernamePlaceholder')"
                   :class="{ error: errors.username }"
                 />
                 <span v-if="errors.username" class="form-error">{{ errors.username }}</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label">显示名称</label>
+                <label class="form-label">{{ t('setup.displayName') }}</label>
                 <input
                   v-model="adminForm.fullName"
                   type="text"
                   class="form-input"
-                  placeholder="请输入管理员显示名称（可选）"
+                  :placeholder="t('setup.displayNamePlaceholder')"
                 />
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">密码 <span class="required">*</span></label>
+                  <label class="form-label">{{ t('setup.password') }} <span class="required">*</span></label>
                   <input
                     v-model="adminForm.password"
                     type="password"
                     class="form-input"
-                    placeholder="请输入密码"
+                    :placeholder="t('setup.passwordPlaceholder')"
                     :class="{ error: errors.password }"
                   />
                   <span v-if="errors.password" class="form-error">{{ errors.password }}</span>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">确认密码 <span class="required">*</span></label>
+                  <label class="form-label">{{ t('setup.confirmPassword') }} <span class="required">*</span></label>
                   <input
                     v-model="adminForm.confirmPassword"
                     type="password"
                     class="form-input"
-                    placeholder="请再次输入密码"
+                    :placeholder="t('setup.confirmPasswordPlaceholder')"
                     :class="{ error: errors.confirmPassword }"
                   />
                   <span v-if="errors.confirmPassword" class="form-error">{{ errors.confirmPassword }}</span>
@@ -138,34 +138,34 @@
               <div v-if="setupError" class="error-msg">{{ setupError }}</div>
 
               <div class="form-actions">
-                <button class="btn-default" @click="prevStep">上一步</button>
+                <button class="btn-default" @click="prevStep">{{ t('setup.prevStep') }}</button>
                 <button class="btn-primary" @click="submitAdmin" :disabled="loading">
                   <span v-if="loading" class="btn-spinner"></span>
-                  {{ loading ? '创建中...' : '创建并继续' }}
+                  {{ loading ? t('setup.creating') : t('setup.createAndContinue') }}
                 </button>
               </div>
             </div>
 
             <!-- Step 3: 基础配置 -->
             <div v-if="currentStep === 2" key="config" class="step-content">
-              <h2 class="step-title">基础系统配置</h2>
-              <p class="step-subtitle">配置系统时区和数据保留策略</p>
+              <h2 class="step-title">{{ t('setup.basicConfig') }}</h2>
+              <p class="step-subtitle">{{ t('setup.basicConfigDesc') }}</p>
 
               <div class="form-group">
-                <label class="form-label">系统时区</label>
+                <label class="form-label">{{ t('setup.timezone') }}</label>
                 <select v-model="configForm.timezone" class="form-select">
-                  <option value="Asia/Shanghai">Asia/Shanghai (UTC+8) - 北京时间</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo (UTC+9) - 东京时间</option>
-                  <option value="America/New_York">America/New_York (UTC-5) - 纽约时间</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles (UTC-8) - 洛杉矶时间</option>
-                  <option value="Europe/London">Europe/London (UTC+0) - 伦敦时间</option>
+                  <option value="Asia/Shanghai">Asia/Shanghai (UTC+8) - {{ t('setup.beijing') }}</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo (UTC+9) - {{ t('setup.tokyo') }}</option>
+                  <option value="America/New_York">America/New_York (UTC-5) - {{ t('setup.newyork') }}</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (UTC-8) - {{ t('setup.losangeles') }}</option>
+                  <option value="Europe/London">Europe/London (UTC+0) - {{ t('setup.london') }}</option>
                   <option value="UTC">UTC (UTC+0)</option>
                 </select>
-                <span class="form-desc">系统时区用于日志和报表时间显示</span>
+                <span class="form-desc">{{ t('setup.timezoneDesc') }}</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label">数据保留天数</label>
+                <label class="form-label">{{ t('setup.dataRetention') }}</label>
                 <input
                   v-model.number="configForm.dataRetentionDays"
                   type="number"
@@ -173,16 +173,16 @@
                   min="7"
                   max="3650"
                 />
-                <span class="form-desc">超过此天数的监控数据将被自动清理，建议 90-365 天</span>
+                <span class="form-desc">{{ t('setup.dataRetentionDesc') }}</span>
               </div>
 
               <div v-if="configError" class="error-msg">{{ configError }}</div>
 
               <div class="form-actions">
-                <button class="btn-default" @click="prevStep">上一步</button>
+                <button class="btn-default" @click="prevStep">{{ t('setup.prevStep') }}</button>
                 <button class="btn-primary" @click="submitConfig" :disabled="saving">
                   <span v-if="saving" class="btn-spinner"></span>
-                  {{ saving ? '保存中...' : '保存并完成' }}
+                  {{ saving ? t('setup.saving') : t('setup.saveAndFinish') }}
                 </button>
               </div>
             </div>
@@ -194,24 +194,24 @@
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                 </svg>
               </div>
-              <h2 class="complete-title">安装完成！</h2>
+              <h2 class="complete-title">{{ t('setup.installComplete') }}</h2>
               <p class="complete-desc">
-                系统已成功完成初始化配置。<br />
-                您现在可以使用刚才创建的超级管理员账号登录系统。
+                {{ t('setup.completeDesc1') }}<br />
+                {{ t('setup.completeDesc2') }}
               </p>
 
               <div class="summary-card">
                 <div class="summary-item">
-                  <span class="summary-label">管理员账号</span>
+                  <span class="summary-label">{{ t('setup.adminAccount') }}</span>
                   <span class="summary-value">{{ adminForm.username }}</span>
                 </div>
                 <div class="summary-item">
-                  <span class="summary-label">系统时区</span>
+                  <span class="summary-label">{{ t('setup.adminTimeZone') }}</span>
                   <span class="summary-value">{{ configForm.timezone }}</span>
                 </div>
                 <div class="summary-item">
-                  <span class="summary-label">数据保留</span>
-                  <span class="summary-value">{{ configForm.dataRetentionDays }} 天</span>
+                  <span class="summary-label">{{ t('setup.dataRetentionLabel') }}</span>
+                  <span class="summary-value">{{ configForm.dataRetentionDays }} {{ t('common.day') }}</span>
                 </div>
               </div>
 
@@ -219,7 +219,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
                 </svg>
-                立即登录
+                {{ t('setup.loginNow') }}
               </button>
             </div>
           </transition>
@@ -232,15 +232,17 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { createSetupAdmin, saveSetupConfig } from '@/api'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const steps = [
-  { label: '欢迎', desc: '系统介绍' },
-  { label: '管理员', desc: '创建账号' },
-  { label: '配置', desc: '系统设置' },
-  { label: '完成', desc: '安装完成' },
+  { label: t('setup.steps.welcome'), desc: t('setup.steps.intro') },
+  { label: t('setup.steps.admin'), desc: t('setup.steps.createAccount') },
+  { label: t('setup.steps.config'), desc: t('setup.steps.systemSettings') },
+  { label: t('setup.steps.complete'), desc: t('setup.steps.installComplete') },
 ]
 
 const currentStep = ref(0)
@@ -290,26 +292,26 @@ function validateAdmin() {
   let valid = true
 
   if (!adminForm.username.trim()) {
-    errors.username = '请输入用户名'
+    errors.username = t('setup.usernameRequired')
     valid = false
   } else if (adminForm.username.trim().length < 2) {
-    errors.username = '用户名至少 2 个字符'
+    errors.username = t('setup.usernameMin')
     valid = false
   }
 
   if (!adminForm.password) {
-    errors.password = '请输入密码'
+    errors.password = t('setup.passwordRequired')
     valid = false
   } else if (adminForm.password.length < 6) {
-    errors.password = '密码至少 6 个字符'
+    errors.password = t('setup.passwordMin')
     valid = false
   }
 
   if (!adminForm.confirmPassword) {
-    errors.confirmPassword = '请确认密码'
+    errors.confirmPassword = t('setup.confirmRequired')
     valid = false
   } else if (adminForm.password !== adminForm.confirmPassword) {
-    errors.confirmPassword = '两次密码不一致'
+    errors.confirmPassword = t('setup.passwordMismatch')
     valid = false
   }
 
@@ -327,7 +329,7 @@ async function submitAdmin() {
     })
     nextStep()
   } catch (e) {
-    setupError.value = e?.response?.data?.detail || e.message || '创建管理员失败'
+    setupError.value = e?.response?.data?.detail || e.message || t('setup.createAdminFailed')
   } finally {
     loading.value = false
   }
@@ -342,7 +344,7 @@ async function submitConfig() {
     })
     nextStep()
   } catch (e) {
-    configError.value = e?.response?.data?.detail || e.message || '保存配置失败'
+    configError.value = e?.response?.data?.detail || e.message || t('setup.saveConfigFailed')
   } finally {
     saving.value = false
   }

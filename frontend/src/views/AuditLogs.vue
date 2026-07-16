@@ -1,18 +1,18 @@
 <template>
   <div class="audit-logs-page">
     <div class="page-header">
-      <h2>审计日志</h2>
+      <h2>{{ t('auditLogs.title') }}</h2>
     </div>
 
     <div class="toolbar">
       <div class="toolbar-group">
-        <label class="toolbar-label">用户名</label>
-        <input v-model="filter.username" class="input" placeholder="输入用户名筛选" @keyup.enter="onSearch" />
+        <label class="toolbar-label">{{ t('auditLogs.username') }}</label>
+        <input v-model="filter.username" class="input" :placeholder="t('auditLogs.usernamePlaceholder')" @keyup.enter="onSearch" />
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">操作类型</label>
+        <label class="toolbar-label">{{ t('auditLogs.operationType') }}</label>
         <select v-model="filter.action" class="select-input" @change="onSearch">
-          <option value="">全部</option>
+          <option value="">{{ t('common.all') }}</option>
           <option value="CREATE">CREATE</option>
           <option value="UPDATE">UPDATE</option>
           <option value="DELETE">DELETE</option>
@@ -20,14 +20,14 @@
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">开始时间</label>
+        <label class="toolbar-label">{{ t('auditLogs.startTime') }}</label>
         <input type="datetime-local" v-model="filter.startTime" class="input" />
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">结束时间</label>
+        <label class="toolbar-label">{{ t('auditLogs.endTime') }}</label>
         <input type="datetime-local" v-model="filter.endTime" class="input" />
       </div>
-      <button class="btn-primary" @click="onSearch">查询</button>
+      <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
     </div>
 
     <div v-if="error" class="error-state">
@@ -39,27 +39,27 @@
         </svg>
       </div>
       <p class="error-text">{{ error }}</p>
-      <button class="btn-primary" @click="fetchList">重试</button>
+      <button class="btn-primary" @click="fetchList">{{ t('common.retry') }}</button>
     </div>
 
     <div class="card" v-else>
       <table class="data-table">
         <thead>
           <tr>
-            <th>用户名</th>
-            <th>操作</th>
-            <th>资源</th>
-            <th>详情</th>
-            <th>IP 地址</th>
-            <th>操作时间</th>
+            <th>{{ t('auditLogs.user') }}</th>
+            <th>{{ t('auditLogs.operation') }}</th>
+            <th>{{ t('auditLogs.resource') }}</th>
+            <th>{{ t('auditLogs.detail') }}</th>
+            <th>{{ t('auditLogs.ipAddress') }}</th>
+            <th>{{ t('auditLogs.operationTime') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="empty-cell">加载中...</td>
+            <td colspan="6" class="empty-cell">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="list.length === 0">
-            <td colspan="6" class="empty-cell">暂无审计日志</td>
+            <td colspan="6" class="empty-cell">{{ t('auditLogs.noLogs') }}</td>
           </tr>
           <tr v-for="row in list" :key="row.id">
             <td>{{ row.username }}</td>
@@ -75,20 +75,20 @@
       </table>
 
       <div class="pagination">
-        <span class="page-info">共 {{ total }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ total }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-text">第 {{ page }} / {{ totalPages }} 页</span>
-          <button :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+          <button :disabled="page <= 1" @click="goPage(page - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page, total: totalPages }) }}</span>
+          <button :disabled="page >= totalPages" @click="goPage(page + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="pageSize" @change="onPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -97,8 +97,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getAuditLogs } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const list = ref([])
 const total = ref(0)
@@ -148,7 +151,7 @@ async function fetchList() {
     total.value = data.total || 0
   } catch (e) {
     console.error('获取审计日志失败', e)
-    error.value = '获取审计日志失败，请稍后重试'
+    error.value = t('auditLogs.fetchFailed')
     list.value = []
     total.value = 0
   } finally {

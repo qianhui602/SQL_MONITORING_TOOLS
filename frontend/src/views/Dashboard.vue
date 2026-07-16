@@ -14,7 +14,7 @@
         @drop="onDrop($event, idx)"
         @dragend="onDragEnd"
       >
-        <div class="stat-drag-handle" @click.stop title="拖拽排序">
+        <div class="stat-drag-handle" @click.stop :title="t('dashboard.dragSort')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
         </div>
         <div class="stat-icon-wrapper" :class="'icon-' + card.key">
@@ -38,15 +38,15 @@
               <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
             </svg>
           </div>
-          <span class="db-status-title">数据库连接状态</span>
+          <span class="db-status-title">{{ t('dashboard.dbStatus') }}</span>
         </div>
         <span class="db-status-summary" :class="allInstancesOnline ? 'status-badge status-badge-online' : 'status-badge status-badge-offline'">
-          {{ instancesOnline }} / {{ instances.length }} 在线
+          {{ instancesOnline }} / {{ instances.length }} {{ t('common.online') }}
         </span>
       </div>
       <div class="db-status-list">
         <div v-for="inst in instances" :key="inst.id" class="db-status-item" @click="$router.push('/instances')"
-             :title="inst.is_active && !inst.is_connected ? (inst.connection_error || '连接异常') : ''">
+             :title="inst.is_active && !inst.is_connected ? (inst.connection_error || t('common.connectError')) : ''">
           <div class="db-item-left">
             <span :class="['status-dot-sm', inst.is_active ? (inst.is_connected ? 'dot-online dot-pulse' : 'dot-offline') : 'dot-disabled']"></span>
             <div class="db-item-info">
@@ -55,7 +55,7 @@
             </div>
           </div>
           <span class="db-instance-status" :class="inst.is_active ? (inst.is_connected ? 'status-tag status-tag-online' : 'status-tag status-tag-offline') : 'status-tag status-tag-disabled'">
-            {{ inst.is_active ? (inst.is_connected ? '在线' : '离线') : '已禁用' }}
+            {{ inst.is_active ? (inst.is_connected ? t('common.online') : t('common.offline')) : t('common.disabledStatus') }}
           </span>
         </div>
       </div>
@@ -64,19 +64,19 @@
     <!-- loading overlay -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner"></div>
-      <span>数据加载中…</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <div class="chart-toolbar">
       <div class="chart-toolbar-left">
         <!-- 实例选择 -->
         <select v-model="selectedInstance" @change="fetchData" class="instance-select" :disabled="loadingInstances">
-          <option value="">所有实例</option>
+          <option value="">{{ t('dashboard.allInstances') }}</option>
           <option v-for="inst in instances" :key="inst.id" :value="`${inst.name}(${inst.host}:${inst.port})`">
             {{ inst.name }} ({{ inst.host }}:{{ inst.port }})
           </option>
         </select>
-        <span class="chart-toolbar-label">时间范围：</span>
+        <span class="chart-toolbar-label">{{ t('dashboard.timeRange') }}：</span>
         <div class="range-tabs">
           <button
             v-for="opt in rangeOptions"
@@ -86,37 +86,37 @@
           >{{ opt.label }}</button>
         </div>
         <span class="chart-toolbar-divider"></span>
-        <span class="chart-toolbar-label">刷新：</span>
+        <span class="chart-toolbar-label">{{ t('dashboard.refresh') }}：</span>
         <select v-model="refreshInterval" class="refresh-select" @change="restartTimer">
           <option v-for="opt in refreshOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
       </div>
       <div class="chart-toolbar-right">
         <!-- 对比模式 -->
-        <span class="compare-label">对比</span>
+        <span class="compare-label">{{ t('dashboard.compare') }}</span>
         <label class="compare-switch">
           <input type="checkbox" v-model="compareMode" @change="onCompareModeChange">
           <span class="compare-slider"></span>
         </label>
         <select v-if="compareMode" v-model="compareRange" class="compare-select" @change="fetchData">
-          <option value="yesterday">昨天此时</option>
-          <option value="last_week">上周此时</option>
-          <option value="last_month">上月此时</option>
+          <option value="yesterday">{{ t('dashboard.compareYesterday') }}</option>
+          <option value="last_week">{{ t('dashboard.compareLastWeek') }}</option>
+          <option value="last_month">{{ t('dashboard.compareLastMonth') }}</option>
         </select>
         <!-- 图表自定义 -->
         <div class="custom-btn-wrapper">
           <button class="custom-btn" @click="showCustomPanel = !showCustomPanel">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            自定义
+            {{ t('dashboard.customize') }}
           </button>
           <div v-if="showCustomPanel" class="custom-panel" @click.stop>
-            <div class="custom-panel-title">统计卡片</div>
+            <div class="custom-panel-title">{{ t('dashboard.statCardsTitle') }}</div>
             <label v-for="item in statCardVisibilityOptions" :key="item.key" class="custom-checkbox">
               <input type="checkbox" v-model="visibleStatCards[item.key]" @change="saveStatCardVisibility">
               <span>{{ item.label }}</span>
             </label>
             <div class="custom-panel-divider"></div>
-            <div class="custom-panel-title">图表</div>
+            <div class="custom-panel-title">{{ t('dashboard.chartsTitle') }}</div>
             <label v-for="item in chartVisibilityOptions" :key="item.key" class="custom-checkbox">
               <input type="checkbox" v-model="visibleCharts[item.key]">
               <span>{{ item.label }}</span>
@@ -124,26 +124,26 @@
           </div>
         </div>
         <div class="custom-btn-wrapper">
-          <button class="custom-btn" @click="showOrderPanel = !showOrderPanel" :class="{ active: showOrderPanel }" title="自定义布局排序">
+          <button class="custom-btn" @click="showOrderPanel = !showOrderPanel" :class="{ active: showOrderPanel }" :title="t('dashboard.customLayoutSort')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            排序
+            {{ t('dashboard.sort') }}
           </button>
           <div v-if="showOrderPanel" class="custom-panel order-panel" @click.stop>
-            <div class="custom-panel-title">图表排序（点击箭头调整位置）</div>
+            <div class="custom-panel-title">{{ t('dashboard.chartSort') }}</div>
             <div class="order-list">
               <div v-for="(chartKey, idx) in chartOrder" :key="chartKey" class="order-item">
                 <span class="order-item-label">{{ chartVisibilityOptions.find(o => o.key === chartKey)?.label || chartKey }}</span>
                 <span class="order-item-actions">
-                  <button class="order-arrow-btn" @click="moveChartUp(idx)" :disabled="idx === 0" title="上移">
+                  <button class="order-arrow-btn" @click="moveChartUp(idx)" :disabled="idx === 0" :title="t('dashboard.moveUp')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                   </button>
-                  <button class="order-arrow-btn" @click="moveChartDown(idx)" :disabled="idx === chartOrder.length - 1" title="下移">
+                  <button class="order-arrow-btn" @click="moveChartDown(idx)" :disabled="idx === chartOrder.length - 1" :title="t('dashboard.moveDown')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
                 </span>
               </div>
             </div>
-            <button class="order-reset-btn" @click="resetChartOrder">恢复默认排序</button>
+            <button class="order-reset-btn" @click="resetChartOrder">{{ t('dashboard.resetChartOrder') }}</button>
           </div>
         </div>
       </div>
@@ -163,7 +163,7 @@
             <span class="chart-color-dot" :class="'dot-' + chartKey"></span>
             <span class="chart-title">{{ chartTitleMap[chartKey] }}{{ chartTitleSuffix }}</span>
           </div>
-          <span class="chart-zoom-btn" title="查看详情">
+          <span class="chart-zoom-btn" :title="t('dashboard.details')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
             </svg>
@@ -188,9 +188,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { getMetricsSummary, getHistoryMetrics, getDeadlocks, getInstances } from '@/api'
 import { formatTime, formatDateTime } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const cpuUsage = ref(0)
 const memoryUsage = ref(0)
@@ -269,13 +272,13 @@ const loading = ref(false)
 const compareMode = ref(false)
 const compareRange = ref('yesterday')
 const refreshInterval = ref(10000)
-const refreshOptions = [
-  { label: '5 秒', value: 5000 },
-  { label: '10 秒', value: 10000 },
-  { label: '30 秒', value: 30000 },
-  { label: '60 秒', value: 60000 },
-  { label: '关闭', value: 0 },
-]
+const refreshOptions = computed(() => [
+  { label: t('dashboard.refreshOptions.5s'), value: 5000 },
+  { label: t('dashboard.refreshOptions.10s'), value: 10000 },
+  { label: t('dashboard.refreshOptions.30s'), value: 30000 },
+  { label: t('dashboard.refreshOptions.60s'), value: 60000 },
+  { label: t('dashboard.refreshOptions.off'), value: 0 },
+])
 
 // 获取实例列表
 async function fetchInstances() {
@@ -300,14 +303,14 @@ const visibleCharts = ref({
   batch: true
 })
 
-const chartVisibilityOptions = [
-  { key: 'cpu', label: 'CPU 使用率趋势' },
-  { key: 'memory', label: '内存使用趋势' },
-  { key: 'connections', label: '连接数趋势' },
-  { key: 'io', label: 'IO 延迟趋势' },
-  { key: 'locks', label: '锁等待趋势' },
-  { key: 'batch', label: '批处理请求趋势' }
-]
+const chartVisibilityOptions = computed(() => [
+  { key: 'cpu', label: t('dashboard.charts.cpu') },
+  { key: 'memory', label: t('dashboard.charts.memory') },
+  { key: 'connections', label: t('dashboard.charts.connections') },
+  { key: 'io', label: t('dashboard.charts.io') },
+  { key: 'locks', label: t('dashboard.charts.locks') },
+  { key: 'batch', label: t('dashboard.charts.batch') }
+])
 
 // 图表排序
 const defaultChartOrder = ['cpu', 'memory', 'connections', 'io', 'locks', 'batch']
@@ -363,17 +366,17 @@ const iconPaths = {
   instances: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
 }
 
-const allStatCards = {
-  cpu:       { key: 'cpu',       label: 'CPU 使用率',   route: '/?focus=cpu',        icon: iconPaths.cpu },
-  memory:    { key: 'memory',    label: '内存使用量',   route: '/?focus=memory',     icon: iconPaths.memory },
-  connections:{ key: 'connections', label: '活跃连接',   route: '/?focus=connections', icon: iconPaths.connections },
-  cache:     { key: 'cache',     label: '缓存命中率',   route: '/?focus=cache',      icon: iconPaths.cache },
-  disk:      { key: 'disk',      label: '磁盘使用率',   route: '/disk-space',        icon: iconPaths.disk },
-  batch:     { key: 'batch',     label: '批处理/秒',    route: '/?focus=batch',      icon: iconPaths.batch },
-  locks:     { key: 'locks',     label: '锁等待',       route: '/?focus=locks',      icon: iconPaths.locks },
-  deadlock:  { key: 'deadlock',  label: '死锁事件',     route: '/deadlocks',         icon: iconPaths.deadlock },
-  instances: { key: 'instances', label: '数据库实例',   route: '/instances',         icon: iconPaths.instances },
-}
+const allStatCards = computed(() => ({
+  cpu:       { key: 'cpu',       label: t('dashboard.statCards.cpu'),   route: '/?focus=cpu',        icon: iconPaths.cpu },
+  memory:    { key: 'memory',    label: t('dashboard.statCards.memory'),   route: '/?focus=memory',     icon: iconPaths.memory },
+  connections:{ key: 'connections', label: t('dashboard.statCards.connections'),   route: '/?focus=connections', icon: iconPaths.connections },
+  cache:     { key: 'cache',     label: t('dashboard.statCards.cache'),   route: '/?focus=cache',      icon: iconPaths.cache },
+  disk:      { key: 'disk',      label: t('dashboard.statCards.disk'),   route: '/disk-space',        icon: iconPaths.disk },
+  batch:     { key: 'batch',     label: t('dashboard.statCards.batch'),    route: '/?focus=batch',      icon: iconPaths.batch },
+  locks:     { key: 'locks',     label: t('dashboard.statCards.locks'),       route: '/?focus=locks',      icon: iconPaths.locks },
+  deadlock:  { key: 'deadlock',  label: t('dashboard.statCards.deadlock'),     route: '/deadlocks',         icon: iconPaths.deadlock },
+  instances: { key: 'instances', label: t('dashboard.statCards.instances'),   route: '/instances',         icon: iconPaths.instances },
+}))
 
 const STORAGE_KEY_STAT_VISIBILITY = 'sql_monitor_stat_visibility'
 function loadStatCardVisibility() {
@@ -396,10 +399,10 @@ function saveStatCardVisibility() {
 
 const visibleStatCards = ref(loadStatCardVisibility())
 
-const statCardVisibilityOptions = Object.entries(allStatCards).map(([key, card]) => ({
+const statCardVisibilityOptions = computed(() => Object.entries(allStatCards.value).map(([key, card]) => ({
   key,
   label: card.label
-}))
+})))
 
 function loadStatCardOrder() {
   try {
@@ -407,7 +410,7 @@ function loadStatCardOrder() {
     if (saved) {
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed)) {
-        const validKeys = parsed.filter(key => allStatCards[key])
+        const validKeys = parsed.filter(key => allStatCards.value[key])
         if (validKeys.length === defaultStatCardOrder.length) {
           return validKeys
         }
@@ -426,7 +429,7 @@ const dragIndex = ref(null)
 const dragOverIndex = ref(null)
 
 function buildStatCard(key) {
-  const card = allStatCards[key]
+  const card = allStatCards.value[key]
   if (!card) return null
   const valueStyle = {}
   if (key === 'cpu')     card.value = cpuUsage.value + '%'
@@ -440,7 +443,7 @@ function buildStatCard(key) {
   else if (key === 'instances') {
     const active = instances.value.filter(i => i.is_active)
     if (active.length === 0) {
-      card.value = '无实例'
+      card.value = t('dashboard.noInstances')
       valueStyle.color = '#999'
     } else {
       card.value = `${instancesOnline.value}/${instances.value.length}`
@@ -490,14 +493,14 @@ function resetChartOrder() {
 }
 
 // 图表标题映射
-const chartTitleMap = {
-  cpu: 'CPU 使用率趋势',
-  memory: '内存使用趋势',
-  connections: '连接数趋势',
-  io: 'IO 延迟趋势',
-  locks: '锁等待趋势',
-  batch: '批处理请求趋势'
-}
+const chartTitleMap = computed(() => ({
+  cpu: t('dashboard.charts.cpu'),
+  memory: t('dashboard.charts.memory'),
+  connections: t('dashboard.charts.connections'),
+  io: t('dashboard.charts.io'),
+  locks: t('dashboard.charts.locks'),
+  batch: t('dashboard.charts.batch')
+}))
 
 // 图表 ref 映射（动态渲染用函数 ref）
 const chartRefInstances = {
@@ -509,15 +512,20 @@ const chartRefInstances = {
   batch: batchChartRef
 }
 
-const rangeOptions = [
-  { label: '最近 1 小时', value: '1h', hours: 1, refreshMs: 10000 },
-  { label: '最近 6 小时', value: '6h', hours: 6, refreshMs: 30000 },
-  { label: '最近 24 小时', value: '24h', hours: 24, refreshMs: 60000 },
-  { label: '最近 7 天', value: '7d', hours: 168, refreshMs: 120000 }
-]
+const rangeOptions = computed(() => [
+  { label: t('dashboard.ranges["1h"]'), value: '1h', hours: 1, refreshMs: 10000 },
+  { label: t('dashboard.ranges["6h"]'), value: '6h', hours: 6, refreshMs: 30000 },
+  { label: t('dashboard.ranges["24h"]'), value: '24h', hours: 24, refreshMs: 60000 },
+  { label: t('dashboard.ranges["7d"]'), value: '7d', hours: 168, refreshMs: 120000 }
+])
 
-const rangeLabelMap = { '1h': '（最近 1 小时）', '6h': '（最近 6 小时）', '24h': '（最近 24 小时）', '7d': '（最近 7 天）' }
-const chartTitleSuffix = computed(() => rangeLabelMap[timeRange.value] || '')
+const rangeLabelMap = computed(() => ({
+  '1h': `（${t('dashboard.ranges["1h"]}）`,
+  '6h': `（${t('dashboard.ranges["6h"]}）`,
+  '24h': `（${t('dashboard.ranges["24h"]}）`,
+  '7d': `（${t('dashboard.ranges["7d"]}）`
+}))
+const chartTitleSuffix = computed(() => rangeLabelMap.value[timeRange.value] || '')
 
 function updateCpuColor(val) {
   if (val > 90) cpuColor.value = '#f5222d'
@@ -544,7 +552,7 @@ function updateDiskColor(val) {
 }
 
 function getTimeRange() {
-  const opt = rangeOptions.find(o => o.value === timeRange.value)
+  const opt = rangeOptions.value.find(o => o.value === timeRange.value)
   const hours = opt ? opt.hours : 1
   const now = new Date()
   const start = new Date(now.getTime() - hours * 60 * 60 * 1000)
@@ -552,7 +560,7 @@ function getTimeRange() {
 }
 
 function getCompareTimeRange() {
-  const opt = rangeOptions.find(o => o.value === timeRange.value)
+  const opt = rangeOptions.value.find(o => o.value === timeRange.value)
   const hours = opt ? opt.hours : 1
   const now = new Date()
   // 对比时段偏移
@@ -696,7 +704,7 @@ function createDualOption(title1, data1, title2, data2, timeLabels, color1, colo
  */
 function buildCompareSeries(name, data, color) {
   return {
-    name: '上一周期 ' + name,
+    name: t('dashboard.previousPeriod') + ' ' + name,
     type: 'line',
     data: data,
     smooth: true,
@@ -709,37 +717,37 @@ function buildCompareSeries(name, data, color) {
 function initCpuChart() {
   if (!cpuChartRef.value) return
   cpuChart = echarts.init(cpuChartRef.value)
-  cpuChart.setOption(createOption('CPU 使用率', cpuValueData.value, cpuTimeData.value, '#1890ff', '%'))
+  cpuChart.setOption(createOption(t('dashboard.series.cpuUsage'), cpuValueData.value, cpuTimeData.value, '#1890ff', '%'))
 }
 
 function initMemoryChart() {
   if (!memoryChartRef.value) return
   memoryChart = echarts.init(memoryChartRef.value)
-  memoryChart.setOption(createOption('内存使用量', memoryValueData.value, cpuTimeData.value, '#52c41a', ' MB'))
+  memoryChart.setOption(createOption(t('dashboard.series.memoryUsage'), memoryValueData.value, cpuTimeData.value, '#52c41a', ' MB'))
 }
 
 function initConnChart() {
   if (!connChartRef.value) return
   connChart = echarts.init(connChartRef.value)
-  connChart.setOption(createOption('活跃连接数', connValueData.value, cpuTimeData.value, '#fa8c16', ''))
+  connChart.setOption(createOption(t('dashboard.series.activeConnections'), connValueData.value, cpuTimeData.value, '#fa8c16', ''))
 }
 
 function initIoChart() {
   if (!ioChartRef.value) return
   ioChart = echarts.init(ioChartRef.value)
-  ioChart.setOption(createDualOption('读延迟', ioReadData.value, '写延迟', ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms'))
+  ioChart.setOption(createDualOption(t('dashboard.series.ioReadLatency'), ioReadData.value, t('dashboard.series.ioWriteLatency'), ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms'))
 }
 
 function initLockChart() {
   if (!lockChartRef.value) return
   lockChart = echarts.init(lockChartRef.value)
-  lockChart.setOption(createOption('锁等待数', lockValueData.value, cpuTimeData.value, '#f5222d', ''))
+  lockChart.setOption(createOption(t('dashboard.series.lockWaits'), lockValueData.value, cpuTimeData.value, '#f5222d', ''))
 }
 
 function initBatchChart() {
   if (!batchChartRef.value) return
   batchChart = echarts.init(batchChartRef.value)
-  batchChart.setOption(createOption('批处理请求/秒', batchValueData.value, cpuTimeData.value, '#722ed1', '/s'))
+  batchChart.setOption(createOption(t('dashboard.series.batchRequests'), batchValueData.value, cpuTimeData.value, '#722ed1', '/s'))
 }
 
 function resizeCharts() {
@@ -868,8 +876,8 @@ async function fetchData() {
         if (compareMode.value && cmpCpuHistory?.length) {
           const cmpItems = extractMetricValues(cmpCpuHistory, 'cpu_usage')
           compareCpuValueData.value = cmpItems.map(m => m.metric_value)
-          const cmpSeries = buildCompareSeries('CPU 使用率', compareCpuValueData.value, '#91caff')
-          cpuChart.setOption(createOption('CPU 使用率', cpuValueData.value, cpuTimeData.value, '#1890ff', '%', cmpSeries), true)
+          const cmpSeries = buildCompareSeries(t('dashboard.series.cpuUsage'), compareCpuValueData.value, '#91caff')
+          cpuChart.setOption(createOption(t('dashboard.series.cpuUsage'), cpuValueData.value, cpuTimeData.value, '#1890ff', '%', cmpSeries), true)
         } else {
           cpuChart.setOption({
             xAxis: { data: cpuTimeData.value },
@@ -885,9 +893,9 @@ async function fetchData() {
       memoryValueData.value = memItems.map(m => m.metric_value)
       if (memoryChart) {
         const extra = compareMode.value && cmpMemHistory?.length
-          ? buildCompareSeries('内存使用量', extractMetricValues(cmpMemHistory, 'sql_server_memory_mb').map(m => m.metric_value), '#95de64')
+          ? buildCompareSeries(t('dashboard.series.memoryUsage'), extractMetricValues(cmpMemHistory, 'sql_server_memory_mb').map(m => m.metric_value), '#95de64')
           : null
-        memoryChart.setOption(createOption('内存使用量', memoryValueData.value, formatTimeLabels(memItems), '#52c41a', ' MB', extra), true)
+        memoryChart.setOption(createOption(t('dashboard.series.memoryUsage'), memoryValueData.value, formatTimeLabels(memItems), '#52c41a', ' MB', extra), true)
       }
       const pleItems = memHistory.filter(m => m.metric_name === 'page_life_expectancy')
       if (pleItems.length) {
@@ -901,9 +909,9 @@ async function fetchData() {
       connValueData.value = connItems.map(m => m.metric_value)
       if (connChart) {
         const extra = compareMode.value && cmpConnHistory?.length
-          ? buildCompareSeries('活跃连接数', extractMetricValues(cmpConnHistory, 'active_sessions').map(m => m.metric_value), '#ffc069')
+          ? buildCompareSeries(t('dashboard.series.activeConnections'), extractMetricValues(cmpConnHistory, 'active_sessions').map(m => m.metric_value), '#ffc069')
           : null
-        connChart.setOption(createOption('活跃连接数', connValueData.value, formatTimeLabels(connItems), '#fa8c16', '', extra), true)
+        connChart.setOption(createOption(t('dashboard.series.activeConnections'), connValueData.value, formatTimeLabels(connItems), '#fa8c16', '', extra), true)
       }
     }
 
@@ -918,10 +926,10 @@ async function fetchData() {
         if (compareMode.value && cmpIoHistory?.length) {
           const cmpRead = extractMetricValues(cmpIoHistory, 'avg_read_latency_ms')
           const cmpWrite = extractMetricValues(cmpIoHistory, 'avg_write_latency_ms')
-          if (cmpRead.length) extraRead = buildCompareSeries('读延迟', cmpRead.map(m => m.metric_value), '#91caff')
-          if (cmpWrite.length) extraWrite = buildCompareSeries('写延迟', cmpWrite.map(m => m.metric_value), '#95de64')
+          if (cmpRead.length) extraRead = buildCompareSeries(t('dashboard.series.ioReadLatency'), cmpRead.map(m => m.metric_value), '#91caff')
+          if (cmpWrite.length) extraWrite = buildCompareSeries(t('dashboard.series.ioWriteLatency'), cmpWrite.map(m => m.metric_value), '#95de64')
         }
-        ioChart.setOption(createDualOption('读延迟', ioReadData.value, '写延迟', ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms', extraRead, extraWrite), true)
+        ioChart.setOption(createDualOption(t('dashboard.series.ioReadLatency'), ioReadData.value, t('dashboard.series.ioWriteLatency'), ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms', extraRead, extraWrite), true)
       }
     }
 
@@ -933,9 +941,9 @@ async function fetchData() {
       updateLockColor(lockWaits.value)
       if (lockChart) {
         const extra = compareMode.value && cmpLockHistory?.length
-          ? buildCompareSeries('锁等待数', extractMetricValues(cmpLockHistory, 'lock_waits').map(m => m.metric_value), '#ff7875')
+          ? buildCompareSeries(t('dashboard.series.lockWaits'), extractMetricValues(cmpLockHistory, 'lock_waits').map(m => m.metric_value), '#ff7875')
           : null
-        lockChart.setOption(createOption('锁等待数', lockValueData.value, formatTimeLabels(lockItems), '#f5222d', '', extra), true)
+        lockChart.setOption(createOption(t('dashboard.series.lockWaits'), lockValueData.value, formatTimeLabels(lockItems), '#f5222d', '', extra), true)
       }
     }
 
@@ -945,9 +953,9 @@ async function fetchData() {
       batchValueData.value = batchItems.map(m => m.metric_value)
       if (batchChart) {
         const extra = compareMode.value && cmpBatchHistory?.length
-          ? buildCompareSeries('批处理请求/秒', extractMetricValues(cmpBatchHistory, 'batch_requests_sec').map(m => m.metric_value), '#b37feb')
+          ? buildCompareSeries(t('dashboard.series.batchRequests'), extractMetricValues(cmpBatchHistory, 'batch_requests_sec').map(m => m.metric_value), '#b37feb')
           : null
-        batchChart.setOption(createOption('批处理请求/秒', batchValueData.value, formatTimeLabels(batchItems), '#722ed1', '/s', extra), true)
+        batchChart.setOption(createOption(t('dashboard.series.batchRequests'), batchValueData.value, formatTimeLabels(batchItems), '#722ed1', '/s', extra), true)
       }
     }
   } catch (e) {
@@ -961,14 +969,14 @@ async function fetchData() {
 function openModal(type) {
   modalType.value = type
   const titles = {
-    cpu: `CPU 使用率趋势${chartTitleSuffix.value}`,
-    memory: `内存使用趋势${chartTitleSuffix.value}`,
-    connections: `连接数趋势${chartTitleSuffix.value}`,
-    io: `IO 延迟趋势${chartTitleSuffix.value}`,
-    locks: `锁等待趋势${chartTitleSuffix.value}`,
-    batch: `批处理请求趋势${chartTitleSuffix.value}`
+    cpu: `${chartTitleMap.value.cpu}${chartTitleSuffix.value}`,
+    memory: `${chartTitleMap.value.memory}${chartTitleSuffix.value}`,
+    connections: `${chartTitleMap.value.connections}${chartTitleSuffix.value}`,
+    io: `${chartTitleMap.value.io}${chartTitleSuffix.value}`,
+    locks: `${chartTitleMap.value.locks}${chartTitleSuffix.value}`,
+    batch: `${chartTitleMap.value.batch}${chartTitleSuffix.value}`
   }
-  modalTitle.value = titles[type] || '图表详情'
+  modalTitle.value = titles[type] || t('dashboard.chartDetail')
   modalVisible.value = true
   nextTick(() => {
     if (modalChartRef.value) {
@@ -979,22 +987,22 @@ function openModal(type) {
       let option
       switch (type) {
         case 'cpu':
-          option = createOption('CPU 使用率', cpuValueData.value, cpuTimeData.value, '#1890ff', '%')
+          option = createOption(t('dashboard.series.cpuUsage'), cpuValueData.value, cpuTimeData.value, '#1890ff', '%')
           break
         case 'memory':
-          option = createOption('内存使用量', memoryValueData.value, cpuTimeData.value, '#52c41a', ' MB')
+          option = createOption(t('dashboard.series.memoryUsage'), memoryValueData.value, cpuTimeData.value, '#52c41a', ' MB')
           break
         case 'connections':
-          option = createOption('活跃连接数', connValueData.value, cpuTimeData.value, '#fa8c16', '')
+          option = createOption(t('dashboard.series.activeConnections'), connValueData.value, cpuTimeData.value, '#fa8c16', '')
           break
         case 'io':
-          option = createDualOption('读延迟', ioReadData.value, '写延迟', ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms')
+          option = createDualOption(t('dashboard.series.ioReadLatency'), ioReadData.value, t('dashboard.series.ioWriteLatency'), ioWriteData.value, cpuTimeData.value, '#1890ff', '#52c41a', ' ms')
           break
         case 'locks':
-          option = createOption('锁等待数', lockValueData.value, cpuTimeData.value, '#f5222d', '')
+          option = createOption(t('dashboard.series.lockWaits'), lockValueData.value, cpuTimeData.value, '#f5222d', '')
           break
         case 'batch':
-          option = createOption('批处理请求/秒', batchValueData.value, cpuTimeData.value, '#722ed1', '/s')
+          option = createOption(t('dashboard.series.batchRequests'), batchValueData.value, cpuTimeData.value, '#722ed1', '/s')
           break
       }
       if (option) {

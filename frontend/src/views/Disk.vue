@@ -2,61 +2,61 @@
   <div class="disk">
     <div class="toolbar">
       <div class="toolbar-left">
-        <span class="toolbar-title">磁盘空间监控</span>
+        <span class="toolbar-title">{{ t('disk.title') }}</span>
         <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
+          <option value="">{{ t('disk.allInstances') }}</option>
           <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
         <span class="collect-time" v-if="collectedAt">
-          采集时间: {{ formatDateTime(collectedAt, { second: true }) }}
+          {{ t('disk.collectedAt') }} {{ formatDateTime(collectedAt, { second: true }) }}
         </span>
       </div>
       <button class="btn-primary" @click="onRefresh" :disabled="refreshing">
-        {{ refreshing ? '刷新中...' : '刷新' }}
+        {{ refreshing ? t('common.loading') : t('common.refresh') }}
       </button>
     </div>
 
     <!-- 总览卡片 -->
     <div class="overview-cards">
       <div class="overview-card">
-        <span class="overview-label">数据库总数</span>
+        <span class="overview-label">{{ t('disk.dbCount') }}</span>
         <span class="overview-value">{{ list.length }}</span>
       </div>
       <div class="overview-card">
-        <span class="overview-label">总数据文件(MB)</span>
+        <span class="overview-label">{{ t('disk.totalDataFile') }}</span>
         <span class="overview-value">{{ formatNumber(totalDataFileMb) }}</span>
       </div>
       <div class="overview-card">
-        <span class="overview-label">总日志文件(MB)</span>
+        <span class="overview-label">{{ t('disk.totalLogFile') }}</span>
         <span class="overview-value">{{ formatNumber(totalLogFileMb) }}</span>
       </div>
       <div class="overview-card">
-        <span class="overview-label">总大小(MB)</span>
+        <span class="overview-label">{{ t('disk.totalSize') }}</span>
         <span class="overview-value">{{ formatNumber(totalSizeMb) }}</span>
       </div>
       <div class="overview-card">
-        <span class="overview-label">总已用(MB)</span>
+        <span class="overview-label">{{ t('disk.totalUsed') }}</span>
         <span class="overview-value">{{ formatNumber(totalUsedMb) }}</span>
       </div>
       <div class="overview-card">
-        <span class="overview-label">总体使用率</span>
+        <span class="overview-label">{{ t('disk.overallUsage') }}</span>
         <span class="overview-value" :style="{ color: totalUsageColor }">{{ formatPercent(overallUsage) }}</span>
       </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <div v-else-if="list.length === 0" class="empty-state">
-      <p class="empty-text">暂无数据</p>
+      <p class="empty-text">{{ t('common.empty') }}</p>
     </div>
 
     <template v-else>
       <!-- 进度条列表 -->
       <div class="progress-card">
-        <h3 class="card-title">各数据库空间使用率</h3>
+        <h3 class="card-title">{{ t('disk.dbUsageTitle') }}</h3>
         <div class="progress-list">
           <div v-for="db in list" :key="db.database_name" class="progress-item">
             <div class="progress-header">
@@ -72,9 +72,9 @@
               ></div>
             </div>
             <div class="progress-detail">
-              <span>已用: {{ formatNumber(db.used_mb) }} MB</span>
-              <span>可用: {{ formatNumber(db.free_mb) }} MB</span>
-              <span>总计: {{ formatNumber(db.total_size_mb) }} MB</span>
+              <span>{{ t('disk.used') }}: {{ formatNumber(db.used_mb) }} MB</span>
+              <span>{{ t('disk.free') }}: {{ formatNumber(db.free_mb) }} MB</span>
+              <span>{{ t('disk.totalLabel') }}: {{ formatNumber(db.total_size_mb) }} MB</span>
             </div>
           </div>
         </div>
@@ -85,13 +85,13 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>数据库名</th>
-              <th>数据文件(MB)</th>
-              <th>日志文件(MB)</th>
-              <th>总大小(MB)</th>
-              <th>已用(MB)</th>
-              <th>可用(MB)</th>
-              <th>使用率(%)</th>
+              <th>{{ t('disk.dbName') }}</th>
+              <th>{{ t('disk.dataFile') }}</th>
+              <th>{{ t('disk.logFile') }}</th>
+              <th>{{ t('disk.totalSize') }}</th>
+              <th>{{ t('disk.usedMb') }}</th>
+              <th>{{ t('disk.freeMb') }}</th>
+              <th>{{ t('disk.usagePct') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -109,7 +109,7 @@
               </td>
             </tr>
             <tr v-if="list.length === 0">
-              <td colspan="7" class="empty-cell">暂无数据</td>
+              <td colspan="7" class="empty-cell">{{ t('common.empty') }}</td>
             </tr>
           </tbody>
         </table>
@@ -120,9 +120,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getDiskSpace } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 

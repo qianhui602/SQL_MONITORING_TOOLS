@@ -10,40 +10,40 @@
       <div class="left-content">
         <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="left-logo" />
         <h1 class="left-title">{{ brandTitle }}</h1>
-        <p class="left-desc">实时监控 · 智能告警 · 深度分析</p>
+        <p class="left-desc">{{ t('login.slogan') }}</p>
         <div class="left-features">
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             </span>
-            <span>全方位性能指标监控</span>
+            <span>{{ t('login.feature1') }}</span>
           </div>
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </span>
-            <span>智能告警与多渠道通知</span>
+            <span>{{ t('login.feature2') }}</span>
           </div>
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </span>
-            <span>AI 驱动的分析报告</span>
+            <span>{{ t('login.feature3') }}</span>
           </div>
         </div>
       </div>
-      <div class="left-footer">太阳谷信息技术部 &copy; 2026</div>
+      <div class="left-footer">{{ t('login.copyright') }} &copy; 2026</div>
     </div>
 
     <!-- 右侧登录区 -->
     <div class="login-right">
       <div class="login-card">
-        <h2 class="login-title">欢迎登录</h2>
-        <p class="login-subtitle">请使用您的账号登录系统</p>
+        <h2 class="login-title">{{ t('login.welcome') }}</h2>
+        <p class="login-subtitle">{{ t('login.subtitle') }}</p>
 
         <form class="login-form" @submit.prevent="onSubmit">
           <div class="form-item">
-            <label>用户名</label>
+            <label>{{ t('login.username') }}</label>
             <div class="input-wrap">
               <span class="input-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -52,7 +52,7 @@
                 v-model="form.username"
                 type="text"
                 autocomplete="username"
-                placeholder="请输入用户名"
+                :placeholder="t('login.usernamePlaceholder')"
                 :disabled="loading"
                 required
               />
@@ -60,7 +60,7 @@
           </div>
 
           <div class="form-item">
-            <label>密码</label>
+            <label>{{ t('login.password') }}</label>
             <div class="input-wrap">
               <span class="input-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -69,7 +69,7 @@
                 v-model="form.password"
                 type="password"
                 autocomplete="current-password"
-                placeholder="请输入密码"
+                :placeholder="t('login.passwordPlaceholder')"
                 :disabled="loading"
                 required
               />
@@ -77,14 +77,14 @@
           </div>
 
           <div class="forgot-password-row">
-            <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link>
+            <router-link to="/forgot-password" class="forgot-link">{{ t('login.forgotPassword') }}</router-link>
           </div>
 
           <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 
           <button type="submit" class="login-btn" :disabled="loading">
             <span v-if="loading" class="btn-spinner"></span>
-            {{ loading ? '登录中...' : '登 录' }}
+            {{ loading ? t('login.logging') : t('login.loginButton') }}
           </button>
         </form>
       </div>
@@ -95,8 +95,11 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { authStore } from '@/stores/auth'
 import { getConfig, getLogoUrl } from '@/api'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
@@ -136,7 +139,7 @@ async function onSubmit() {
     router.replace(redirect)
   } catch (e) {
     errorMsg.value =
-      e?.response?.data?.detail || e.message || '登录失败，请稍后再试'
+      e?.response?.data?.detail || e.message || t('login.loginFailed')
   } finally {
     loading.value = false
   }

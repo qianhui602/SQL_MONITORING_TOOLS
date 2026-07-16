@@ -2,14 +2,14 @@
   <div class="slow-queries">
     <div class="toolbar">
       <div class="toolbar-group">
-        <label class="toolbar-label">实例</label>
+        <label class="toolbar-label">{{ t('slowQueries.instance') }}</label>
         <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
+          <option value="">{{ t('slowQueries.allInstances') }}</option>
           <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">时间范围</label>
+        <label class="toolbar-label">{{ t('slowQueries.timeRange') }}</label>
         <div class="time-range-group">
           <button
             v-for="opt in timeRangeOptions"
@@ -20,7 +20,7 @@
           >{{ opt.label }}</button>
         </div>
       </div>
-      <button class="btn-primary" @click="onSearch">查询</button>
+      <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
     </div>
 
     <div v-if="error" class="error-state">
@@ -32,7 +32,7 @@
         </svg>
       </div>
       <p class="error-text">{{ error }}</p>
-      <button class="btn-primary" @click="fetchList">重试</button>
+      <button class="btn-primary" @click="fetchList">{{ t('common.retry') }}</button>
     </div>
 
     <div class="table-card" v-else>
@@ -40,34 +40,34 @@
         <thead>
           <tr>
             <th class="col-expand"></th>
-            <th>查询文本</th>
+            <th>{{ t('slowQueries.queryText') }}</th>
             <th class="sortable" :class="{ active: sortField === 'execution_count' }" @click="toggleSort('execution_count')">
-              执行次数
+              {{ t('slowQueries.execCount') }}
               <span class="sort-icon" v-if="sortField === 'execution_count'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
             <th class="sortable" :class="{ active: sortField === 'total_cpu_time_ms' }" @click="toggleSort('total_cpu_time_ms')">
-              总CPU时间(ms)
+              {{ t('slowQueries.totalCpuTime') }}
               <span class="sort-icon" v-if="sortField === 'total_cpu_time_ms'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
             <th class="sortable" :class="{ active: sortField === 'total_logical_reads' }" @click="toggleSort('total_logical_reads')">
-              总逻辑读
+              {{ t('slowQueries.totalLogicalReads') }}
               <span class="sort-icon" v-if="sortField === 'total_logical_reads'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
             <th class="sortable" :class="{ active: sortField === 'avg_duration_ms' }" @click="toggleSort('avg_duration_ms')">
-              平均耗时(ms)
+              {{ t('slowQueries.avgDuration') }}
               <span class="sort-icon" v-if="sortField === 'avg_duration_ms'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
             <th class="sortable" :class="{ active: sortField === 'last_execution_time' }" @click="toggleSort('last_execution_time')">
-              最后执行时间
+              {{ t('slowQueries.lastExecTime') }}
               <span class="sort-icon" v-if="sortField === 'last_execution_time'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
             <th class="sortable" :class="{ active: sortField === 'collected_at' }" @click="toggleSort('collected_at')">
-              采集时间
+              {{ t('slowQueries.collectedAt') }}
               <span class="sort-icon" v-if="sortField === 'collected_at'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
               <span class="sort-icon placeholder" v-else>↕</span>
             </th>
@@ -95,40 +95,40 @@
               <td colspan="8">
                 <div class="detail-content">
                   <div class="detail-section">
-                    <h4 class="detail-title">完整 SQL 语句</h4>
+                    <h4 class="detail-title">{{ t('slowQueries.fullSql') }}</h4>
                     <pre class="sql-block">{{ expandedQuery }}</pre>
                   </div>
                   <div class="detail-meta">
                     <div class="meta-item">
-                      <span class="meta-label">执行次数</span>
+                      <span class="meta-label">{{ t('slowQueries.execCount') }}</span>
                       <span class="meta-value">{{ row.execution_count }}</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">总CPU时间</span>
+                      <span class="meta-label">{{ t('slowQueries.totalCpuTimeLabel') }}</span>
                       <span class="meta-value">{{ formatNumber(row.total_cpu_time_ms) }} ms</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">总逻辑读</span>
+                      <span class="meta-label">{{ t('slowQueries.totalLogicalReads') }}</span>
                       <span class="meta-value">{{ formatNumber(row.total_logical_reads) }}</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">平均耗时</span>
+                      <span class="meta-label">{{ t('slowQueries.avgDurationLabel') }}</span>
                       <span class="meta-value">{{ formatNumber(row.avg_duration_ms) }} ms</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">最小耗时</span>
+                      <span class="meta-label">{{ t('slowQueries.minDuration') }}</span>
                       <span class="meta-value">{{ formatNumber(row.min_duration_ms) }} ms</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">最大耗时</span>
+                      <span class="meta-label">{{ t('slowQueries.maxDuration') }}</span>
                       <span class="meta-value">{{ formatNumber(row.max_duration_ms) }} ms</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">最后执行时间</span>
+                      <span class="meta-label">{{ t('slowQueries.lastExecTime') }}</span>
                       <span class="meta-value">{{ formatDateTime(row.last_execution_time, { second: true }) }}</span>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">数据库</span>
+                      <span class="meta-label">{{ t('slowQueries.database') }}</span>
                       <span class="meta-value">{{ row.database_name || '-' }}</span>
                     </div>
                   </div>
@@ -137,26 +137,26 @@
             </tr>
           </template>
           <tr v-if="list.length === 0">
-            <td colspan="8" class="empty-cell">暂无数据</td>
+            <td colspan="8" class="empty-cell">{{ t('common.empty') }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination">
-        <span class="page-info">共 {{ total }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ total }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-text">第 {{ page }} / {{ totalPages }} 页</span>
-          <button :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+          <button :disabled="page <= 1" @click="goPage(page - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page, total: totalPages }) }}</span>
+          <button :disabled="page >= totalPages" @click="goPage(page + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="pageSize" @change="onPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -165,18 +165,21 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getSlowQueries } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
 
+const { t } = useI18n()
+
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
-const timeRangeOptions = [
-  { label: '最近1小时', value: '1h' },
-  { label: '最近6小时', value: '6h' },
-  { label: '最近24小时', value: '24h' },
-  { label: '最近7天', value: '7d' }
-]
+const timeRangeOptions = computed(() => [
+  { label: t('slowQueries.ranges.1h'), value: '1h' },
+  { label: t('slowQueries.ranges.6h'), value: '6h' },
+  { label: t('slowQueries.ranges.24h'), value: '24h' },
+  { label: t('slowQueries.ranges.7d'), value: '7d' }
+])
 
 const timeRange = ref('1h')
 const list = ref([])
@@ -218,7 +221,7 @@ async function fetchList() {
     total.value = data.total || 0
   } catch (e) {
     console.error('获取慢查询列表失败', e)
-    error.value = '获取慢查询列表失败，请稍后重试'
+    error.value = t('slowQueries.error')
     list.value = []
     total.value = 0
   }

@@ -1,8 +1,8 @@
 <template>
   <div class="users-page">
     <div class="page-header">
-      <h2>用户管理</h2>
-      <button class="btn btn-primary" @click="openCreateDialog">+ 新建用户</button>
+      <h2>{{ t('users.title') }}</h2>
+      <button class="btn btn-primary" @click="openCreateDialog">{{ t('users.addUser') }}</button>
     </div>
 
     <div class="card">
@@ -10,22 +10,22 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>用户名</th>
-            <th>姓名</th>
-            <th>邮箱</th>
-            <th>角色</th>
-            <th>状态</th>
-            <th>最后登录</th>
-            <th>创建时间</th>
-            <th>操作</th>
+            <th>{{ t('users.username') }}</th>
+            <th>{{ t('users.fullName') }}</th>
+            <th>{{ t('users.email') }}</th>
+            <th>{{ t('users.role') }}</th>
+            <th>{{ t('alertRules.status') }}</th>
+            <th>{{ t('users.lastLogin') }}</th>
+            <th>{{ t('users.createTime') }}</th>
+            <th>{{ t('common.operation') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="9" class="empty">加载中...</td>
+            <td colspan="9" class="empty">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="users.length === 0">
-            <td colspan="9" class="empty">暂无用户</td>
+            <td colspan="9" class="empty">{{ t('users.noUsers') }}</td>
           </tr>
           <tr v-for="u in users" :key="u.id">
             <td>{{ u.id }}</td>
@@ -37,7 +37,7 @@
             </td>
             <td>
               <span class="tag" :class="u.is_active ? 'tag-success' : 'tag-error'">
-                {{ u.is_active ? '启用' : '禁用' }}
+                {{ u.is_active ? t('common.enable') : t('common.disable') }}
               </span>
             </td>
             <td>{{ formatDate(u.last_login_at) }}</td>
@@ -48,7 +48,7 @@
                 @click="openEditDialog(u)"
                 :disabled="!canEdit(u)"
               >
-                编辑
+                {{ t('common.edit') }}
               </button>
               <button
                 v-if="authStore.isSuperAdmin.value"
@@ -56,7 +56,7 @@
                 @click="onDelete(u)"
                 :disabled="!canDelete(u)"
               >
-                删除
+                {{ t('common.delete') }}
               </button>
             </td>
           </tr>
@@ -68,52 +68,52 @@
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal">
         <div class="modal-header">
-          {{ dialogMode === 'create' ? '新建用户' : '编辑用户' }}
+          {{ dialogMode === 'create' ? t('users.addUserTitle') : t('users.editUserTitle') }}
         </div>
         <div class="modal-body">
           <div class="form-row">
-            <label>用户名</label>
+            <label>{{ t('users.username') }}</label>
             <input
               v-model="form.username"
               :disabled="dialogMode === 'edit'"
-              placeholder="2-50 字符"
+              :placeholder="t('users.usernamePlaceholder')"
             />
           </div>
           <div class="form-row">
-            <label>姓名</label>
-            <input v-model="form.full_name" placeholder="可选" />
+            <label>{{ t('users.fullName') }}</label>
+            <input v-model="form.full_name" :placeholder="t('users.fullNamePlaceholder')" />
           </div>
           <div class="form-row">
-            <label>邮箱（用于接收欢迎邮件和告警通知）</label>
+            <label>{{ t('users.emailDesc') }}</label>
             <input v-model="form.email" type="email" placeholder="user@example.com" />
           </div>
           <div class="form-row">
-            <label>{{ dialogMode === 'create' ? '密码' : '重置密码（留空则不修改）' }}</label>
-            <input v-model="form.password" type="password" placeholder="至少 6 位" />
+            <label>{{ dialogMode === 'create' ? t('users.password') : t('users.resetPassword') }}</label>
+            <input v-model="form.password" type="password" :placeholder="t('users.passwordPlaceholder')" />
           </div>
           <div class="form-row">
-            <label>角色</label>
+            <label>{{ t('users.role') }}</label>
             <select v-model="form.role" :disabled="!authStore.isSuperAdmin.value && form.role !== 'viewer'">
-              <option value="viewer">只读用户</option>
-              <option value="admin" :disabled="!authStore.isSuperAdmin.value">管理员</option>
+              <option value="viewer">{{ t('users.readOnlyUser') }}</option>
+              <option value="admin" :disabled="!authStore.isSuperAdmin.value">{{ t('users.admin') }}</option>
               <option v-if="dialogMode === 'edit' && form.role === 'super_admin'" value="super_admin" disabled>
-                超级管理员
+                {{ t('users.superAdmin') }}
               </option>
             </select>
           </div>
           <div class="form-row" v-if="dialogMode === 'edit' && form.role !== 'super_admin'">
-            <label>状态</label>
+            <label>{{ t('alertRules.status') }}</label>
             <select v-model="form.is_active">
-              <option :value="true">启用</option>
-              <option :value="false">禁用</option>
+              <option :value="true">{{ t('common.enable') }}</option>
+              <option :value="false">{{ t('common.disable') }}</option>
             </select>
           </div>
           <div v-if="dialogError" class="error-msg">{{ dialogError }}</div>
         </div>
         <div class="modal-footer">
-          <button class="btn" @click="closeDialog">取消</button>
+          <button class="btn" @click="closeDialog">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="onSubmit" :disabled="submitting">
-            {{ submitting ? '提交中...' : '确定' }}
+            {{ submitting ? t('common.submit') : t('common.confirm') }}
           </button>
         </div>
       </div>
@@ -123,6 +123,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   listUsers,
   createUser,
@@ -131,6 +132,8 @@ import {
 } from '@/api'
 import { authStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const users = ref([])
 const loading = ref(false)
@@ -151,7 +154,7 @@ const form = reactive({
 
 function roleLabel(role) {
   return (
-    { super_admin: '超级管理员', admin: '管理员', viewer: '只读用户' }[role] ||
+    { super_admin: t('users.superAdmin'), admin: t('users.admin'), viewer: t('users.readOnlyUser') }[role] ||
     role
   )
 }
@@ -229,15 +232,15 @@ async function onSubmit() {
   dialogError.value = ''
   if (dialogMode.value === 'create') {
     if (!form.username || form.username.length < 2) {
-      dialogError.value = '用户名至少 2 个字符'
+      dialogError.value = t('users.usernameMin')
       return
     }
     if (!form.password || form.password.length < 6) {
-      dialogError.value = '密码至少 6 位'
+      dialogError.value = t('users.passwordMin')
       return
     }
   } else if (form.password && form.password.length < 6) {
-    dialogError.value = '新密码至少 6 位'
+    dialogError.value = t('users.newPasswordMin')
     return
   }
 
@@ -264,19 +267,19 @@ async function onSubmit() {
     showDialog.value = false
     await loadUsers()
   } catch (e) {
-    dialogError.value = e?.response?.data?.detail || '操作失败'
+    dialogError.value = e?.response?.data?.detail || t('common.operationFailed')
   } finally {
     submitting.value = false
   }
 }
 
 async function onDelete(u) {
-  if (!confirm(`确定要删除用户 "${u.username}" 吗？`)) return
+  if (!confirm(t('users.confirmDelete', { name: u.username }))) return
   try {
     await deleteUser(u.id)
     await loadUsers()
   } catch (e) {
-    alert(e?.response?.data?.detail || '删除失败')
+    alert(e?.response?.data?.detail || t('common.deleteFailed'))
   }
 }
 

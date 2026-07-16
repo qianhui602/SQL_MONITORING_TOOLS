@@ -4,16 +4,16 @@
     <div class="toolbar">
       <div class="toolbar-row">
         <div class="toolbar-group">
-          <label class="toolbar-label">实例</label>
+          <label class="toolbar-label">{{ t('report.instance') }}</label>
           <select v-model="selectedInstanceId" class="instance-select" :disabled="loadingInstances" @change="generateReport">
-            <option value="">所有实例</option>
+            <option value="">{{ t('report.allInstances') }}</option>
             <option v-for="inst in instances" :key="inst.id" :value="inst.id">
               {{ inst.name }} ({{ inst.host }}:{{ inst.port }})
             </option>
           </select>
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">时间范围</label>
+          <label class="toolbar-label">{{ t('report.timeRange') }}</label>
           <div class="time-range-group">
             <button
               v-for="opt in timePresets"
@@ -25,7 +25,7 @@
           </div>
         </div>
         <div class="toolbar-group" v-if="timePreset === 'custom'">
-          <label class="toolbar-label">起止</label>
+          <label class="toolbar-label">{{ t('report.startEnd') }}</label>
           <div class="custom-range">
             <input type="datetime-local" v-model="customStart" class="date-input" />
             <span class="date-sep">→</span>
@@ -38,19 +38,19 @@
           <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
-          {{ loading ? '生成中...' : '生成报告' }}
+          {{ loading ? t('report.generating') : t('report.generate') }}
         </button>
         <button class="btn-secondary" :disabled="!reportData || exporting" @click="exportPDF">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          {{ exporting ? '导出中...' : '导出PDF' }}
+          {{ exporting ? t('report.exporting') : t('report.exportPdf') }}
         </button>
         <button class="btn-secondary" @click="showHistory = true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
           </svg>
-          历史记录
+          {{ t('report.history') }}
         </button>
       </div>
     </div>
@@ -58,7 +58,7 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <p class="loading-text">正在生成报告，请稍候...</p>
+      <p class="loading-text">{{ t('report.generatingReport') }}</p>
     </div>
 
     <!-- 错误状态 -->
@@ -69,28 +69,28 @@
         </svg>
       </div>
       <p class="error-text">{{ error }}</p>
-      <button class="btn-primary" @click="generateReport">重新生成</button>
+      <button class="btn-primary" @click="generateReport">{{ t('report.regenerate') }}</button>
     </div>
 
     <!-- 报告内容 -->
     <div v-else-if="reportData" id="report-content" class="report-content">
       <div class="report-header">
         <div class="report-header-bar"></div>
-        <h1 class="report-title">SQL 监控平台 · 系统性能分析报告</h1>
+        <h1 class="report-title">{{ t('report.reportTitle') }}</h1>
         <p class="report-period">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
           {{ formatPeriod(reportData.start_time, reportData.end_time) }}
         </p>
-        <p class="report-generated-at">生成时间：{{ formatDateTime(new Date().toISOString(), { second: true }) }}</p>
+        <p class="report-generated-at">{{ t('report.generatedAt') }}{{ formatDateTime(new Date().toISOString(), { second: true }) }}</p>
       </div>
 
       <!-- 概览摘要卡片 -->
       <section class="report-section">
         <div class="section-header">
           <div class="section-title-bar"></div>
-          <h2 class="section-title">概览摘要</h2>
+          <h2 class="section-title">{{ t('report.overview') }}</h2>
         </div>
         <div class="summary-grid">
           <div class="summary-card">
@@ -99,7 +99,7 @@
                 <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/>
               </svg>
             </div>
-            <span class="card-label">CPU 使用率</span>
+            <span class="card-label">{{ t('report.cpuUsage') }}</span>
             <span class="card-value" :class="valueColor(reportData.summary.cpu_usage, 80)">
               {{ formatNum(reportData.summary.cpu_usage) }}<span class="unit">%</span>
             </span>
@@ -110,7 +110,7 @@
                 <path d="M6 19V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
               </svg>
             </div>
-            <span class="card-label">内存使用</span>
+            <span class="card-label">{{ t('report.memoryUsage') }}</span>
             <span class="card-value">
               {{ formatNum(reportData.summary.sql_server_memory_mb) }}<span class="unit">MB</span>
             </span>
@@ -121,7 +121,7 @@
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
             </div>
-            <span class="card-label">活跃连接</span>
+            <span class="card-label">{{ t('report.activeConnections') }}</span>
             <span class="card-value">{{ reportData.summary.active_sessions ?? '-' }}</span>
           </div>
           <div class="summary-card">
@@ -130,7 +130,7 @@
                 <path d="M22 12A10 10 0 1 1 12 2v10z"/><path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" fill-opacity="0.3"/>
               </svg>
             </div>
-            <span class="card-label">缓存命中率</span>
+            <span class="card-label">{{ t('report.cacheHitRate') }}</span>
             <span class="card-value" :class="valueColor(reportData.summary.buffer_cache_hit_ratio, 95, true)">
               {{ formatNum(reportData.summary.buffer_cache_hit_ratio) }}<span class="unit">%</span>
             </span>
@@ -141,7 +141,7 @@
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
-            <span class="card-label">死锁次数</span>
+            <span class="card-label">{{ t('report.deadlockCount') }}</span>
             <span class="card-value" :class="reportData.deadlocks.total_count > 0 ? 'value-warn' : ''">
               {{ reportData.deadlocks.total_count }}
             </span>
@@ -152,7 +152,7 @@
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
             </div>
-            <span class="card-label">慢查询数</span>
+            <span class="card-label">{{ t('report.slowQueryCount') }}</span>
             <span class="card-value" :class="reportData.slow_queries.total_count > 0 ? 'value-warn' : ''">
               {{ reportData.slow_queries.total_count }}
             </span>
@@ -164,7 +164,7 @@
       <section class="report-section">
         <div class="section-header">
           <div class="section-title-bar"></div>
-          <h2 class="section-title">性能趋势</h2>
+          <h2 class="section-title">{{ t('report.performanceTrend') }}</h2>
         </div>
         <div v-if="!hasTrendData" class="no-data-state">
           <div class="no-data-icon">
@@ -172,34 +172,34 @@
               <path d="M3 3v18h18"/><path d="M7 12l4-4 4 4 6-6"/>
             </svg>
           </div>
-          <p class="no-data">暂无性能趋势数据，请确保监控数据采集任务已启动</p>
+          <p class="no-data">{{ t('report.noTrendData') }}</p>
         </div>
         <div v-else class="chart-grid">
           <div class="chart-card">
             <div class="chart-header">
               <span class="chart-dot" style="background:#1890ff"></span>
-              <h3 class="chart-title">CPU 使用率</h3>
+              <h3 class="chart-title">{{ t('report.cpuUsage') }}</h3>
             </div>
             <div ref="chartCpu" class="chart-box"></div>
           </div>
           <div class="chart-card">
             <div class="chart-header">
               <span class="chart-dot" style="background:#52c41a"></span>
-              <h3 class="chart-title">内存使用</h3>
+              <h3 class="chart-title">{{ t('report.memoryUsage') }}</h3>
             </div>
             <div ref="chartMemory" class="chart-box"></div>
           </div>
           <div class="chart-card">
             <div class="chart-header">
               <span class="chart-dot" style="background:#faad14"></span>
-              <h3 class="chart-title">连接数</h3>
+              <h3 class="chart-title">{{ t('report.connections') }}</h3>
             </div>
             <div ref="chartConnections" class="chart-box"></div>
           </div>
           <div class="chart-card">
             <div class="chart-header">
               <span class="chart-dot" style="background:#f5222d"></span>
-              <h3 class="chart-title">I/O 延迟</h3>
+              <h3 class="chart-title">{{ t('report.ioLatency') }}</h3>
             </div>
             <div ref="chartIo" class="chart-box"></div>
           </div>
@@ -210,20 +210,20 @@
       <section class="report-section">
         <div class="section-header">
           <div class="section-title-bar"></div>
-          <h2 class="section-title">死锁分析</h2>
+          <h2 class="section-title">{{ t('report.deadlockAnalysis') }}</h2>
           <span class="section-tag" :class="reportData.deadlocks.total_count > 0 ? 'tag-warn' : 'tag-ok'">
-            {{ reportData.deadlocks.total_count > 0 ? `共 ${reportData.deadlocks.total_count} 次` : '正常' }}
+            {{ reportData.deadlocks.total_count > 0 ? t('report.deadlockTimes', { count: reportData.deadlocks.total_count }) : t('report.deadlockNormal') }}
           </span>
         </div>
         <table v-if="reportData.deadlocks.latest_events.length > 0" class="data-table">
           <thead>
             <tr>
-              <th>发生时间</th>
-              <th>受害会话ID</th>
-              <th>服务器</th>
-              <th>用户</th>
-              <th>主机（设备）</th>
-              <th>应用程序</th>
+              <th>{{ t('report.occurTime') }}</th>
+              <th>{{ t('report.victimSession') }}</th>
+              <th>{{ t('report.server') }}</th>
+              <th>{{ t('deadlocks.user') }}</th>
+              <th>{{ t('deadlocks.host') }}</th>
+              <th>{{ t('report.application') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -239,7 +239,7 @@
         </table>
         <div v-else class="empty-block">
           <div class="empty-icon-ok">✓</div>
-          <span>无死锁事件</span>
+          <span>{{ t('report.noDeadlockEvents') }}</span>
         </div>
       </section>
 
@@ -247,15 +247,15 @@
       <section class="report-section">
         <div class="section-header">
           <div class="section-title-bar"></div>
-          <h2 class="section-title">慢查询分析</h2>
+          <h2 class="section-title">{{ t('report.slowQueryAnalysis') }}</h2>
         </div>
         <div class="stat-row">
           <div class="stat-item">
-            <span class="stat-label">慢查询数</span>
+            <span class="stat-label">{{ t('report.slowQueryCount') }}</span>
             <span class="stat-value">{{ reportData.slow_queries.total_count }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">平均耗时</span>
+            <span class="stat-label">{{ t('report.avgDurationLabel') }}</span>
             <span class="stat-value">
               {{ formatNum(reportData.slow_queries.avg_duration) }}<span class="stat-unit">ms</span>
             </span>
@@ -265,9 +265,9 @@
           <thead>
             <tr>
               <th style="width:48px">#</th>
-              <th>SQL（前200字符）</th>
-              <th style="width:100px">执行次数</th>
-              <th style="width:120px">平均耗时(ms)</th>
+              <th>{{ t('report.sqlPreview') }}</th>
+              <th style="width:100px">{{ t('slowQueries.execCount') }}</th>
+              <th style="width:120px">{{ t('report.avgDurationMs') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -283,7 +283,7 @@
         </table>
         <div v-else class="empty-block">
           <div class="empty-icon-ok">✓</div>
-          <span>无慢查询数据</span>
+          <span>{{ t('report.noSlowQueryData') }}</span>
         </div>
       </section>
 
@@ -291,7 +291,7 @@
       <section class="report-section">
         <div class="section-header">
           <div class="section-title-bar"></div>
-          <h2 class="section-title">系统状态</h2>
+          <h2 class="section-title">{{ t('report.systemStatus') }}</h2>
         </div>
         <div class="status-grid">
           <div class="status-card">
@@ -300,11 +300,11 @@
                 <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/>
               </svg>
             </div>
-            <h3>阻塞进程</h3>
+            <h3>{{ t('report.blockingProcess') }}</h3>
             <p class="status-value" :class="reportData.blocking.total_count > 0 ? 'value-warn' : ''">
               {{ reportData.blocking.total_count }}
             </p>
-            <p class="status-label">阻塞事件数</p>
+            <p class="status-label">{{ t('report.blockingEvents') }}</p>
           </div>
           <div class="status-card" v-if="reportData.disk">
             <div class="status-card-icon">
@@ -312,11 +312,11 @@
                 <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
               </svg>
             </div>
-            <h3>磁盘空间</h3>
+            <h3>{{ t('report.diskSpace') }}</h3>
             <p class="status-value" :class="valueColor(reportData.disk.usage_pct, 85)">
               {{ formatNum(reportData.disk.usage_pct) }}<span class="stat-unit">%</span>
             </p>
-            <p class="status-label">使用率 ({{ reportData.disk.database_name || '-' }})</p>
+            <p class="status-label">{{ t('report.usageLabel') }} ({{ reportData.disk.database_name || '-' }})</p>
           </div>
           <div class="status-card">
             <div class="status-card-icon">
@@ -324,20 +324,20 @@
                 <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>
               </svg>
             </div>
-            <h3>索引状况</h3>
+            <h3>{{ t('report.indexStatus') }}</h3>
             <div class="status-duo">
               <div>
                 <p class="status-value" :class="reportData.indexes.missing_index_count > 0 ? 'value-warn' : ''">
                   {{ reportData.indexes.missing_index_count }}
                 </p>
-                <p class="status-label">缺失索引</p>
+                <p class="status-label">{{ t('report.missingIndex') }}</p>
               </div>
               <div class="status-divider"></div>
               <div>
                 <p class="status-value" :class="reportData.indexes.high_fragmentation_count > 0 ? 'value-warn' : ''">
                   {{ reportData.indexes.high_fragmentation_count }}
                 </p>
-                <p class="status-label">高碎片索引</p>
+                <p class="status-label">{{ t('report.highFragIndex') }}</p>
               </div>
             </div>
           </div>
@@ -349,7 +349,7 @@
         <div class="section-header">
           <div class="section-title-bar"></div>
           <h2 class="section-title">
-            AI 分析与建议
+            {{ t('report.aiAnalysis') }}
             <span class="ai-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
@@ -367,7 +367,7 @@
       <div v-if="showHistory" class="history-overlay" @click.self="showHistory = false">
         <div class="history-panel">
           <div class="history-header">
-            <h3>历史报告</h3>
+            <h3>{{ t('report.historyReports') }}</h3>
             <button class="close-btn" @click="showHistory = false">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -390,7 +390,7 @@
                   {{ formatDateTime(rec.created_at, { second: true }) }}
                 </span>
               </div>
-              <button class="btn-icon" @click.stop="deleteHistory(rec.id)" title="删除">
+              <button class="btn-icon" @click.stop="deleteHistory(rec.id)" :title="t('common.delete')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
                 </svg>
@@ -402,7 +402,7 @@
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                 </svg>
               </div>
-              <span>暂无历史记录</span>
+              <span>{{ t('report.noHistory') }}</span>
             </div>
           </div>
         </div>
@@ -413,18 +413,21 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { getReportSummary, saveReport, getReportHistory, deleteReportHistory, getInstances } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
+const { t } = useI18n()
+
 // ---- 状态 ----
-const timePresets = [
-  { label: '最近1小时', value: '1h' },
-  { label: '最近6小时', value: '6h' },
-  { label: '最近24小时', value: '24h' },
-  { label: '最近7天', value: '7d' },
-  { label: '自定义', value: 'custom' },
-]
+const timePresets = computed(() => [
+  { label: t('report.ranges.1h'), value: '1h' },
+  { label: t('report.ranges.6h'), value: '6h' },
+  { label: t('report.ranges.24h'), value: '24h' },
+  { label: t('report.ranges.7d'), value: '7d' },
+  { label: t('report.ranges.custom'), value: 'custom' },
+])
 const timePreset = ref('24h')
 const customStart = ref('')
 const customEnd = ref('')
@@ -530,7 +533,7 @@ async function generateReport() {
     // 自动保存历史
     try {
       await saveReport({
-        title: `系统性能报告 ${formatDateTime(new Date().toISOString(), { second: true })}`,
+        title: `${t('report.generate')} ${formatDateTime(new Date().toISOString(), { second: true })}`,
         start_time: range.start_time,
         end_time: range.end_time,
         summary_data: JSON.stringify(data),
@@ -543,7 +546,7 @@ async function generateReport() {
     renderCharts()
   } catch (e) {
     console.error('生成报告失败', e)
-    error.value = '生成报告失败，请稍后重试'
+    error.value = t('report.generateFailed')
   } finally {
     loading.value = false
   }
@@ -666,17 +669,17 @@ async function exportPDF() {
       pdf.setFontSize(8)
       pdf.setTextColor(150)
       pdf.text(
-        `SQL 监控平台报告 - 第 ${i} / ${pageNum} 页`,
+        t('report.pdfTitle', { page: `${i} / ${pageNum}` }),
         pdfWidth / 2,
         pdfHeight - 5,
         { align: 'center' }
       )
     }
 
-    pdf.save(`SQL监控报告_${new Date().toISOString().substring(0, 10)}.pdf`)
+    pdf.save(`${t('report.pdfFilename')}${new Date().toISOString().substring(0, 10)}.pdf`)
   } catch (e) {
     console.error('PDF 导出失败', e)
-    alert('PDF 导出失败，请重试')
+    alert(t('report.exportFailed'))
   } finally {
     exporting.value = false
   }
@@ -846,7 +849,7 @@ async function loadHistory() {
 function loadFromHistory(rec) {
   try {
     if (!rec.summary_data) {
-      alert('历史报告数据不完整，无法加载')
+      alert(t('report.historyIncomplete'))
       return
     }
     const data = JSON.parse(rec.summary_data)
@@ -857,7 +860,7 @@ function loadFromHistory(rec) {
     nextTick(() => renderCharts())
   } catch (e) {
     console.error('加载历史报告失败', e)
-    alert('加载历史报告失败')
+    alert(t('report.loadHistoryFailed'))
   }
 }
 

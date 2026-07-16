@@ -11,25 +11,25 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
-    meta: { title: '登录', public: true, layout: false }
+    meta: { title: 'login.welcome', public: true, layout: false }
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: () => import('@/views/ForgotPassword.vue'),
-    meta: { title: '找回密码', public: true, layout: false }
+    meta: { title: 'forgotPassword.title', public: true, layout: false }
   },
   {
     path: '/reset-password',
     name: 'ResetPassword',
     component: () => import('@/views/ResetPassword.vue'),
-    meta: { title: '重置密码', public: true, layout: false }
+    meta: { title: 'forgotPassword.resetTitle', public: true, layout: false }
   },
   {
     path: '/setup',
     name: 'Setup',
     component: () => import('@/views/Setup.vue'),
-    meta: { title: '系统安装', public: true, layout: false }
+    meta: { title: 'setup.welcomeTitle', public: true, layout: false }
   },
   {
     path: '/',
@@ -39,97 +39,97 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('@/views/Dashboard.vue'),
-    meta: { title: '总览', icon: 'dashboard' }
+    meta: { title: 'layout.menu.dashboard', icon: 'dashboard' }
   },
   {
     path: '/trends',
     name: 'Trends',
     component: () => import('@/views/Trends.vue'),
-    meta: { title: '性能趋势', icon: 'trending_up' }
+    meta: { title: 'layout.menu.trends', icon: 'trending_up' }
   },
   {
     path: '/deadlocks',
     name: 'Deadlocks',
     component: () => import('@/views/Deadlocks.vue'),
-    meta: { title: '死锁监控', icon: 'lock' }
+    meta: { title: 'layout.menu.deadlocks', icon: 'lock' }
   },
   {
     path: '/alerts',
     name: 'Alerts',
     component: () => import('@/views/Alerts.vue'),
-    meta: { title: '告警管理', icon: 'notifications' }
+    meta: { title: 'layout.menu.alerts', icon: 'notifications' }
   },
   {
     path: '/slow-queries',
     name: 'SlowQueries',
     component: () => import('@/views/SlowQueries.vue'),
-    meta: { title: '慢查询分析', icon: 'clock' }
+    meta: { title: 'layout.menu.slowQueries', icon: 'clock' }
   },
   {
     path: '/blocking',
     name: 'Blocking',
     component: () => import('@/views/Blocking.vue'),
-    meta: { title: '阻塞进程', icon: 'blocking' }
+    meta: { title: 'layout.menu.blocking', icon: 'blocking' }
   },
   {
     path: '/disk',
     name: 'Disk',
     component: () => import('@/views/Disk.vue'),
-    meta: { title: '磁盘空间', icon: 'disk' }
+    meta: { title: 'layout.menu.disk', icon: 'disk' }
   },
   {
     path: '/indexes',
     name: 'Indexes',
     component: () => import('@/views/Indexes.vue'),
-    meta: { title: '索引分析', icon: 'indexes' }
+    meta: { title: 'layout.menu.indexes', icon: 'indexes' }
   },
   {
     path: '/alert-rules',
     name: 'AlertRules',
     component: () => import('@/views/AlertRules.vue'),
-    meta: { title: '告警规则', icon: 'alert_rule', requiresAdmin: true }
+    meta: { title: 'layout.menu.alertRules', icon: 'alert_rule', requiresAdmin: true }
   },
   {
     path: '/instances',
     name: 'Instances',
     component: () => import('@/views/Instances.vue'),
-    meta: { title: '实例管理', icon: 'server', requiresAdmin: true }
+    meta: { title: 'layout.menu.instances', icon: 'server', requiresAdmin: true }
   },
   {
     path: '/audit-logs',
     name: 'AuditLogs',
     component: () => import('@/views/AuditLogs.vue'),
-    meta: { title: '审计日志', icon: 'audit', requiresAdmin: true }
+    meta: { title: 'layout.menu.auditLogs', icon: 'audit', requiresAdmin: true }
   },
   {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/Settings.vue'),
-    meta: { title: '系统设置', icon: 'settings', requiresAdmin: true }
+    meta: { title: 'layout.menu.settings', icon: 'settings', requiresAdmin: true }
   },
   {
     path: '/report',
     name: 'Report',
     component: () => import('@/views/Report.vue'),
-    meta: { title: '系统报告', icon: 'report' }
+    meta: { title: 'layout.menu.report', icon: 'report' }
   },
   {
     path: '/users',
     name: 'Users',
     component: () => import('@/views/Users.vue'),
-    meta: { title: '用户管理', icon: 'users', requiresAdmin: true }
+    meta: { title: 'layout.menu.users', icon: 'users', requiresAdmin: true }
   },
   {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),
-    meta: { title: '个人设置', hideInMenu: true }
+    meta: { title: 'profile.title', hideInMenu: true }
   },
   {
     path: '/help',
     name: 'Help',
     component: () => import('@/views/Help.vue'),
-    meta: { title: '帮助', icon: 'help' }
+    meta: { title: 'layout.menu.help', icon: 'help' }
   }
 ]
 

@@ -21,7 +21,7 @@
       </nav>
       <div class="sidebar-footer">
         <span class="version-text" :class="{ 'has-update': hasUpdate }" @click="hasUpdate && (showUpdateBanner = true)">
-          <span class="version-label">版本</span>
+          <span class="version-label">{{ t('layout.version') }}</span>
           <span class="version-num">v{{ currentVersion }}</span>
           <span v-if="hasUpdate" class="update-dot"></span>
         </span>
@@ -35,12 +35,12 @@
           </svg>
         </div>
         <div class="update-banner-text">
-          <strong>发现新版本 v{{ latestVersion }}</strong>
+          <strong>{{ t('layout.newVersion', { version: latestVersion }) }}</strong>
           <span>{{ versionMessage }}</span>
         </div>
         <div class="update-banner-actions">
-          <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS" target="_blank" class="update-btn-primary">查看升级指南</a>
-          <button class="update-btn-close" @click="showUpdateBanner = false">稍后再说</button>
+          <a href="https://github.com/qianhui602/SQL_MONITORING_TOOLS" target="_blank" class="update-btn-primary">{{ t('layout.viewUpgradeGuide') }}</a>
+          <button class="update-btn-close" @click="showUpdateBanner = false">{{ t('layout.later') }}</button>
         </div>
       </div>
     </div>
@@ -55,7 +55,7 @@
         </div>
         <div class="topbar-right">
           <div class="notification-wrap" ref="notifRef">
-            <button class="notif-btn" @click="toggleNotifPanel" :title="notifUnread > 0 ? `有 ${notifUnread} 条未读通知` : '通知'">
+            <button class="notif-btn" @click="toggleNotifPanel" :title="notifUnread > 0 ? t('layout.notifications') + ' (' + notifUnread + ')' : t('layout.notifications')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -64,8 +64,8 @@
             </button>
             <div v-if="notifPanelOpen" class="notif-dropdown" @click.stop>
               <div class="notif-header">
-                <span class="notif-title">通知</span>
-                <button v-if="notifUnread > 0" class="notif-read-all" @click="onMarkAllRead">全部已读</button>
+                <span class="notif-title">{{ t('layout.notifications') }}</span>
+                <button v-if="notifUnread > 0" class="notif-read-all" @click="onMarkAllRead">{{ t('layout.markAllRead') }}</button>
               </div>
               <div class="notif-list">
                 <div v-for="item in notifList" :key="item.id" class="notif-item" :class="{ unread: !item.read }">
@@ -83,24 +83,35 @@
                     <button class="notif-action notif-del" title="删除" @click.stop="onDelete(item)">✕</button>
                   </div>
                 </div>
-                <div v-if="notifList.length === 0" class="notif-empty">暂无通知</div>
+                <div v-if="notifList.length === 0" class="notif-empty">{{ t('layout.noNotifications') }}</div>
               </div>
               <div class="notif-footer">
                 <label class="notif-setting">
                   <input type="checkbox" v-model="soundEnabled" @change="toggleSound" />
-                  <span>声音提醒</span>
+                  <span>{{ t('layout.soundReminder') }}</span>
                 </label>
                 <label class="notif-setting" v-if="desktopNotifSupported">
                   <input type="checkbox" v-model="desktopNotifEnabled" @change="toggleDesktopNotif" />
-                  <span>桌面通知</span>
+                  <span>{{ t('layout.desktopNotification') }}</span>
                 </label>
               </div>
             </div>
           </div>
-          <button class="theme-toggle-btn" @click="toggleTheme" :title="theme === 'light' ? '切换到暗色模式' : '切换到浅色模式'">
+          <button class="theme-toggle-btn" @click="toggleTheme" :title="theme === 'light' ? t('layout.switchToDark') : t('layout.switchToLight')">
             <span v-if="theme === 'light'" v-html="moonIcon"></span>
             <span v-else v-html="sunIcon"></span>
           </button>
+          <div class="lang-switch-wrap" ref="langRef">
+            <button class="theme-toggle-btn" @click="toggleLangMenu" :title="getLocale() === 'zh-CN' ? 'Switch to English' : '切换到中文'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </button>
+            <div v-if="langMenuOpen" class="lang-dropdown" @click.stop>
+              <div class="lang-option" :class="{ active: currentLang === 'zh-CN' }" @click="switchLang('zh-CN')">中文</div>
+              <div class="lang-option" :class="{ active: currentLang === 'en-US' }" @click="switchLang('en-US')">English</div>
+            </div>
+          </div>
           <div class="user-info" @click="toggleUserMenu" ref="userMenuRef">
             <div class="avatar">{{ avatarText }}</div>
             <div class="user-meta" v-show="!isCollapsed">
@@ -115,23 +126,23 @@
               <div class="dropdown-divider"></div>
               <div class="dropdown-item" @click="goToProfile">
                 <span v-html="profileIcon"></span>
-                <span>个人设置</span>
+                <span>{{ t('layout.personalSettings') }}</span>
               </div>
               <div class="dropdown-divider"></div>
               <div class="dropdown-item about-item">
-                <span>版本</span>
+                <span>{{ t('layout.version') }}</span>
                 <span class="version-badge" :class="{ 'has-update': hasUpdate }" @click="hasUpdate && (showUpdateBanner = true)">
                   v{{ currentVersion }}
                   <span v-if="hasUpdate" class="update-dot-sm"></span>
                 </span>
               </div>
               <div v-if="hasUpdate" class="dropdown-item update-hint" @click="showUpdateBanner = true">
-                <span style="color:#faad14">发现新版本 v{{ latestVersion }}</span>
+                <span style="color:#faad14">{{ t('layout.newVersion', { version: latestVersion }) }}</span>
               </div>
               <div class="dropdown-divider"></div>
               <div class="dropdown-item" @click="onLogout">
                 <span v-html="logoutIcon"></span>
-                <span>退出登录</span>
+                <span>{{ t('layout.logout') }}</span>
               </div>
             </div>
           </div>
@@ -149,23 +160,23 @@
           </div>
         </div>
         <div class="tab-actions">
-          <button class="tab-action-btn" @click="closeOtherTabs" title="关闭其他">
+          <button class="tab-action-btn" @click="closeOtherTabs" :title="t('layout.closeOthers')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
             </svg>
           </button>
         </div>
         <div v-if="tabMenuVisible" class="tab-context-menu" :style="tabMenuStyle" @click.stop>
-          <div class="context-menu-item" @click="closeTab(tabMenuTarget)">关闭当前</div>
-          <div class="context-menu-item" @click="closeOtherTabs">关闭其他</div>
-          <div class="context-menu-item" @click="closeAllTabs">关闭全部</div>
+          <div class="context-menu-item" @click="closeTab(tabMenuTarget)">{{ t('layout.closeCurrent') }}</div>
+          <div class="context-menu-item" @click="closeOtherTabs">{{ t('layout.closeOthers') }}</div>
+          <div class="context-menu-item" @click="closeAllTabs">{{ t('layout.closeAll') }}</div>
         </div>
       </div>
       <main class="content">
         <slot />
       </main>
       <footer class="footer">
-        太阳谷信息技术部 2026
+        {{ t('layout.copyright') }}
       </footer>
     </div>
   </div>
@@ -174,11 +185,14 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { authStore } from '@/stores/auth'
 import { useTheme } from '@/stores/theme'
 import { getUnreadCount, getNotifications, markNotificationRead, deleteNotification, markAllNotificationsRead, getConfig, getLogoUrl, checkVersion } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { setLocale, getLocale } from '@/i18n'
 
+const { t } = useI18n()
 const { theme, toggleTheme } = useTheme()
 const route = useRoute()
 const router = useRouter()
@@ -205,6 +219,9 @@ const tabMenuStyle = ref({})
 const tabMenuTarget = ref(null)
 const brandTitle = ref('数据库监控平台')
 const customLogoUrl = ref('')
+const currentLang = ref(getLocale())
+const langMenuOpen = ref(false)
+const langRef = ref(null)
 
 function severityClass(sev) { return { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium', low: 'sev-low' }[sev] || 'sev-medium' }
 function formatTime(d) { return formatDateTime(d, { second: true }) }
@@ -214,7 +231,7 @@ function addTab(tabRoute) {
   const exists = tabs.value.find(t => t.path === tabRoute.path)
   if (!exists) {
     const menuItem = visibleMenuItems.value.find(m => m.path === tabRoute.path)
-    tabs.value.push({ path: tabRoute.path, label: tabRoute.meta?.title || '未知页面', closable: tabRoute.path !== '/dashboard' })
+    tabs.value.push({ path: tabRoute.path, label: t(tabRoute.meta?.title || 'Unknown'), closable: tabRoute.path !== '/dashboard' })
   }
 }
 function switchTab(tab) { router.push(tab.path) }
@@ -232,6 +249,8 @@ function closeOtherTabs() { const current = tabs.value.find(t => isActive(t.path
 function closeAllTabs() { tabs.value = []; tabMenuVisible.value = false; router.push('/dashboard') }
 function openTabMenu(e, tab) { tabMenuTarget.value = tab; tabMenuStyle.value = { left: e.clientX + 'px', top: e.clientY + 'px' }; tabMenuVisible.value = true }
 function closeTabMenu() { tabMenuVisible.value = false }
+function toggleLangMenu() { langMenuOpen.value = !langMenuOpen.value }
+function switchLang(lang) { setLocale(lang); currentLang.value = lang; langMenuOpen.value = false }
 
 async function fetchNotifications() { try { const data = await getNotifications(20); notifList.value = data.items || []; notifUnread.value = data.unread_count || 0 } catch {} }
 function toggleNotifPanel() { notifPanelOpen.value = !notifPanelOpen.value; if (notifPanelOpen.value) fetchNotifications() }
@@ -359,26 +378,26 @@ const profileIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
 const moonIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
 const sunIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
 
-const menuItems = [
-  { path: '/dashboard', label: '总览', icon: icons.dashboard, requiresAdmin: false },
-  { path: '/trends', label: '性能趋势', icon: icons.trending_up, requiresAdmin: false },
-  { path: '/deadlocks', label: '死锁监控', icon: icons.lock, requiresAdmin: false },
-  { path: '/alerts', label: '告警管理', icon: icons.notifications, requiresAdmin: false },
-  { path: '/slow-queries', label: '慢查询分析', icon: icons.clock, requiresAdmin: false },
-  { path: '/blocking', label: '阻塞进程', icon: icons.blocking, requiresAdmin: false },
-  { path: '/disk', label: '磁盘空间', icon: icons.disk, requiresAdmin: false },
-  { path: '/indexes', label: '索引分析', icon: icons.indexes, requiresAdmin: false },
-  { path: '/report', label: '系统报告', icon: icons.report, requiresAdmin: false },
-  { path: '/alert-rules', label: '告警规则', icon: icons.alert_rule, requiresAdmin: true },
-  { path: '/instances', label: '实例管理', icon: icons.server, requiresAdmin: true },
-  { path: '/audit-logs', label: '审计日志', icon: icons.audit, requiresAdmin: true },
-  { path: '/settings', label: '系统设置', icon: icons.settings, requiresAdmin: true },
-  { path: '/users', label: '用户管理', icon: icons.users, requiresAdmin: true },
-  { path: '/help', label: '帮助', icon: icons.help, requiresAdmin: false }
-]
+const menuItems = computed(() => [
+  { path: '/dashboard', label: t('layout.menu.dashboard'), icon: icons.dashboard, requiresAdmin: false },
+  { path: '/trends', label: t('layout.menu.trends'), icon: icons.trending_up, requiresAdmin: false },
+  { path: '/deadlocks', label: t('layout.menu.deadlocks'), icon: icons.lock, requiresAdmin: false },
+  { path: '/alerts', label: t('layout.menu.alerts'), icon: icons.notifications, requiresAdmin: false },
+  { path: '/slow-queries', label: t('layout.menu.slowQueries'), icon: icons.clock, requiresAdmin: false },
+  { path: '/blocking', label: t('layout.menu.blocking'), icon: icons.blocking, requiresAdmin: false },
+  { path: '/disk', label: t('layout.menu.disk'), icon: icons.disk, requiresAdmin: false },
+  { path: '/indexes', label: t('layout.menu.indexes'), icon: icons.indexes, requiresAdmin: false },
+  { path: '/report', label: t('layout.menu.report'), icon: icons.report, requiresAdmin: false },
+  { path: '/alert-rules', label: t('layout.menu.alertRules'), icon: icons.alert_rule, requiresAdmin: true },
+  { path: '/instances', label: t('layout.menu.instances'), icon: icons.server, requiresAdmin: true },
+  { path: '/audit-logs', label: t('layout.menu.auditLogs'), icon: icons.audit, requiresAdmin: true },
+  { path: '/settings', label: t('layout.menu.settings'), icon: icons.settings, requiresAdmin: true },
+  { path: '/users', label: t('layout.menu.users'), icon: icons.users, requiresAdmin: true },
+  { path: '/help', label: t('layout.menu.help'), icon: icons.help, requiresAdmin: false }
+])
 
-const visibleMenuItems = computed(() => menuItems.filter((item) => !item.requiresAdmin || authStore.isAdmin.value))
-const currentTitle = computed(() => route.meta?.title || brandTitle.value)
+const visibleMenuItems = computed(() => menuItems.value.filter((item) => !item.requiresAdmin || authStore.isAdmin.value))
+const currentTitle = computed(() => route.meta?.title ? t(route.meta.title) : brandTitle.value)
 const displayName = computed(() => { const u = authStore.state.user; if (!u) return '游客'; return u.full_name || u.username })
 const avatarText = computed(() => { const u = authStore.state.user; if (!u) return '?'; const name = u.full_name || u.username; return name.charAt(0).toUpperCase() })
 const roleClass = computed(() => { const r = authStore.state.user?.role; return { super_admin: 'role-purple', admin: 'role-blue', viewer: 'role-gray' }[r] || 'role-gray' })
@@ -387,7 +406,7 @@ function toggleSidebar() { isCollapsed.value = !isCollapsed.value }
 function toggleUserMenu() { userMenuOpen.value = !userMenuOpen.value }
 function onLogout() { authStore.logout(); userMenuOpen.value = false; router.push('/login') }
 function goToProfile() { userMenuOpen.value = false; router.push('/profile') }
-function handleClickOutside(e) { if (userMenuRef.value && !userMenuRef.value.contains(e.target)) userMenuOpen.value = false; if (tabMenuVisible.value) tabMenuVisible.value = false; handleNotifOutside(e) }
+function handleClickOutside(e) { if (userMenuRef.value && !userMenuRef.value.contains(e.target)) userMenuOpen.value = false; if (langMenuOpen.value && langRef.value && !langRef.value.contains(e.target)) langMenuOpen.value = false; if (tabMenuVisible.value) tabMenuVisible.value = false; handleNotifOutside(e) }
 
 async function fetchBrandConfig() {
   try {
@@ -481,6 +500,11 @@ onBeforeUnmount(() => {
 .update-dot-topbar { width: 6px; height: 6px; border-radius: 50%; background: #faad14; display: inline-block; animation: updatePulse 2s infinite; }
 .theme-toggle-btn { width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0; }
 .theme-toggle-btn:hover { color: #1890ff; border-color: #1890ff; background: rgba(24,144,255,0.06); }
+.lang-switch-wrap { position: relative; }
+.lang-dropdown { position: absolute; top: calc(100% + 8px); right: 0; min-width: 120px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden; }
+.lang-option { padding: 10px 14px; font-size: 13px; color: var(--text-primary); cursor: pointer; transition: background 0.15s; }
+.lang-option:hover { background: var(--bg-primary); }
+.lang-option.active { color: #1890ff; font-weight: 600; background: rgba(24,144,255,0.06); }
 .notification-wrap { position: relative; }
 .notif-btn { position: relative; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0; }
 .notif-btn:hover { color: #1890ff; border-color: #1890ff; background: rgba(24,144,255,0.06); }

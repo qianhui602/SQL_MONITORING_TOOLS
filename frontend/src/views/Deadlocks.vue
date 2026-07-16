@@ -3,35 +3,35 @@
     <div class="toolbar toolbar-deadlocks">
       <div class="toolbar-row">
         <div class="toolbar-group">
-          <label class="toolbar-label">实例</label>
+          <label class="toolbar-label">{{ t('deadlocks.instance') }}</label>
           <select v-model="selectedInstance" class="instance-select">
-            <option value="">全部实例</option>
+            <option value="">{{ t('deadlocks.allInstances') }}</option>
             <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
           </select>
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">开始时间</label>
+          <label class="toolbar-label">{{ t('deadlocks.startTime') }}</label>
           <input type="datetime-local" v-model="startTime" class="input" />
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">结束时间</label>
+          <label class="toolbar-label">{{ t('deadlocks.endTime') }}</label>
           <input type="datetime-local" v-model="endTime" class="input" />
         </div>
-        <button class="btn-primary" @click="onSearch">查询</button>
-        <button class="btn-secondary" @click="onResetFilters" title="重置所有筛选条件">重置</button>
+        <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
+        <button class="btn-secondary" @click="onResetFilters" :title="t('common.reset')">{{ t('common.reset') }}</button>
       </div>
       <div class="toolbar-row filter-row">
         <div class="toolbar-group">
-          <label class="toolbar-label">用户</label>
-          <input type="text" v-model="filterLoginName" class="input filter-input" placeholder="用户名，如 Sboadmin" @keyup.enter="onSearch" />
+          <label class="toolbar-label">{{ t('deadlocks.user') }}</label>
+          <input type="text" v-model="filterLoginName" class="input filter-input" :placeholder="t('deadlocks.userPlaceholder')" @keyup.enter="onSearch" />
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">主机（设备）</label>
-          <input type="text" v-model="filterHostName" class="input filter-input" placeholder="主机名，如 MSSAP01C" @keyup.enter="onSearch" />
+          <label class="toolbar-label">{{ t('deadlocks.host') }}</label>
+          <input type="text" v-model="filterHostName" class="input filter-input" :placeholder="t('deadlocks.hostPlaceholder')" @keyup.enter="onSearch" />
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">应用程序</label>
-          <input type="text" v-model="filterClientApp" class="input filter-input" placeholder="应用名，如 SAP Business One" @keyup.enter="onSearch" />
+          <label class="toolbar-label">{{ t('deadlocks.application') }}</label>
+          <input type="text" v-model="filterClientApp" class="input filter-input" :placeholder="t('deadlocks.appPlaceholder')" @keyup.enter="onSearch" />
         </div>
       </div>
     </div>
@@ -45,7 +45,7 @@
         </svg>
       </div>
       <p class="error-text">{{ error }}</p>
-      <button class="btn-primary" @click="fetchList">重试</button>
+      <button class="btn-primary" @click="fetchList">{{ t('common.retry') }}</button>
     </div>
 
     <div class="table-card" v-else>
@@ -53,12 +53,12 @@
         <thead>
           <tr>
             <th class="col-expand"></th>
-            <th>发生时间</th>
-            <th>受害会话 ID</th>
-            <th>SQL Server 地址</th>
-            <th>用户</th>
-            <th>主机（设备）</th>
-            <th>应用程序</th>
+            <th>{{ t('deadlocks.occurTime') }}</th>
+            <th>{{ t('deadlocks.victimSessionId') }}</th>
+            <th>{{ t('deadlocks.serverAddress') }}</th>
+            <th>{{ t('deadlocks.user') }}</th>
+            <th>{{ t('deadlocks.host') }}</th>
+            <th>{{ t('deadlocks.application') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -93,7 +93,7 @@
               <td colspan="7">
                 <div class="detail-content">
                   <div class="detail-section">
-                    <h4 class="detail-title">关联 SQL 语句</h4>
+                    <h4 class="detail-title">{{ t('deadlocks.relatedSql') }}</h4>
                     <div v-if="detailData?.sql_statements?.length">
                       <div
                         v-for="(sql, idx) in detailData.sql_statements"
@@ -101,20 +101,20 @@
                         class="sql-process-block"
                       >
                         <div class="process-meta">
-                          <span class="meta-tag session-tag">会话 {{ sql.session_id }}</span>
-                          <span v-if="sql.login_name" class="meta-tag user-tag">用户: {{ sql.login_name }}</span>
-                          <span v-if="sql.host_name" class="meta-tag host-tag">主机: {{ sql.host_name }}</span>
-                          <span v-if="sql.client_app" class="meta-tag app-tag">应用: {{ sql.client_app }}</span>
-                          <span v-if="sql.isolation_level" class="meta-tag iso-tag">隔离: {{ sql.isolation_level }}</span>
+                          <span class="meta-tag session-tag">{{ t('deadlocks.session') }} {{ sql.session_id }}</span>
+                          <span v-if="sql.login_name" class="meta-tag user-tag">{{ t('deadlocks.userLabel') }} {{ sql.login_name }}</span>
+                          <span v-if="sql.host_name" class="meta-tag host-tag">{{ t('deadlocks.hostLabel') }} {{ sql.host_name }}</span>
+                          <span v-if="sql.client_app" class="meta-tag app-tag">{{ t('deadlocks.appLabel') }} {{ sql.client_app }}</span>
+                          <span v-if="sql.isolation_level" class="meta-tag iso-tag">{{ t('deadlocks.isolationLabel') }} {{ sql.isolation_level }}</span>
                         </div>
                         <pre class="sql-block">{{ sql.sql_text }}</pre>
                       </div>
                     </div>
-                    <p v-else class="no-data">无</p>
+                    <p v-else class="no-data">{{ t('deadlocks.noData') }}</p>
                   </div>
 
                   <div class="detail-section">
-            <h4 class="detail-title">涉及对象</h4>
+            <h4 class="detail-title">{{ t('deadlocks.involvedObjects') }}</h4>
             <div v-if="detailData?.involved_objects?.length">
               <span
                 v-for="(obj, idx) in detailData.involved_objects"
@@ -122,19 +122,19 @@
                 class="object-tag"
               >{{ obj }}</span>
             </div>
-            <p v-else class="no-data">无</p>
+            <p v-else class="no-data">{{ t('deadlocks.noData') }}</p>
           </div>
 
           <div class="detail-section">
             <div class="section-header">
-              <h4 class="detail-title">DeepSeek AI 分析</h4>
+              <h4 class="detail-title">{{ t('deadlocks.aiAnalysis') }}</h4>
               <button
                 class="btn-analyze"
                 :disabled="analyzing"
                 @click.stop="onAnalyze(row)"
               >
                 <span v-if="analyzing" class="analyze-spinner"></span>
-                {{ analyzing ? '分析中...' : 'AI 分析' }}
+                {{ analyzing ? t('deadlocks.analyzing') : t('deadlocks.aiButton') }}
               </button>
             </div>
             <div
@@ -145,7 +145,7 @@
             <p
               v-else-if="detailData && !detailData.analysis_result"
               class="no-data"
-            >点击「AI 分析」按钮调用 DeepSeek 大模型分析死锁原因</p>
+            >{{ t('deadlocks.aiHint') }}</p>
           </div>
 
                   <div class="detail-section">
@@ -153,7 +153,7 @@
                       class="section-header collapsible"
                       @click.stop="xmlExpanded = !xmlExpanded"
                     >
-                      <h4 class="detail-title">原始死锁 XML</h4>
+                      <h4 class="detail-title">{{ t('deadlocks.rawXml') }}</h4>
                       <span class="collapse-icon">{{ xmlExpanded ? '▼' : '▶' }}</span>
                     </div>
                     <template v-if="xmlExpanded">
@@ -161,7 +161,7 @@
                         v-if="detailData?.deadlock_xml"
                         class="xml-block"
                       >{{ detailData.deadlock_xml }}</pre>
-                      <p v-else class="no-data">无</p>
+                      <p v-else class="no-data">{{ t('deadlocks.noData') }}</p>
                     </template>
                   </div>
                 </div>
@@ -169,26 +169,26 @@
             </tr>
           </template>
           <tr v-if="list.length === 0">
-            <td colspan="7" class="empty-cell">暂无数据</td>
+            <td colspan="7" class="empty-cell">{{ t('common.empty') }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination">
-        <span class="page-info">共 {{ total }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ total }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-text">第 {{ page }} / {{ totalPages }} 页</span>
-          <button :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+          <button :disabled="page <= 1" @click="goPage(page - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page, total: totalPages }) }}</span>
+          <button :disabled="page >= totalPages" @click="goPage(page + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="pageSize" @change="onPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -197,9 +197,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getDeadlocks, getDeadlockDetail, analyzeDeadlock } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
@@ -257,7 +260,7 @@ async function fetchList() {
     total.value = data.total || 0
   } catch (e) {
     console.error('获取死锁列表失败', e)
-    error.value = '获取死锁列表失败，请稍后重试'
+    error.value = t('deadlocks.error')
     list.value = []
     total.value = 0
   }

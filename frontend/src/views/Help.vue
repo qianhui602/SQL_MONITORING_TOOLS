@@ -5,7 +5,7 @@
         <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input v-model="searchText" type="text" placeholder="搜索帮助内容..." class="search-input" />
+        <input v-model="searchText" type="text" :placeholder="t('help.searchPlaceholder')" class="search-input" />
       </div>
     </div>
     <div class="help-layout">
@@ -21,7 +21,7 @@
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <p>没有找到匹配的内容</p>
+          <p>{{ t('help.noMatch') }}</p>
         </div>
       </div>
     </div>
@@ -30,16 +30,16 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const searchText = ref('')
 const activeSection = ref('overview')
 const contentRef = ref(null)
 
-const sections = [
-  {
-    id: 'overview',
-    title: '系统概述',
-    content: `
+const sectionContents = {
+  overview: `
       <h3>产品定位</h3>
       <p>SQL Server 监控平台是一套企业级数据库实时监控与告警系统，帮助 DBA 和运维人员全面掌握 SQL Server 实例的运行状态，快速发现并定位性能问题。</p>
       <h3>核心能力</h3>
@@ -61,10 +61,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'dashboard',
-    title: '总览仪表盘',
-    content: `
+  dashboard: `
       <h3>功能说明</h3>
       <p>总览页面是系统的默认首页，提供全局运行状态的一站式视图，帮助您快速了解所有监控实例的健康状况。</p>
       <h3>统计卡片</h3>
@@ -89,10 +86,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'performance',
-    title: '性能趋势',
-    content: `
+  performance: `
       <h3>功能说明</h3>
       <p>性能趋势页面以折线图形式展示各项性能指标的历史变化曲线，帮助您分析性能走势、定位性能瓶颈。</p>
       <h3>监控指标</h3>
@@ -146,10 +140,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'alerts',
-    title: '告警管理',
-    content: `
+  alerts: `
       <h3>功能说明</h3>
       <p>告警管理页面集中展示所有触发的告警记录，支持按级别、时间、状态筛选，帮助您快速处理重要告警。</p>
       <h3>告警级别</h3>
@@ -237,10 +228,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'disk',
-    title: '磁盘空间',
-    content: `
+  disk: `
       <h3>功能说明</h3>
       <p>磁盘空间页面监控各实例的数据文件和日志文件空间使用情况，帮助您提前规划存储扩容，避免空间耗尽导致的数据库挂起。</p>
       <h3>监控内容</h3>
@@ -336,10 +324,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'instances',
-    title: '实例管理',
-    content: `
+  instances: `
       <h3>功能说明</h3>
       <p>实例管理页面用于添加和管理需要监控的 SQL Server 实例，是系统运行的基础。</p>
       <h3>添加实例</h3>
@@ -375,10 +360,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'report',
-    title: '系统报告',
-    content: `
+  report: `
       <h3>功能说明</h3>
       <p>系统报告页面用于生成和导出数据库运行报告，帮助您定期回顾数据库健康状况，向上级汇报运维成果。</p>
       <h3>报告类型</h3>
@@ -410,10 +392,7 @@ const sections = [
   {
     id: 'settings',
     title: '系统设置',
-    content: `
-      <h3>功能说明</h3>
-      <p>系统设置页面供管理员配置系统参数，包括品牌定制、告警配置、通知渠道、数据采集等。</p>
-      <h3>品牌设置</h3>
+  >功能说明</h牌设置</h3>
       <ul>
         <li><strong>系统名称</strong>：显示在登录页、侧边栏顶部的平台名称</li>
         <li><strong>Logo 图标</strong>：上传自定义 Logo 图片</li>
@@ -440,10 +419,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'users',
-    title: '用户管理',
-    content: `
+  users: `
       <h3>功能说明</h3>
       <p>用户管理页面供管理员创建和管理系统账号，分配不同权限角色，确保系统安全使用。</p>
       <h3>角色说明</h3>
@@ -485,10 +461,7 @@ const sections = [
       </ul>
     `
   },
-  {
-    id: 'faq',
-    title: '常见问题',
-    content: `
+  faq: `
       <h3>Q：添加实例时连接失败怎么办？</h3>
       <p>A：请按以下步骤排查：</p>
       <ol>
@@ -541,10 +514,7 @@ const sections = [
       <p>A：理论上没有上限，但建议单实例部署监控不超过 50 个 SQL Server 实例。超过 50 个建议关注后端服务器的资源占用情况，必要时进行水平扩展。</p>
     `
   },
-  {
-    id: 'contact',
-    title: '联系我们',
-    content: `
+  contact: `
       <h3>技术支持</h3>
       <p>如果在使用过程中遇到问题，可以通过以下方式联系我们：</p>
       <ul>
@@ -563,12 +533,31 @@ const sections = [
       <p>当前版本号请查看侧边栏底部或顶部栏。点击版本号可查看是否有新版本可用。</p>
     `
   }
-]
+}
+
+const sections = computed(() => [
+  { id: 'overview', title: t('layout.menu.dashboard'), content: sectionContents.overview },
+  { id: 'dashboard', title: t('layout.menu.dashboard'), content: sectionContents.dashboard },
+  { id: 'performance', title: t('layout.menu.trends'), content: sectionContents.performance },
+  { id: 'deadlocks', title: t('layout.menu.deadlocks'), content: sectionContents.deadlocks },
+  { id: 'alerts', title: t('layout.menu.alerts'), content: sectionContents.alerts },
+  { id: 'slow-queries', title: t('layout.menu.slowQueries'), content: sectionContents['slow-queries'] },
+  { id: 'blocking', title: t('layout.menu.blocking'), content: sectionContents.blocking },
+  { id: 'disk', title: t('layout.menu.disk'), content: sectionContents.disk },
+  { id: 'indexes', title: t('layout.menu.indexes'), content: sectionContents.indexes },
+  { id: 'alert-rules', title: t('layout.menu.alertRules'), content: sectionContents['alert-rules'] },
+  { id: 'instances', title: t('layout.menu.instances'), content: sectionContents.instances },
+  { id: 'report', title: t('layout.menu.report'), content: sectionContents.report },
+  { id: 'settings', title: t('layout.menu.settings'), content: sectionContents.settings },
+  { id: 'users', title: t('layout.menu.users'), content: sectionContents.users },
+  { id: 'faq', title: t('help.faq'), content: sectionContents.faq },
+  { id: 'contact', title: t('help.contact'), content: sectionContents.contact },
+])
 
 const filteredSections = computed(() => {
-  if (!searchText.value.trim()) return sections
+  if (!searchText.value.trim()) return sections.value
   const kw = searchText.value.trim().toLowerCase()
-  return sections.filter(s => s.title.toLowerCase().includes(kw) || s.content.toLowerCase().includes(kw))
+  return sections.value.filter(s => s.title.toLowerCase().includes(kw) || s.content.toLowerCase().includes(kw))
 })
 
 function scrollTo(id) {

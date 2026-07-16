@@ -1,10 +1,10 @@
 <template>
   <div class="settings-page">
     <div class="page-header">
-      <h2>系统配置</h2>
+      <h2>{{ t('settings.title') }}</h2>
       <div class="header-actions">
-        <button class="btn btn-test" @click="testConnection">测试 SQL Server 连接</button>
-        <button class="btn btn-primary" @click="saveAll">保存并应用</button>
+        <button class="btn btn-test" @click="testConnection">{{ t('settings.testConnection') }}</button>
+        <button class="btn btn-primary" @click="saveAll">{{ t('settings.saveAndApply') }}</button>
       </div>
     </div>
 
@@ -15,44 +15,44 @@
     <div class="config-sections">
       <!-- 品牌设置 -->
       <div class="config-section">
-        <h3 class="section-title">品牌设置</h3>
+        <h3 class="section-title">{{ t('settings.brand') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">系统标题</label>
+            <label class="config-label">{{ t('settings.systemTitle') }}</label>
             <input
               type="text"
               v-model="brandTitle"
               class="config-input"
               placeholder="数据库监控平台"
             />
-            <span class="config-desc">登录页和侧边栏显示的系统标题</span>
+            <span class="config-desc">{{ t('settings.systemTitleDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">通知声音</label>
+            <label class="config-label">{{ t('settings.notifSound') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="notifSoundEnabled" class="toggle-input" @change="onNotifSoundToggle" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ notifSoundEnabled ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ notifSoundEnabled ? t('common.enabled') : t('common.disabled') }}</span>
             </label>
-            <span class="config-desc">有新通知时播放提示音</span>
+            <span class="config-desc">{{ t('settings.notifSoundDesc') }}</span>
           </div>
           <div class="config-item brand-logo-item">
-            <label class="config-label">Logo 图片</label>
+            <label class="config-label">{{ t('settings.logo') }}</label>
             <div class="logo-upload-area">
               <div class="logo-preview" v-if="logoPreviewUrl">
                 <img :src="logoPreviewUrl" alt="Logo" class="logo-preview-img" />
               </div>
               <div class="logo-preview logo-placeholder" v-else>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bfbfbf" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span>暂无自定义 Logo</span>
+                <span>{{ t('settings.noCustomLogo') }}</span>
               </div>
               <div class="logo-actions">
                 <label class="btn btn-sm btn-upload">
                   <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" @change="onLogoUpload" hidden />
-                  {{ logoPreviewUrl ? '更换 Logo' : '上传 Logo' }}
+                  {{ logoPreviewUrl ? t('settings.replaceLogo') : t('settings.uploadLogo') }}
                 </label>
-                <button v-if="logoPreviewUrl" class="btn btn-sm btn-danger" @click="onDeleteLogo">恢复默认</button>
-                <span class="config-desc">支持 PNG、JPG、SVG、WebP，建议尺寸 200x50px</span>
+                <button v-if="logoPreviewUrl" class="btn btn-sm btn-danger" @click="onDeleteLogo">{{ t('settings.restoreDefault') }}</button>
+                <span class="config-desc">{{ t('settings.logoDesc') }}</span>
               </div>
             </div>
           </div>
@@ -61,10 +61,10 @@
 
       <!-- 系统设置 -->
       <div class="config-section">
-        <h3 class="section-title">系统设置</h3>
+        <h3 class="section-title">{{ t('settings.system') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">系统时区</label>
+            <label class="config-label">{{ t('settings.timezone') }}</label>
             <select v-model="timezone" class="config-select">
               <option value="Asia/Shanghai">Asia/Shanghai (UTC+8) - 北京时间</option>
               <option value="Asia/Tokyo">Asia/Tokyo (UTC+9) - 东京时间</option>
@@ -74,10 +74,10 @@
               <option value="Europe/Berlin">Europe/Berlin (UTC+1) - 柏林时间</option>
               <option value="UTC">UTC (UTC+0)</option>
             </select>
-            <span class="config-desc">系统时区（用于日志和报表时间显示）</span>
+            <span class="config-desc">{{ t('settings.timezoneDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">数据保留天数</label>
+            <label class="config-label">{{ t('settings.dataRetention') }}</label>
             <input
               type="number"
               v-model="dataRetentionDays"
@@ -86,24 +86,24 @@
               max="3650"
               placeholder="90"
             />
-            <span class="config-desc">超过此天数的监控数据将被自动清理（建议 90-365 天）</span>
+            <span class="config-desc">{{ t('settings.dataRetentionDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">前端访问地址</label>
+            <label class="config-label">{{ t('settings.frontendUrl') }}</label>
             <input
               type="text"
               v-model="frontendUrl"
               class="config-input"
               placeholder="https://monitor.example.com"
             />
-            <span class="config-desc">系统对外访问地址，用于密码重置邮件等链接生成</span>
+            <span class="config-desc">{{ t('settings.frontendUrlDesc') }}</span>
           </div>
         </div>
       </div>
 
       <!-- SQL Server 连接配置 -->
       <div class="config-section">
-        <h3 class="section-title">SQL Server 连接配置</h3>
+        <h3 class="section-title">{{ t('settings.sqlServerConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item" v-for="item in mssqlConfigs" :key="item.key">
             <label class="config-label">{{ item.label }}</label>
@@ -120,7 +120,7 @@
 
       <!-- PostgreSQL 后台数据库 -->
       <div class="config-section">
-        <h3 class="section-title">PostgreSQL 后台数据库</h3>
+        <h3 class="section-title">{{ t('settings.pgConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item" v-for="item in pgConfigs" :key="item.key">
             <label class="config-label">{{ item.label }}</label>
@@ -137,19 +137,19 @@
 
       <!-- 数据采集配置 -->
       <div class="config-section">
-        <h3 class="section-title">数据采集配置</h3>
+        <h3 class="section-title">{{ t('settings.collectConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">启用多实例采集</label>
+            <label class="config-label">{{ t('settings.multiInstance') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="collectConfigs.mssql_instances_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ collectConfigs.mssql_instances_enabled ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ collectConfigs.mssql_instances_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
             </label>
-            <span class="config-desc">开启后从「实例管理」读取监控目标列表，关闭则使用上方 SQL Server 配置</span>
+            <span class="config-desc">{{ t('settings.multiInstanceDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">采集间隔（秒）</label>
+            <label class="config-label">{{ t('settings.interval') }}</label>
             <input
               type="number"
               v-model="collectConfigs.scheduler_interval_seconds"
@@ -158,17 +158,17 @@
               max="3600"
               placeholder="60"
             />
-            <span class="config-desc">数据采集频率，建议 30-120 秒</span>
+            <span class="config-desc">{{ t('settings.intervalDesc') }}</span>
           </div>
         </div>
       </div>
 
       <!-- 告警规则配置 -->
       <div class="config-section">
-        <h3 class="section-title">告警规则配置</h3>
+        <h3 class="section-title">{{ t('settings.alertConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">内存告警阈值（%）</label>
+            <label class="config-label">{{ t('settings.memoryThreshold') }}</label>
             <input
               type="number"
               v-model="alertConfigs.memory_alert_threshold_pct"
@@ -177,10 +177,10 @@
               max="100"
               placeholder="85"
             />
-            <span class="config-desc">SQL Server 内存使用率超过此值触发告警</span>
+            <span class="config-desc">{{ t('settings.memoryThresholdDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">内存告警持续时长（分钟）</label>
+            <label class="config-label">{{ t('settings.memoryDuration') }}</label>
             <input
               type="number"
               v-model="alertConfigs.memory_alert_duration_minutes"
@@ -189,19 +189,19 @@
               max="60"
               placeholder="5"
             />
-            <span class="config-desc">内存持续超过阈值超过此时长才触发告警</span>
+            <span class="config-desc">{{ t('settings.memoryDurationDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">死锁告警开关</label>
+            <label class="config-label">{{ t('settings.deadlockAlert') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="alertConfigs.deadlock_alert_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ alertConfigs.deadlock_alert_enabled ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ alertConfigs.deadlock_alert_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
             </label>
-            <span class="config-desc">检测到死锁事件时是否触发告警通知</span>
+            <span class="config-desc">{{ t('settings.deadlockAlertDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">采集中断阈值（次）</label>
+            <label class="config-label">{{ t('settings.interruptThreshold') }}</label>
             <input
               type="number"
               v-model="alertConfigs.collection_interrupt_threshold"
@@ -210,10 +210,10 @@
               max="10"
               placeholder="3"
             />
-            <span class="config-desc">连续多少次采集失败后触发中断告警</span>
+            <span class="config-desc">{{ t('settings.interruptThresholdDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">告警冷却期（分钟）</label>
+            <label class="config-label">{{ t('settings.cooldown') }}</label>
             <input
               type="number"
               v-model="alertConfigs.alert_cooldown_minutes"
@@ -222,104 +222,104 @@
               max="1440"
               placeholder="30"
             />
-            <span class="config-desc">相同类型告警在此期间不重复发送</span>
+            <span class="config-desc">{{ t('settings.cooldownDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">收件人邮箱</label>
+            <label class="config-label">{{ t('settings.recipients') }}</label>
             <input
               type="text"
               v-model="alertConfigs.smtp_recipients"
               class="config-input"
               placeholder="user1@example.com, user2@example.com"
             />
-            <span class="config-desc">告警邮件接收人，多个用逗号分隔</span>
+            <span class="config-desc">{{ t('settings.recipientsDesc') }}</span>
           </div>
         </div>
       </div>
 
       <!-- 通知渠道配置 -->
       <div class="config-section">
-        <h3 class="section-title">通知渠道配置</h3>
+        <h3 class="section-title">{{ t('settings.notifyChannel') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">企业微信通知开关</label>
+            <label class="config-label">{{ t('settings.wecomToggle') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="notifyConfigs.wecom_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ notifyConfigs.wecom_enabled ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ notifyConfigs.wecom_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
             </label>
-            <span class="config-desc">是否通过企业微信机器人发送告警通知</span>
+            <span class="config-desc">{{ t('settings.wecomToggleDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">企业微信 Webhook URL</label>
+            <label class="config-label">{{ t('settings.wecomWebhook') }}</label>
             <input
               type="text"
               v-model="notifyConfigs.wecom_webhook_url"
               class="config-input"
               placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
             />
-            <span class="config-desc">企业微信群机器人 Webhook 地址</span>
+            <span class="config-desc">{{ t('settings.wecomWebhookDesc') }}</span>
           </div>
         </div>
       </div>
 
       <!-- SMTP 邮件配置 -->
       <div class="config-section">
-        <h3 class="section-title">SMTP 邮件配置</h3>
+        <h3 class="section-title">{{ t('settings.smtpConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">邮件告警开关</label>
+            <label class="config-label">{{ t('settings.smtpToggle') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="smtpConfigs.smtp_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ smtpConfigs.smtp_enabled ? '已开启' : '已关闭' }}</span>
+              <span class="toggle-text">{{ smtpConfigs.smtp_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
             </label>
-            <span class="config-desc">是否通过邮件发送告警通知和欢迎邮件</span>
+            <span class="config-desc">{{ t('settings.smtpToggleDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">SMTP 服务器</label>
+            <label class="config-label">{{ t('settings.smtpServer') }}</label>
             <input
               type="text"
               v-model="smtpConfigs.smtp_server"
               class="config-input"
               placeholder="smtp.example.com"
             />
-            <span class="config-desc">SMTP 服务器地址</span>
+            <span class="config-desc">{{ t('settings.smtpServerDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">SMTP 端口</label>
+            <label class="config-label">{{ t('settings.smtpPort') }}</label>
             <input
               type="number"
               v-model="smtpConfigs.smtp_port"
               class="config-input"
               placeholder="587"
             />
-            <span class="config-desc">SMTP 端口（TLS 用 587，SSL 用 465）</span>
+            <span class="config-desc">{{ t('settings.smtpPortDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">发件人账号</label>
+            <label class="config-label">{{ t('settings.smtpUser') }}</label>
             <input
               type="text"
               v-model="smtpConfigs.smtp_user"
               class="config-input"
               placeholder="alert@example.com"
             />
-            <span class="config-desc">SMTP 登录账号 / 发件人邮箱</span>
+            <span class="config-desc">{{ t('settings.smtpUserDesc') }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">发件人密码</label>
+            <label class="config-label">{{ t('settings.smtpPassword') }}</label>
             <input
               type="password"
               v-model="smtpConfigs.smtp_password"
               class="config-input"
               placeholder="密码或授权码"
             />
-            <span class="config-desc">SMTP 登录密码或应用授权码</span>
+            <span class="config-desc">{{ t('settings.smtpPasswordDesc') }}</span>
           </div>
         </div>
         <div style="margin-top: 12px;">
           <button class="btn btn-sm btn-test" @click="testSmtp" :disabled="smtpTesting">
-            {{ smtpTesting ? '发送中...' : '发送测试邮件' }}
+            {{ smtpTesting ? t('common.submit') : t('settings.sendTest') }}
           </button>
           <span v-if="smtpTestResult" :class="['smtp-test-result', smtpTestOk ? 'ok' : 'fail']">
             {{ smtpTestResult }}
@@ -329,10 +329,10 @@
 
       <!-- AI 模型配置 -->
       <div class="config-section">
-        <h3 class="section-title">AI 模型配置</h3>
+        <h3 class="section-title">{{ t('settings.aiConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">AI 提供商</label>
+            <label class="config-label">{{ t('settings.aiProvider') }}</label>
             <select v-model="aiConfigs.ai_provider" class="config-select" @change="onProviderChange">
               <option value="deepseek">DeepSeek</option>
               <option value="openai">OpenAI</option>
@@ -342,32 +342,32 @@
             <span class="config-desc">选择 AI 服务提供商</span>
           </div>
           <div class="config-item">
-            <label class="config-label">API 密钥</label>
+            <label class="config-label">{{ t('settings.aiKey') }}</label>
             <input
               type="password"
               v-model="aiConfigs.ai_api_key"
               class="config-input"
               placeholder="API Key"
             />
-            <span class="config-desc">{{ providerName }} API 密钥，用于 AI 死锁分析和报告生成</span>
+            <span class="config-desc">{{ t('settings.aiKeyDesc', { provider: providerName }) }}</span>
           </div>
           <div class="config-item">
-            <label class="config-label">AI 模型</label>
+            <label class="config-label">{{ t('settings.aiModel') }}</label>
             <select v-if="currentModels.length" v-model="aiConfigs.ai_model" class="config-select">
               <option v-for="m in currentModels" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
             <input v-else v-model="aiConfigs.ai_model" class="config-input" placeholder="输入模型名称" />
-            <span class="config-desc">选择或输入用于 AI 分析的模型</span>
+            <span class="config-desc">{{ t('settings.aiModelDesc') }}</span>
           </div>
           <div class="config-item" v-if="aiConfigs.ai_provider === 'custom'">
-            <label class="config-label">API Base URL</label>
+            <label class="config-label">{{ t('settings.aiBaseUrl') }}</label>
             <input
               type="text"
               v-model="aiConfigs.ai_base_url"
               class="config-input"
               placeholder="https://your-api.com"
             />
-            <span class="config-desc">自定义 API 地址（需兼容 OpenAI /v1/chat/completions 接口）</span>
+            <span class="config-desc">{{ t('settings.aiBaseUrlDesc') }}</span>
           </div>
         </div>
       </div>
@@ -377,8 +377,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import request, { getConfigs, updateConfig, getAiProviders, getLogoUrl, uploadLogo, deleteLogo } from '@/api'
 import { setTimezone } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const configList = ref([])
 const originalConfigs = ref({})
@@ -460,22 +463,22 @@ function onProviderChange() {
 
 const mssqlConfigs = computed(() => {
   const map = {
-    mssql_host: { label: '服务器地址', password: false },
-    mssql_port: { label: '端口', password: false },
-    mssql_user: { label: '账号', password: false },
-    mssql_password: { label: '密码', password: true },
-    mssql_database: { label: '数据库', password: false },
+    mssql_host: { labelKey: 'common.serverAddress', password: false },
+    mssql_port: { labelKey: 'common.port', password: false },
+    mssql_user: { labelKey: 'common.account', password: false },
+    mssql_password: { labelKey: 'common.password', password: true },
+    mssql_database: { labelKey: 'common.database', password: false },
   }
   return filterAndMap(configList.value, map)
 })
 
 const pgConfigs = computed(() => {
   const map = {
-    pg_host: { label: '服务器地址', password: false },
-    pg_port: { label: '端口', password: false },
-    pg_database: { label: '数据库名', password: false },
-    pg_user: { label: '账号', password: false },
-    pg_password: { label: '密码', password: true },
+    pg_host: { labelKey: 'common.serverAddress', password: false },
+    pg_port: { labelKey: 'common.port', password: false },
+    pg_database: { labelKey: 'settings.dbName', password: false },
+    pg_user: { labelKey: 'common.account', password: false },
+    pg_password: { labelKey: 'common.password', password: true },
   }
   return filterAndMap(configList.value, map)
 })
@@ -485,7 +488,7 @@ function filterAndMap(list, map) {
     .filter(cfg => map[cfg.config_key])
     .map(cfg => ({
       key: cfg.config_key,
-      label: map[cfg.config_key].label,
+      label: t(map[cfg.config_key].labelKey),
       value: cfg.config_value,
       desc: cfg.description,
       password: map[cfg.config_key].password,
@@ -586,7 +589,7 @@ async function saveAll() {
   })
 
   if (changedConfigs.length === 0) {
-    message.value = '没有检测到配置变更。'
+    message.value = t('settings.noConfigChange')
     messageType.value = 'success'
     if (toastTimer) clearTimeout(toastTimer)
     toastTimer = setTimeout(() => { message.value = '' }, 3000)
@@ -601,16 +604,16 @@ async function saveAll() {
       .map((r, i) => r.status === 'rejected' ? changedConfigs[i].key : null)
       .filter(Boolean)
     if (failures.length > 0) {
-      message.value = `保存失败: ${failures.join(', ')} 配置项保存异常`
+      message.value = `${t('settings.saveFailed')} ${failures.join(', ')} 配置项保存异常`
       messageType.value = 'error'
       return
     }
-    message.value = `保存成功！已更新 ${changedConfigs.length} 项配置，将在下一个采集周期自动应用。`
+    message.value = t('settings.saveSuccess', { count: changedConfigs.length })
     messageType.value = 'success'
     setTimezone(timezone.value)
     await fetchConfigs()
   } catch (e) {
-    message.value = '保存失败: ' + (e?.response?.data?.detail || e.message || '未知错误')
+    message.value = t('settings.saveFailed') + ' ' + (e?.response?.data?.detail || e.message || t('settings.unknownError'))
     messageType.value = 'error'
   } finally {
     if (toastTimer) clearTimeout(toastTimer)
@@ -619,7 +622,7 @@ async function saveAll() {
 }
 
 async function testConnection() {
-  message.value = '正在测试连接...'
+  message.value = t('settings.testingConnection')
   messageType.value = 'success'
   try {
     const host = mssqlConfigs.value.find(c => c.key === 'mssql_host')?.value
@@ -629,7 +632,7 @@ async function testConnection() {
     const database = mssqlConfigs.value.find(c => c.key === 'mssql_database')?.value || 'master'
 
     if (!host || !user) {
-      message.value = '请填写服务器地址和账号'
+      message.value = t('settings.fillRequired')
       messageType.value = 'error'
       return
     }
@@ -642,15 +645,15 @@ async function testConnection() {
       database,
     })
     if (result && result.success) {
-      message.value = '连接成功！SQL Server ' + host + ':' + portRaw
+      message.value = t('settings.testSuccess', { host, port: portRaw })
       messageType.value = 'success'
     } else {
-      message.value = '连接失败: ' + (result?.error || '未知错误')
+      message.value = t('settings.connectFailed') + ' ' + (result?.error || t('settings.unknownError'))
       messageType.value = 'error'
     }
   } catch (e) {
     const detail = e?.response?.data?.detail || e?.response?.data?.error || e.message
-    message.value = '测试连接失败: ' + detail
+    message.value = t('settings.testFailed') + ' ' + detail
     messageType.value = 'error'
   } finally {
     if (toastTimer) clearTimeout(toastTimer)
@@ -671,10 +674,10 @@ async function testSmtp() {
       recipients: alertConfigs.smtp_recipients,
     })
     smtpTestOk.value = result?.success
-    smtpTestResult.value = result?.message || result?.error || '未知结果'
+    smtpTestResult.value = result?.message || result?.error || t('settings.unknownResult')
   } catch (e) {
     smtpTestOk.value = false
-    smtpTestResult.value = '测试失败: ' + (e?.response?.data?.detail || e.message)
+    smtpTestResult.value = t('settings.smtpTestFailed') + ' ' + (e?.response?.data?.detail || e.message)
   } finally {
     smtpTesting.value = false
   }
@@ -700,10 +703,10 @@ async function onLogoUpload(e) {
   try {
     const data = await uploadLogo(file)
     logoPreviewUrl.value = data.logo_url || (getLogoUrl() + '?t=' + Date.now())
-    message.value = 'Logo 上传成功！'
+    message.value = t('settings.logoUploadSuccess')
     messageType.value = 'success'
   } catch (err) {
-    message.value = 'Logo 上传失败: ' + (err?.response?.data?.detail || err.message)
+    message.value = t('settings.logoUploadFailed') + ' ' + (err?.response?.data?.detail || err.message)
     messageType.value = 'error'
   } finally {
     if (toastTimer) clearTimeout(toastTimer)
@@ -715,10 +718,10 @@ async function onDeleteLogo() {
   try {
     await deleteLogo()
     logoPreviewUrl.value = ''
-    message.value = '已恢复默认 Logo'
+    message.value = t('settings.logoRestored')
     messageType.value = 'success'
   } catch (err) {
-    message.value = '删除失败: ' + (err?.response?.data?.detail || err.message)
+    message.value = t('settings.logoDeleteFailed') + ' ' + (err?.response?.data?.detail || err.message)
     messageType.value = 'error'
   } finally {
     if (toastTimer) clearTimeout(toastTimer)

@@ -2,27 +2,27 @@
   <div class="blocking">
     <div class="toolbar">
       <div class="toolbar-left">
-        <span class="toolbar-title">阻塞进程</span>
+        <span class="toolbar-title">{{ t('blocking.title') }}</span>
         <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
+          <option value="">{{ t('blocking.allInstances') }}</option>
           <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
-        <span class="blocking-count" v-if="list.length > 0">共 {{ list.length }} 个阻塞链</span>
+        <span class="blocking-count" v-if="list.length > 0">{{ t('blocking.chainCount', { count: list.length }) }}</span>
       </div>
       <div class="toolbar-right">
         <span class="auto-refresh-hint" v-if="autoRefreshEnabled">
           <span class="refresh-dot"></span>
-          每30秒自动刷新
+          {{ t('blocking.autoRefresh') }}
         </span>
         <button class="btn-primary" @click="onManualRefresh" :disabled="refreshing">
-          {{ refreshing ? '刷新中...' : '刷新' }}
+          {{ refreshing ? t('blocking.refreshing') : t('common.refresh') }}
         </button>
       </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <div v-else-if="list.length === 0" class="empty-state">
@@ -32,8 +32,8 @@
           <path d="M8 12h8"></path>
         </svg>
       </div>
-      <p class="empty-text">当前无阻塞进程</p>
-      <p class="empty-hint">系统运行正常，没有检测到阻塞链</p>
+      <p class="empty-text">{{ t('blocking.noBlocking') }}</p>
+      <p class="empty-hint">{{ t('blocking.noBlockingHint') }}</p>
     </div>
 
     <div v-else class="chain-list">
@@ -61,24 +61,24 @@
           <!-- 阻塞者 (Blocker) -->
           <div class="session-card blocker">
             <div class="session-label">
-              <span class="status-tag tag-blocker">阻塞者</span>
+              <span class="status-tag tag-blocker">{{ t('blocking.blocker') }}</span>
               <span class="session-spid">SPID: {{ chain.blocking_spid }}</span>
             </div>
             <div class="session-details">
               <div class="session-detail">
-                <span class="detail-label">等待类型</span>
+                <span class="detail-label">{{ t('blocking.waitType') }}</span>
                 <span class="detail-value">{{ chain.blocking_wait_type || '-' }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">等待时间</span>
+                <span class="detail-label">{{ t('blocking.waitTime') }}</span>
                 <span class="detail-value">{{ formatWaitTime(chain.blocking_wait_time) }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">主机名</span>
+                <span class="detail-label">{{ t('blocking.hostName') }}</span>
                 <span class="detail-value">{{ chain.blocking_host_name || '-' }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">登录名</span>
+                <span class="detail-label">{{ t('blocking.loginName') }}</span>
                 <span class="detail-value">{{ chain.blocking_login_name || '-' }}</span>
               </div>
             </div>
@@ -94,30 +94,30 @@
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <polyline points="19 12 12 19 5 12"></polyline>
             </svg>
-            <span class="block-arrow-text">阻塞</span>
+            <span class="block-arrow-text">{{ t('blocking.blockArrow') }}</span>
           </div>
 
           <!-- 被阻塞者 (Blocked) -->
           <div class="session-card blocked">
             <div class="session-label">
-              <span class="status-tag tag-blocked">被阻塞</span>
+              <span class="status-tag tag-blocked">{{ t('blocking.blocked') }}</span>
               <span class="session-spid">SPID: {{ chain.blocked_spid }}</span>
             </div>
             <div class="session-details">
               <div class="session-detail">
-                <span class="detail-label">等待类型</span>
+                <span class="detail-label">{{ t('blocking.waitType') }}</span>
                 <span class="detail-value">{{ chain.wait_type || '-' }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">等待时间</span>
+                <span class="detail-label">{{ t('blocking.waitTime') }}</span>
                 <span class="detail-value">{{ formatWaitTime(chain.wait_time) }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">主机名</span>
+                <span class="detail-label">{{ t('blocking.hostName') }}</span>
                 <span class="detail-value">{{ chain.host_name || '-' }}</span>
               </div>
               <div class="session-detail">
-                <span class="detail-label">登录名</span>
+                <span class="detail-label">{{ t('blocking.loginName') }}</span>
                 <span class="detail-value">{{ chain.login_name || '-' }}</span>
               </div>
             </div>
@@ -134,9 +134,12 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getBlockingRealtime, getBlockingHistory } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
@@ -184,13 +187,13 @@ function formatWaitTime(ms) {
   const num = Number(ms)
   if (num < 1000) return `${num} ms`
   const seconds = Math.floor(num / 1000)
-  if (seconds < 60) return `${seconds} 秒`
+  if (seconds < 60) return `${seconds} ${t('common.seconds')}`
   const minutes = Math.floor(seconds / 60)
   const remainSec = seconds % 60
-  if (minutes < 60) return `${minutes} 分 ${remainSec} 秒`
+  if (minutes < 60) return `${minutes} ${t('common.minutes')} ${remainSec} ${t('common.seconds')}`
   const hours = Math.floor(minutes / 60)
   const remainMin = minutes % 60
-  return `${hours} 小时 ${remainMin} 分`
+  return `${hours} ${t('common.hours')} ${remainMin} ${t('common.minutes')}`
 }
 
 function truncateText(text, maxLen) {

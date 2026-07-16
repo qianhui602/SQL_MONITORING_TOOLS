@@ -1,0 +1,37 @@
+# Checklist
+
+- [x] vue-i18n 已安装并正确配置，默认语言为 zh-CN
+- [x] `src/i18n/index.js` 从 `localStorage` 读取/保存语言偏好（key: `app_language`）
+- [x] `src/i18n/zh-CN.js` 包含所有模块的中文翻译（layout、common、dashboard、trends、deadlocks、alerts、slowQueries、blocking、disk、indexes、report、alertRules、instances、auditLogs、settings、users、profile、help、login、forgotPassword、resetPassword、setup）
+- [x] `src/i18n/en-US.js` 包含所有对应英文翻译，key 与中文文件一致
+- [x] `main.js` 正确注册 i18n 插件
+- [x] Layout.vue 侧边栏菜单项 label 使用 i18n key
+- [x] Layout.vue 顶栏通知面板、用户下拉菜单、更新提示等硬编码中文已替换
+- [x] Layout.vue 标签页右键菜单硬编码中文已替换
+- [x] Layout.vue 顶栏已添加语言切换按钮，点击可在 zh-CN / en-US 间切换
+- [x] 语言切换按钮位于主题切换按钮旁
+- [x] router/index.js 中所有 `meta.title` 已改为 i18n key
+- [x] Layout.vue 标签页标题通过 i18n 翻译动态显示
+- [x] Login.vue 所有 UI 文本已替换为 i18n 调用
+- [x] ForgotPassword.vue 所有 UI 文本已替换为 i18n 调用
+- [x] ResetPassword.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Setup.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Dashboard.vue 所有 UI 文本已替换为 i18n 调用（统计卡片标签、图表标题、工具栏、弹窗等）
+- [x] Trends.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Alerts.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Deadlocks.vue 所有 UI 文本已替换为 i18n 调用
+- [x] SlowQueries.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Blocking.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Disk.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Indexes.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Report.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Settings.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Users.vue 所有 UI 文本已替换为 i18n 调用
+- [x] AuditLogs.vue 所有 UI 文本已替换为 i18n 调用
+- [x] AlertRules.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Instances.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Profile.vue 所有 UI 文本已替换为 i18n 调用
+- [x] Help.vue 所有 UI 文本已替换为 i18n 调用
+- [x] 后端返回的中文消息保持原样展示，未做翻译处理
+- [x] 默认语言仍为中文，首次访问无 localStorage 时正确加载 zh-CN
+- [x] 切换语言后页面无需刷新，所有文本立即更新

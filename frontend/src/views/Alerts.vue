@@ -2,9 +2,9 @@
   <div class="alerts">
     <div class="toolbar">
       <div class="toolbar-group">
-        <label class="toolbar-label">严重级别</label>
+        <label class="toolbar-label">{{ t('alerts.severity') }}</label>
         <select v-model="severityFilter" class="select-input" @change="onFilterChange">
-          <option value="">全部</option>
+          <option value="">{{ t('common.all') }}</option>
           <option value="critical">Critical</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
@@ -12,24 +12,24 @@
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">开始时间</label>
+        <label class="toolbar-label">{{ t('alerts.startTime') }}</label>
         <input type="datetime-local" v-model="startTime" class="input" />
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">结束时间</label>
+        <label class="toolbar-label">{{ t('alerts.endTime') }}</label>
         <input type="datetime-local" v-model="endTime" class="input" />
       </div>
-      <button class="btn-primary" @click="onSearch">查询</button>
+      <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
     </div>
 
     <div class="table-card">
       <table class="data-table">
         <thead>
           <tr>
-            <th>告警类型</th>
-            <th>严重级别</th>
-            <th>消息</th>
-            <th>触发时间</th>
+            <th>{{ t('alerts.alertType') }}</th>
+            <th>{{ t('alerts.severity') }}</th>
+            <th>{{ t('alerts.message') }}</th>
+            <th>{{ t('alerts.triggerTime') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -42,26 +42,26 @@
             <td>{{ formatDateTime(row.triggered_at, { second: true }) }}</td>
           </tr>
           <tr v-if="list.length === 0">
-            <td colspan="4" class="empty-cell">暂无数据</td>
+            <td colspan="4" class="empty-cell">{{ t('common.empty') }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination">
-        <span class="page-info">共 {{ total }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ total }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-text">第 {{ page }} / {{ totalPages }} 页</span>
-          <button :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+          <button :disabled="page <= 1" @click="goPage(page - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page, total: totalPages }) }}</span>
+          <button :disabled="page >= totalPages" @click="goPage(page + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="pageSize" @change="onPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -70,8 +70,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getAlerts } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+
+const { t } = useI18n()
 
 const list = ref([])
 const total = ref(0)

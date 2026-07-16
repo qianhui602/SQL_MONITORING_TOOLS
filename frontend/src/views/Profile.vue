@@ -1,7 +1,7 @@
 <template>
   <div class="profile-page">
     <div class="page-header">
-      <h2>个人设置</h2>
+      <h2>{{ t('profile.title') }}</h2>
     </div>
 
     <div v-if="message" :class="['message-toast', messageType === 'error' ? 'error' : 'success']">
@@ -12,16 +12,16 @@
       <!-- 基本信息 -->
       <div class="profile-card">
         <div class="card-header">
-          <h3>基本信息</h3>
+          <h3>{{ t('profile.basicInfo') }}</h3>
         </div>
         <div class="card-body">
           <div class="info-row">
             <div class="info-item">
-              <label class="info-label">用户名</label>
+              <label class="info-label">{{ t('users.username') }}</label>
               <div class="info-value readonly">{{ userInfo.username }}</div>
             </div>
             <div class="info-item">
-              <label class="info-label">角色</label>
+              <label class="info-label">{{ t('profile.role') }}</label>
               <div class="info-value readonly">
                 <span class="role-tag" :class="roleClass">{{ roleLabel }}</span>
               </div>
@@ -31,32 +31,32 @@
           <div class="form-divider"></div>
 
           <div class="form-group">
-            <label class="form-label">姓名</label>
+            <label class="form-label">{{ t('profile.fullName') }}</label>
             <input
               type="text"
               v-model="form.full_name"
               class="form-input"
-              placeholder="请输入姓名"
+              :placeholder="t('profile.fullNamePlaceholder')"
               maxlength="100"
             />
-            <span class="form-hint">显示在顶部栏和邮件通知中</span>
+            <span class="form-hint">{{ t('profile.fullNameHint') }}</span>
           </div>
 
           <div class="form-group">
-            <label class="form-label">邮箱</label>
+            <label class="form-label">{{ t('profile.email') }}</label>
             <input
               type="email"
               v-model="form.email"
               class="form-input"
-              placeholder="请输入邮箱地址"
+              :placeholder="t('profile.emailPlaceholder')"
               maxlength="200"
             />
-            <span class="form-hint">用于接收告警通知和密码重置邮件</span>
+            <span class="form-hint">{{ t('profile.emailHint') }}</span>
           </div>
 
           <div class="form-actions">
             <button class="btn btn-primary" @click="saveProfile" :disabled="saving">
-              {{ saving ? '保存中...' : '保存修改' }}
+              {{ saving ? t('common.submit') : t('profile.saveChanges') }}
             </button>
           </div>
         </div>
@@ -65,39 +65,39 @@
       <!-- 修改密码 -->
       <div class="profile-card">
         <div class="card-header">
-          <h3>修改密码</h3>
+          <h3>{{ t('profile.changePassword') }}</h3>
         </div>
         <div class="card-body">
           <div class="form-group">
-            <label class="form-label">当前密码</label>
+            <label class="form-label">{{ t('profile.currentPassword') }}</label>
             <input
               :type="showOldPassword ? 'text' : 'password'"
               v-model="passwordForm.old_password"
               class="form-input"
-              placeholder="请输入当前密码"
+              :placeholder="t('profile.currentPasswordPlaceholder')"
               autocomplete="current-password"
             />
           </div>
 
           <div class="form-group">
-            <label class="form-label">新密码</label>
+            <label class="form-label">{{ t('profile.newPassword') }}</label>
             <input
               :type="showNewPassword ? 'text' : 'password'"
               v-model="passwordForm.new_password"
               class="form-input"
-              placeholder="请输入新密码（至少 6 位）"
+              :placeholder="t('profile.newPasswordPlaceholder')"
               autocomplete="new-password"
               minlength="6"
             />
           </div>
 
           <div class="form-group">
-            <label class="form-label">确认新密码</label>
+            <label class="form-label">{{ t('profile.confirmPassword') }}</label>
             <input
               :type="showConfirmPassword ? 'text' : 'password'"
               v-model="passwordForm.confirm_password"
               class="form-input"
-              placeholder="请再次输入新密码"
+              :placeholder="t('profile.confirmPasswordPlaceholder')"
               autocomplete="new-password"
               minlength="6"
             />
@@ -105,7 +105,7 @@
 
           <div class="form-actions">
             <button class="btn btn-primary" @click="changePassword" :disabled="pwdSaving">
-              {{ pwdSaving ? '修改中...' : '修改密码' }}
+              {{ pwdSaving ? t('common.submit') : t('profile.changePassword') }}
             </button>
           </div>
         </div>
@@ -116,8 +116,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getMe, updateProfile, changePassword as changePasswordApi } from '@/api'
 import { authStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 const userInfo = ref({
   id: 0,
@@ -152,9 +155,9 @@ let messageTimer = null
 
 const roleLabel = computed(() => {
   const map = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    viewer: '只读用户'
+    super_admin: t('profile.superAdmin'),
+    admin: t('profile.admin'),
+    viewer: t('profile.readOnlyUser')
   }
   return map[userInfo.value.role] || userInfo.value.role
 })
@@ -199,9 +202,9 @@ async function saveProfile() {
       authStore.state.user.full_name = data.full_name
       authStore.state.user.email = data.email
     }
-    showMessage('个人信息已更新')
+    showMessage(t('profile.profileUpdated'))
   } catch (e) {
-    showMessage(e?.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e?.response?.data?.detail || e.message || t('profile.saveFailed'), 'error')
   } finally {
     saving.value = false
   }
@@ -211,15 +214,15 @@ async function changePassword() {
   if (pwdSaving.value) return
 
   if (!passwordForm.old_password) {
-    showMessage('请输入当前密码', 'error')
+    showMessage(t('profile.currentPasswordRequired'), 'error')
     return
   }
   if (passwordForm.new_password.length < 6) {
-    showMessage('新密码长度不能少于 6 位', 'error')
+    showMessage(t('profile.newPasswordMin'), 'error')
     return
   }
   if (passwordForm.new_password !== passwordForm.confirm_password) {
-    showMessage('两次输入的新密码不一致', 'error')
+    showMessage(t('profile.passwordMismatch'), 'error')
     return
   }
 
@@ -229,9 +232,9 @@ async function changePassword() {
     passwordForm.old_password = ''
     passwordForm.new_password = ''
     passwordForm.confirm_password = ''
-    showMessage('密码修改成功')
+    showMessage(t('profile.passwordChanged'))
   } catch (e) {
-    showMessage(e?.response?.data?.detail || e.message || '修改失败', 'error')
+    showMessage(e?.response?.data?.detail || e.message || t('profile.changeFailed'), 'error')
   } finally {
     pwdSaving.value = false
   }

@@ -1,20 +1,20 @@
 <template>
   <div class="indexes-page">
     <div class="page-header">
-      <h2>索引分析</h2>
+      <h2>{{ t('indexes.title') }}</h2>
       <div class="toolbar-group">
-        <label class="toolbar-label">实例</label>
+        <label class="toolbar-label">{{ t('indexes.instance') }}</label>
         <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
+          <option value="">{{ t('indexes.allInstances') }}</option>
           <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">数据库</label>
+        <label class="toolbar-label">{{ t('indexes.database') }}</label>
         <input
           v-model="databaseFilter"
           class="input"
-          placeholder="输入数据库名筛选"
+          :placeholder="t('indexes.dbPlaceholder')"
           @keyup.enter="onFilterChange"
         />
       </div>
@@ -25,13 +25,13 @@
         :class="['tab-btn', { active: activeTab === 'missing' }]"
         @click="switchTab('missing')"
       >
-        缺失索引
+        {{ t('indexes.missingIndexes') }}
       </button>
       <button
         :class="['tab-btn', { active: activeTab === 'fragmentation' }]"
         @click="switchTab('fragmentation')"
       >
-        索引碎片
+        {{ t('indexes.indexFragments') }}
       </button>
     </div>
 
@@ -40,22 +40,22 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>数据库名</th>
-            <th>架构名</th>
-            <th>表名</th>
-            <th>相等列</th>
-            <th>包含列</th>
-            <th>预估影响(%)</th>
-            <th>用户查找次数</th>
-            <th>用户扫描次数</th>
+            <th>{{ t('indexes.dbName') }}</th>
+            <th>{{ t('indexes.schemaName') }}</th>
+            <th>{{ t('indexes.tableName') }}</th>
+            <th>{{ t('indexes.equalityColumns') }}</th>
+            <th>{{ t('indexes.includeColumns') }}</th>
+            <th>{{ t('indexes.estimatedImpact') }}</th>
+            <th>{{ t('indexes.userSeeks') }}</th>
+            <th>{{ t('indexes.userScans') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="missingLoading">
-            <td colspan="8" class="empty-cell">加载中...</td>
+            <td colspan="8" class="empty-cell">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="missingList.length === 0">
-            <td colspan="8" class="empty-cell">暂无数据</td>
+            <td colspan="8" class="empty-cell">{{ t('common.empty') }}</td>
           </tr>
           <tr v-for="row in missingList" :key="row.id">
             <td>{{ row.database_name }}</td>
@@ -72,20 +72,20 @@
         </tbody>
       </table>
       <div class="pagination">
-        <span class="page-info">共 {{ missingTotal }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ missingTotal }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="missingPage <= 1" @click="goMissingPage(missingPage - 1)">上一页</button>
-          <span class="page-text">第 {{ missingPage }} / {{ missingTotalPages }} 页</span>
-          <button :disabled="missingPage >= missingTotalPages" @click="goMissingPage(missingPage + 1)">下一页</button>
+          <button :disabled="missingPage <= 1" @click="goMissingPage(missingPage - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page: missingPage, total: missingTotalPages }) }}</span>
+          <button :disabled="missingPage >= missingTotalPages" @click="goMissingPage(missingPage + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="missingPageSize" @change="onMissingPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -95,21 +95,21 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>数据库名</th>
-            <th>架构名</th>
-            <th>表名</th>
-            <th>索引名</th>
-            <th>碎片率(%)</th>
-            <th>页数</th>
-            <th>索引类型</th>
+            <th>{{ t('indexes.dbName') }}</th>
+            <th>{{ t('indexes.schemaName') }}</th>
+            <th>{{ t('indexes.tableName') }}</th>
+            <th>{{ t('indexes.indexName') }}</th>
+            <th>{{ t('indexes.fragPct') }}</th>
+            <th>{{ t('indexes.pages') }}</th>
+            <th>{{ t('indexes.indexType') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="fragLoading">
-            <td colspan="7" class="empty-cell">加载中...</td>
+            <td colspan="7" class="empty-cell">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="fragList.length === 0">
-            <td colspan="7" class="empty-cell">暂无数据</td>
+            <td colspan="7" class="empty-cell">{{ t('common.empty') }}</td>
           </tr>
           <tr v-for="row in fragList" :key="row.id">
             <td>{{ row.database_name }}</td>
@@ -127,20 +127,20 @@
         </tbody>
       </table>
       <div class="pagination">
-        <span class="page-info">共 {{ fragTotal }} 条</span>
+        <span class="page-info">{{ t('common.total') }} {{ fragTotal }} {{ t('common.items') }}</span>
         <div class="page-actions">
-          <button :disabled="fragPage <= 1" @click="goFragPage(fragPage - 1)">上一页</button>
-          <span class="page-text">第 {{ fragPage }} / {{ fragTotalPages }} 页</span>
-          <button :disabled="fragPage >= fragTotalPages" @click="goFragPage(fragPage + 1)">下一页</button>
+          <button :disabled="fragPage <= 1" @click="goFragPage(fragPage - 1)">{{ t('common.prevPage') }}</button>
+          <span class="page-text">{{ t('common.pageInfo', { page: fragPage, total: fragTotalPages }) }}</span>
+          <button :disabled="fragPage >= fragTotalPages" @click="goFragPage(fragPage + 1)">{{ t('common.nextPage') }}</button>
         </div>
         <div class="page-size-control">
-          <label>每页</label>
+          <label>{{ t('common.perPage') }}</label>
           <select v-model.number="fragPageSize" @change="onFragPageSizeChange">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
           </select>
-          <label>条</label>
+          <label>{{ t('common.items') }}</label>
         </div>
       </div>
     </div>
@@ -149,8 +149,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getMissingIndexes, getIndexFragmentation } from '@/api'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 

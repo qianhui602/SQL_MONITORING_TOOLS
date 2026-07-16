@@ -4,41 +4,41 @@
       <div class="left-content">
         <img :src="customLogoUrl || '/LOGO.png'" :alt="brandTitle" class="left-logo" />
         <h1 class="left-title">{{ brandTitle }}</h1>
-        <p class="left-desc">实时监控 · 智能告警 · 深度分析</p>
+        <p class="left-desc">{{ t('login.slogan') }}</p>
         <div class="left-features">
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             </span>
-            <span>全方位性能指标监控</span>
+            <span>{{ t('login.feature1') }}</span>
           </div>
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </span>
-            <span>智能告警与多渠道通知</span>
+            <span>{{ t('login.feature2') }}</span>
           </div>
           <div class="feature-item">
             <span class="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </span>
-            <span>AI 驱动的分析报告</span>
+            <span>{{ t('login.feature3') }}</span>
           </div>
         </div>
       </div>
-      <div class="left-footer">太阳谷信息技术部 &copy; 2026</div>
+      <div class="left-footer">{{ t('login.copyright') }} &copy; 2026</div>
     </div>
 
     <div class="login-right">
       <div class="login-card">
         <!-- 步骤 1：输入邮箱 -->
         <template v-if="step === 1">
-          <h2 class="login-title">找回密码</h2>
-          <p class="login-subtitle">请输入您的注册邮箱，我们将发送验证码</p>
+          <h2 class="login-title">{{ t('forgotPassword.title') }}</h2>
+          <p class="login-subtitle">{{ t('forgotPassword.subtitle') }}</p>
 
           <form class="login-form" @submit.prevent="sendCode">
             <div class="form-item">
-              <label>邮箱地址</label>
+              <label>{{ t('forgotPassword.email') }}</label>
               <div class="input-wrap">
                 <span class="input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -47,7 +47,7 @@
                   v-model="email"
                   type="email"
                   autocomplete="email"
-                  placeholder="请输入注册邮箱"
+                  :placeholder="t('forgotPassword.emailPlaceholder')"
                   :disabled="loading"
                   required
                 />
@@ -58,24 +58,24 @@
 
             <button type="submit" class="login-btn" :disabled="loading">
               <span v-if="loading" class="btn-spinner"></span>
-              {{ loading ? '发送中...' : '发送验证码' }}
+              {{ loading ? t('forgotPassword.sending') : t('forgotPassword.sendCode') }}
             </button>
 
             <p class="form-footer">
-              想起密码了？
-              <router-link to="/login" class="link">返回登录</router-link>
+              {{ t('forgotPassword.rememberPassword') }}
+              <router-link to="/login" class="link">{{ t('forgotPassword.backToLogin') }}</router-link>
             </p>
           </form>
         </template>
 
         <!-- 步骤 2：输入验证码和新密码 -->
         <template v-else-if="step === 2">
-          <h2 class="login-title">重置密码</h2>
-          <p class="login-subtitle">验证码已发送至 <strong>{{ email }}</strong></p>
+          <h2 class="login-title">{{ t('forgotPassword.resetTitle') }}</h2>
+          <p class="login-subtitle">{{ t('forgotPassword.codeSentTo') }} <strong>{{ email }}</strong></p>
 
           <form class="login-form" @submit.prevent="onReset">
             <div class="form-item">
-              <label>验证码</label>
+              <label>{{ t('forgotPassword.code') }}</label>
               <div class="input-wrap code-wrap">
                 <span class="input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
@@ -85,19 +85,19 @@
                   type="text"
                   inputmode="numeric"
                   maxlength="6"
-                  placeholder="请输入 6 位验证码"
+                  :placeholder="t('forgotPassword.codePlaceholder')"
                   :disabled="loading"
                   required
                   class="code-input"
                 />
                 <button type="button" class="resend-btn" :disabled="countdown > 0 || loading" @click="sendCode">
-                  {{ countdown > 0 ? `${countdown}s` : '重发' }}
+                  {{ countdown > 0 ? `${countdown}s` : t('forgotPassword.resend') }}
                 </button>
               </div>
             </div>
 
             <div class="form-item">
-              <label>新密码</label>
+              <label>{{ t('forgotPassword.newPassword') }}</label>
               <div class="input-wrap">
                 <span class="input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -106,7 +106,7 @@
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="请输入新密码（至少 6 位）"
+                  :placeholder="t('forgotPassword.newPasswordPlaceholder')"
                   :disabled="loading"
                   required
                   minlength="6"
@@ -119,7 +119,7 @@
             </div>
 
             <div class="form-item">
-              <label>确认新密码</label>
+              <label>{{ t('forgotPassword.confirmPassword') }}</label>
               <div class="input-wrap">
                 <span class="input-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -128,7 +128,7 @@
                   v-model="confirmPassword"
                   :type="showConfirm ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="请再次输入新密码"
+                  :placeholder="t('forgotPassword.confirmPasswordPlaceholder')"
                   :disabled="loading"
                   required
                   minlength="6"
@@ -144,11 +144,11 @@
 
             <button type="submit" class="login-btn" :disabled="loading">
               <span v-if="loading" class="btn-spinner"></span>
-              {{ loading ? '重置中...' : '确认重置' }}
+              {{ loading ? t('forgotPassword.resetting') : t('forgotPassword.confirmReset') }}
             </button>
 
             <p class="form-footer">
-              <a href="#" class="link" @click.prevent="step = 1">返回上一步</a>
+              <a href="#" class="link" @click.prevent="step = 1">{{ t('forgotPassword.backToPrev') }}</a>
             </p>
           </form>
         </template>
@@ -158,12 +158,12 @@
           <div class="success-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
-          <h3 class="success-title">密码重置成功</h3>
+          <h3 class="success-title">{{ t('forgotPassword.resetSuccess') }}</h3>
           <p class="success-desc">
-            您的密码已成功重置。<br>
-            请使用新密码重新登录系统。
+            {{ t('forgotPassword.resetSuccessDesc1') }}<br>
+            {{ t('forgotPassword.resetSuccessDesc2') }}
           </p>
-          <button class="login-btn" @click="goToLogin">立即登录</button>
+          <button class="login-btn" @click="goToLogin">{{ t('forgotPassword.loginNow') }}</button>
         </div>
       </div>
     </div>
@@ -173,8 +173,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { forgotPassword, resetPassword, getConfig, getLogoUrl } from '@/api'
 
+const { t } = useI18n()
 const router = useRouter()
 const loading = ref(false)
 const errorMsg = ref('')
@@ -228,7 +230,7 @@ async function sendCode() {
     startCountdown()
   } catch (e) {
     errorMsg.value =
-      e?.response?.data?.detail || e.message || '发送失败，请稍后再试'
+      e?.response?.data?.detail || e.message || t('forgotPassword.sendFailed')
   } finally {
     loading.value = false
   }
@@ -238,15 +240,15 @@ async function onReset() {
   if (loading.value) return
 
   if (!/^\d{6}$/.test(code.value)) {
-    errorMsg.value = '请输入 6 位数字验证码'
+    errorMsg.value = t('forgotPassword.codeRequired')
     return
   }
   if (password.value.length < 6) {
-    errorMsg.value = '密码长度不能少于 6 位'
+    errorMsg.value = t('forgotPassword.passwordMin')
     return
   }
   if (password.value !== confirmPassword.value) {
-    errorMsg.value = '两次输入的密码不一致'
+    errorMsg.value = t('forgotPassword.passwordMismatch')
     return
   }
 
@@ -257,7 +259,7 @@ async function onReset() {
     step.value = 3
   } catch (e) {
     errorMsg.value =
-      e?.response?.data?.detail || e.message || '重置失败，请稍后再试'
+      e?.response?.data?.detail || e.message || t('forgotPassword.resetFailed')
   } finally {
     loading.value = false
   }

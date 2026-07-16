@@ -1,30 +1,30 @@
 <template>
   <div class="alert-rules-page">
     <div class="page-header">
-      <h2>告警规则管理</h2>
-      <button class="btn btn-primary" @click="openCreateDialog">+ 新增规则</button>
+      <h2>{{ t('alertRules.title') }}</h2>
+      <button class="btn btn-primary" @click="openCreateDialog">{{ t('alertRules.addRule') }}</button>
     </div>
 
     <div class="card">
       <table class="data-table">
         <thead>
           <tr>
-            <th>规则名称</th>
-            <th>指标分类</th>
-            <th>指标名</th>
-            <th>条件</th>
-            <th>严重级别</th>
-            <th>通知方式</th>
-            <th>状态</th>
-            <th>操作</th>
+            <th>{{ t('alertRules.ruleName') }}</th>
+            <th>{{ t('alertRules.metricCategory') }}</th>
+            <th>{{ t('alertRules.metricName') }}</th>
+            <th>{{ t('alertRules.condition') }}</th>
+            <th>{{ t('alertRules.severity') }}</th>
+            <th>{{ t('alertRules.notifyMethod') }}</th>
+            <th>{{ t('alertRules.status') }}</th>
+            <th>{{ t('common.operation') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" class="empty-cell">加载中...</td>
+            <td colspan="8" class="empty-cell">{{ t('common.loading') }}</td>
           </tr>
           <tr v-else-if="rules.length === 0">
-            <td colspan="8" class="empty-cell">暂无告警规则</td>
+            <td colspan="8" class="empty-cell">{{ t('alertRules.noRules') }}</td>
           </tr>
           <tr v-for="rule in rules" :key="rule.id" @click="openEditDialog(rule)" style="cursor:pointer">
             <td>{{ rule.name }}</td>
@@ -61,7 +61,7 @@
               </label>
             </td>
             <td @click.stop>
-              <button class="btn-text btn-danger" @click="onDelete(rule)">删除</button>
+              <button class="btn-text btn-danger" @click="onDelete(rule)">{{ t('common.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -72,53 +72,53 @@
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal modal-wide">
         <div class="modal-header">
-          {{ dialogMode === 'create' ? '新增告警规则' : '编辑告警规则' }}
+          {{ dialogMode === 'create' ? t('alertRules.addTitle') : t('alertRules.editTitle') }}
         </div>
         <div class="modal-body">
           <div class="form-row">
-            <label>规则名称 <span class="required">*</span></label>
-            <input v-model="form.name" placeholder="输入规则名称" />
+            <label>{{ t('alertRules.ruleName') }} <span class="required">*</span></label>
+            <input v-model="form.name" :placeholder="t('alertRules.namePlaceholder')" />
           </div>
           <div class="form-row">
-            <label>描述</label>
-            <textarea v-model="form.description" placeholder="可选" rows="2"></textarea>
+            <label>{{ t('alertRules.description') }}</label>
+            <textarea v-model="form.description" :placeholder="t('common.optional')" rows="2"></textarea>
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>指标分类 <span class="required">*</span></label>
+              <label>{{ t('alertRules.metricCategory') }} <span class="required">*</span></label>
               <select v-model="form.metric_category">
-                <option value="">请选择</option>
-                <option value="performance">性能</option>
-                <option value="memory">内存</option>
-                <option value="disk">磁盘</option>
-                <option value="deadlock">死锁</option>
-                <option value="connection">连接</option>
+                <option value="">{{ t('alertRules.pleaseSelect') }}</option>
+                <option value="performance">{{ t('alertRules.performance') }}</option>
+                <option value="memory">{{ t('alertRules.memory') }}</option>
+                <option value="disk">{{ t('alertRules.disk') }}</option>
+                <option value="deadlock">{{ t('alertRules.deadlock') }}</option>
+                <option value="connection">{{ t('alertRules.connection') }}</option>
               </select>
             </div>
             <div class="form-row">
-              <label>指标名 <span class="required">*</span></label>
-              <input v-model="form.metric_name" placeholder="如 cpu_usage" />
+              <label>{{ t('alertRules.metricName') }} <span class="required">*</span></label>
+              <input v-model="form.metric_name" :placeholder="t('alertRules.metricPlaceholder')" />
             </div>
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>运算符</label>
+              <label>{{ t('alertRules.operator') }}</label>
               <select v-model="form.operator">
-                <option value="gt">大于 (gt)</option>
-                <option value="lt">小于 (lt)</option>
-                <option value="gte">大于等于 (gte)</option>
-                <option value="lte">小于等于 (lte)</option>
-                <option value="eq">等于 (eq)</option>
+                <option value="gt">{{ t('alertRules.gt') }}</option>
+                <option value="lt">{{ t('alertRules.lt') }}</option>
+                <option value="gte">{{ t('alertRules.gte') }}</option>
+                <option value="lte">{{ t('alertRules.lte') }}</option>
+                <option value="eq">{{ t('alertRules.eq') }}</option>
               </select>
             </div>
             <div class="form-row">
-              <label>阈值 <span class="required">*</span></label>
-              <input v-model.number="form.threshold" type="number" placeholder="阈值" />
+              <label>{{ t('alertRules.threshold') }} <span class="required">*</span></label>
+              <input v-model.number="form.threshold" type="number" :placeholder="t('alertRules.threshold')" />
             </div>
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>严重级别 <span class="required">*</span></label>
+              <label>{{ t('alertRules.severity') }} <span class="required">*</span></label>
               <select v-model="form.severity">
                 <option value="critical">Critical</option>
                 <option value="high">High</option>
@@ -127,47 +127,47 @@
               </select>
             </div>
             <div class="form-row">
-              <label>冷却期(分钟)</label>
+              <label>{{ t('alertRules.cooldown') }}</label>
               <input v-model.number="form.cooldown_minutes" type="number" min="0" placeholder="0" />
             </div>
           </div>
           <div class="form-row">
-            <label>通知方式</label>
+            <label>{{ t('alertRules.notifyMethod') }}</label>
             <div class="checkbox-group">
               <label class="checkbox-item">
                 <input type="checkbox" value="email" v-model="form.notification_method" />
-                <span>邮件</span>
+                <span>{{ t('alertRules.email') }}</span>
               </label>
               <label class="checkbox-item">
                 <input type="checkbox" value="dingtalk" v-model="form.notification_method" />
-                <span>钉钉</span>
+                <span>{{ t('alertRules.dingtalk') }}</span>
               </label>
               <label class="checkbox-item">
                 <input type="checkbox" value="wechat" v-model="form.notification_method" />
-                <span>企业微信</span>
+                <span>{{ t('alertRules.wecom') }}</span>
               </label>
               <label class="checkbox-item">
                 <input type="checkbox" value="feishu" v-model="form.notification_method" />
-                <span>飞书</span>
+                <span>{{ t('alertRules.feishu') }}</span>
               </label>
             </div>
           </div>
           <div class="form-row-2col">
             <div class="form-row">
-              <label>静默开始时间</label>
+              <label>{{ t('alertRules.silentStart') }}</label>
               <input type="time" v-model="form.silent_start" />
             </div>
             <div class="form-row">
-              <label>静默结束时间</label>
+              <label>{{ t('alertRules.silentEnd') }}</label>
               <input type="time" v-model="form.silent_end" />
             </div>
           </div>
           <div v-if="dialogError" class="error-msg">{{ dialogError }}</div>
         </div>
         <div class="modal-footer">
-          <button class="btn" @click="closeDialog">取消</button>
+          <button class="btn" @click="closeDialog">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="onSubmit" :disabled="submitting">
-            {{ submitting ? '提交中...' : '确定' }}
+            {{ submitting ? t('common.submit') : t('common.confirm') }}
           </button>
         </div>
       </div>
@@ -177,7 +177,10 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, toggleAlertRule } from '@/api'
+
+const { t } = useI18n()
 
 const rules = ref([])
 const loading = ref(false)
@@ -207,7 +210,7 @@ function operatorLabel(op) {
 }
 
 function notifyLabel(m) {
-  const map = { email: '邮件', dingtalk: '钉钉', wechat: '企业微信', feishu: '飞书' }
+  const map = { email: t('alertRules.email'), dingtalk: t('alertRules.dingtalk'), wechat: t('alertRules.wecom'), feishu: t('alertRules.feishu') }
   return map[m] || m
 }
 
@@ -278,10 +281,10 @@ function closeDialog() {
 
 async function onSubmit() {
   dialogError.value = ''
-  if (!form.name) { dialogError.value = '请输入规则名称'; return }
-  if (!form.metric_category) { dialogError.value = '请选择指标分类'; return }
-  if (!form.metric_name) { dialogError.value = '请输入指标名'; return }
-  if (form.threshold === null || form.threshold === '') { dialogError.value = '请输入阈值'; return }
+  if (!form.name) { dialogError.value = t('alertRules.nameRequired'); return }
+  if (!form.metric_category) { dialogError.value = t('alertRules.categoryRequired'); return }
+  if (!form.metric_name) { dialogError.value = t('alertRules.metricRequired'); return }
+  if (form.threshold === null || form.threshold === '') { dialogError.value = t('alertRules.thresholdRequired'); return }
 
   submitting.value = true
   try {
@@ -293,7 +296,7 @@ async function onSubmit() {
     showDialog.value = false
     await fetchRules()
   } catch (e) {
-    dialogError.value = e?.response?.data?.detail || '操作失败'
+    dialogError.value = e?.response?.data?.detail || t('common.operationFailed')
   } finally {
     submitting.value = false
   }
@@ -309,12 +312,12 @@ async function onToggle(rule) {
 }
 
 async function onDelete(rule) {
-  if (!confirm(`确定要删除告警规则 "${rule.name}" 吗？`)) return
+  if (!confirm(t('common.confirmDelete', { name: rule.name }))) return
   try {
     await deleteAlertRule(rule.id)
     await fetchRules()
   } catch (e) {
-    alert(e?.response?.data?.detail || '删除失败')
+    alert(e?.response?.data?.detail || t('common.deleteFailed'))
   }
 }
 

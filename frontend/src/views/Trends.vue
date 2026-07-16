@@ -2,34 +2,34 @@
   <div class="trends">
     <div class="toolbar">
       <div class="toolbar-group">
-        <label class="toolbar-label">实例</label>
+        <label class="toolbar-label">{{ t('trends.instance') }}</label>
         <select v-model="selectedInstance" class="instance-select">
-          <option value="">全部实例</option>
+          <option value="">{{ t('trends.allInstances') }}</option>
           <option v-for="item in instances" :key="item.id" :value="item">{{ item.name }} ({{ item.host }}:{{ item.port }})</option>
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">指标分类</label>
+        <label class="toolbar-label">{{ t('trends.metricCategory') }}</label>
         <select v-model="category" class="select-input" @change="onCategoryChange">
           <option value="cpu">CPU</option>
-          <option value="memory">内存</option>
-          <option value="connections">连接数</option>
+          <option value="memory">{{ t('trends.categories.memory') }}</option>
+          <option value="connections">{{ t('trends.categories.connections') }}</option>
           <option value="io">IO</option>
-          <option value="locks">锁等待</option>
-          <option value="batch_requests">批处理请求</option>
+          <option value="locks">{{ t('trends.categories.locks') }}</option>
+          <option value="batch_requests">{{ t('trends.categories.batch_requests') }}</option>
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">时间范围</label>
+        <label class="toolbar-label">{{ t('trends.timeRange') }}</label>
         <select v-model="timeRange" class="select-input" @change="onTimeRangeChange">
-          <option value="1h">最近 1 小时</option>
-          <option value="6h">最近 6 小时</option>
-          <option value="24h">最近 24 小时</option>
-          <option value="7d">最近 7 天</option>
+          <option value="1h">{{ t('trends.ranges["1h"]') }}</option>
+          <option value="6h">{{ t('trends.ranges["6h"]') }}</option>
+          <option value="24h">{{ t('trends.ranges["24h"]') }}</option>
+          <option value="7d">{{ t('trends.ranges["7d"]') }}</option>
         </select>
       </div>
       <div class="toolbar-group">
-        <label class="toolbar-label">指标名称</label>
+        <label class="toolbar-label">{{ t('trends.metricName') }}</label>
         <div class="checkbox-group">
           <label v-for="m in availableMetrics" :key="m.value" class="checkbox-item">
             <input type="checkbox" :value="m.value" v-model="selectedMetrics" @change="fetchHistory" />
@@ -47,10 +47,13 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { getHistoryMetrics } from '@/api'
 import { formatTime } from '@/utils/datetime'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
+
+const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
@@ -60,44 +63,44 @@ const selectedMetrics = ref([])
 const chartRef = ref(null)
 let chart = null
 
-const metricOptions = {
+const metricOptions = computed(() => ({
   cpu: [
-    { label: 'CPU 使用率', value: 'cpu_usage' },
-    { label: 'SQL CPU 占用', value: 'sql_cpu' }
+    { label: t('trends.metrics.cpu_usage'), value: 'cpu_usage' },
+    { label: t('trends.metrics.sql_cpu'), value: 'sql_cpu' }
   ],
   memory: [
-    { label: '内存使用量(MB)', value: 'sql_server_memory_mb' },
-    { label: '缓存命中率', value: 'buffer_cache_hit_ratio' },
-    { label: '目标内存(MB)', value: 'target_memory_mb' },
-    { label: '页生命周期', value: 'page_life_expectancy' }
+    { label: t('trends.metrics.sql_server_memory_mb'), value: 'sql_server_memory_mb' },
+    { label: t('trends.metrics.buffer_cache_hit_ratio'), value: 'buffer_cache_hit_ratio' },
+    { label: t('trends.metrics.target_memory_mb'), value: 'target_memory_mb' },
+    { label: t('trends.metrics.page_life_expectancy'), value: 'page_life_expectancy' }
   ],
   connections: [
-    { label: '总连接数', value: 'total_connections' },
-    { label: '活跃会话', value: 'active_sessions' },
-    { label: '用户连接', value: 'user_connections' },
-    { label: '用户进程', value: 'user_processes' }
+    { label: t('trends.metrics.total_connections'), value: 'total_connections' },
+    { label: t('trends.metrics.active_sessions'), value: 'active_sessions' },
+    { label: t('trends.metrics.user_connections'), value: 'user_connections' },
+    { label: t('trends.metrics.user_processes'), value: 'user_processes' }
   ],
   io: [
-    { label: '读延迟(ms)', value: 'avg_read_latency_ms' },
-    { label: '写延迟(ms)', value: 'avg_write_latency_ms' },
-    { label: '总读取次数', value: 'total_reads' },
-    { label: '总写入次数', value: 'total_writes' },
-    { label: '读取MB', value: 'read_mb' },
-    { label: '写入MB', value: 'write_mb' }
+    { label: t('trends.metrics.avg_read_latency_ms'), value: 'avg_read_latency_ms' },
+    { label: t('trends.metrics.avg_write_latency_ms'), value: 'avg_write_latency_ms' },
+    { label: t('trends.metrics.total_reads'), value: 'total_reads' },
+    { label: t('trends.metrics.total_writes'), value: 'total_writes' },
+    { label: t('trends.metrics.read_mb'), value: 'read_mb' },
+    { label: t('trends.metrics.write_mb'), value: 'write_mb' }
   ],
   locks: [
-    { label: '等待锁数量', value: 'waiting_locks' },
-    { label: '锁等待数', value: 'lock_waits' },
-    { label: '平均锁等待(ms)', value: 'avg_lock_wait_ms' }
+    { label: t('trends.metrics.waiting_locks'), value: 'waiting_locks' },
+    { label: t('trends.metrics.lock_waits'), value: 'lock_waits' },
+    { label: t('trends.metrics.avg_lock_wait_ms'), value: 'avg_lock_wait_ms' }
   ],
   batch_requests: [
-    { label: '批处理请求/秒', value: 'batch_requests_sec' },
-    { label: 'SQL编译/秒', value: 'sql_compilations_sec' },
-    { label: 'SQL重编译/秒', value: 'sql_recompilations_sec' }
+    { label: t('trends.metrics.batch_requests_sec'), value: 'batch_requests_sec' },
+    { label: t('trends.metrics.sql_compilations_sec'), value: 'sql_compilations_sec' },
+    { label: t('trends.metrics.sql_recompilations_sec'), value: 'sql_recompilations_sec' }
   ]
-}
+}))
 
-const availableMetrics = computed(() => metricOptions[category.value] || [])
+const availableMetrics = computed(() => metricOptions.value[category.value] || [])
 
 function onCategoryChange() {
   selectedMetrics.value = availableMetrics.value.length > 0 ? [availableMetrics.value[0].value] : []
@@ -177,7 +180,7 @@ async function fetchHistory() {
           allLabels = labels
         }
         const values = data.map(m => m.metric_value)
-        const opt = metricOptions[category.value]?.find(o => o.value === metric)
+        const opt = metricOptions.value[category.value]?.find(o => o.value === metric)
         seriesList.push({ name: opt?.label || metric, data: values })
       }
     }
