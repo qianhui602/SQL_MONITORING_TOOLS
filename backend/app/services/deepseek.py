@@ -376,24 +376,37 @@ async def execute_step(
     step_type: str,
     step_data: dict,
     context_text: str,
+    tool_result_text: str = "",
     api_key: str = "",
     model: str = "deepseek-v4-flash",
     base_url: str = "",
     provider: str = "deepseek",
 ) -> Optional[str]:
-    """执行单个诊断步骤，生成分析结果"""
+    """执行单个诊断步骤，生成分析结果
+
+    Args:
+        step_type: 步骤类型
+        step_data: 步骤元数据（标题、描述等）
+        context_text: 系统上下文（概览信息）
+        tool_result_text: 工具执行结果（真实监控数据）
+        api_key: AI API 密钥
+        model: AI 模型名称
+        base_url: API 地址
+        provider: 提供商名称
+    """
     if not api_key:
         return None
 
     url = base_url or _get_base_url(provider)
 
     step_prompts = {
-        "metrics": "请根据以下性能指标数据，分析当前数据库的性能状况，指出异常项和优化建议。",
-        "deadlock": "请根据以下死锁相关信息，分析死锁风险和历史事件，给出优化建议。",
-        "slow_query": "请根据以下慢查询信息，分析性能瓶颈，给出索引优化和 SQL 改写建议。",
-        "disk": "请根据以下磁盘空间数据，评估存储健康状况，预警潜在风险。",
-        "index": "请根据以下索引信息，分析索引健康状况，给出维护建议。",
-        "summary": "请综合以下所有检查结果，生成一份完整的数据库健康诊断报告，包括总体评估、主要问题和优化建议。",
+        "metrics": "你正在执行「性能指标检查」工具，已获取到最新的数据库性能指标数据。请根据这些实际数据进行分析：评估 CPU、内存、连接等关键指标的健康状况，指出异常项并给出优化建议。",
+        "deadlock": "你正在执行「死锁分析」工具，已获取到近期死锁事件的详细记录。请分析死锁原因、涉及资源，给出具体的优化建议来避免类似死锁再次发生。",
+        "slow_query": "你正在执行「慢查询分析」工具，已获取到 TOP 慢查询记录。请分析每条慢查询的性能瓶颈，给出索引优化、SQL 改写或结构调整建议。",
+        "disk": "你正在执行「磁盘空间检查」工具，已获取到各数据库磁盘使用数据。请评估存储健康状况，对使用率高的数据库给出扩容或清理建议。",
+        "index": "你正在执行「索引分析」工具，已获取到缺失索引建议和索引碎片数据。请分析索引策略，给出创建或维护索引的具体建议。",
+        "blocking": "你正在执行「阻塞链分析」工具，已获取到实时阻塞事件数据。请分析阻塞原因和影响，给出优化建议来解决阻塞问题。",
+        "summary": "请基于前面所有步骤的执行结果，生成一份完整的数据库健康诊断报告。包括总体评估、主要发现的问题、优化建议（按优先级排序）。",
     }
 
     system_prompt = f"""你是一位资深的 SQL Server 数据库性能优化专家。
@@ -401,14 +414,24 @@ async def execute_step(
 
 请用中文回答，输出格式清晰，重点突出。"""
 
+    # 构建用户提示词，优先使用工具执行结果
+    user_prompt_parts = []
+    if tool_result_text:
+        user_prompt_parts.append(f"## 工具执行结果\n{tool_result_text}")
+    if context_text:
+        user_prompt_parts.append(f"## 系统概览\n{context_text}")
+    user_prompt_parts.append(
+        f"## 步骤详情\n标题: {step_data.get('title', '')}\n描述: {step_data.get('description', '')}"
+    )
+
     try:
         result = await _call_ai_api(
             base_url=url,
             api_key=api_key,
             model=model,
             system_prompt=system_prompt,
-            user_prompt=f"{context_text}\n\n## 步骤详情\n标题: {step_data.get('title', '')}\n描述: {step_data.get('description', '')}",
-            timeout=60.0,
+            user_prompt="\n\n".join(user_prompt_parts),
+            timeout=120.0,
         )
         return result or "分析结果为空"
     except Exception as e:

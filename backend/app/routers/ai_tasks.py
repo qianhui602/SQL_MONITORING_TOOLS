@@ -13,8 +13,7 @@ from sqlalchemy import delete, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory, get_db
-from app.models.ai_task import AiTask
-from app.models.ai_task_step import AiTaskStep
+from app.models.ai_task import AiTask, AiTaskStep
 from app.models.user import User
 from app.services.ai_executor import create_task, execute_task
 from app.services.auth_service import get_current_user
