@@ -59,8 +59,7 @@ const sectionContents = {
         <li>Windows 认证和 SQL Server 认证</li>
         <li>单实例和 Always On 可用性组</li>
       </ul>
-    `
-  },
+    `,
   dashboard: `
       <h3>功能说明</h3>
       <p>总览页面是系统的默认首页，提供全局运行状态的一站式视图，帮助您快速了解所有监控实例的健康状况。</p>
@@ -84,8 +83,7 @@ const sectionContents = {
         <li>点击图表右上角放大按钮，可全屏查看图表详情</li>
         <li>点击实例列表中的实例名称，可跳转到该实例的性能趋势页面</li>
       </ul>
-    `
-  },
+    `,
   performance: `
       <h3>功能说明</h3>
       <p>性能趋势页面以折线图形式展示各项性能指标的历史变化曲线，帮助您分析性能走势、定位性能瓶颈。</p>
@@ -112,12 +110,8 @@ const sectionContents = {
         <li>内存使用率：70%~90% 为正常区间（SQL Server 会尽可能使用内存）</li>
         <li>连接数：根据业务规模评估，突发增长可能意味着应用连接泄漏</li>
       </ul>
-    `
-  },
-  {
-    id: 'deadlocks',
-    title: '死锁监控',
-    content: `
+    `,
+  deadlocks: `
       <h3>什么是死锁</h3>
       <p>死锁是指两个或多个事务在同一资源上相互占有并请求对方锁定的资源，从而造成永久阻塞的现象。SQL Server 会自动选择一个代价最小的事务作为"受害者"回滚，以打破死锁。</p>
       <h3>功能说明</h3>
@@ -138,8 +132,7 @@ const sectionContents = {
         <li><strong>锁粒度太大</strong>：使用了较高的隔离级别或表锁 → 降低隔离级别，优化索引</li>
         <li><strong>缺少索引</strong>：查询扫描大量数据，持有过多行锁 → 添加合适的索引</li>
       </ul>
-    `
-  },
+    `,
   alerts: `
       <h3>功能说明</h3>
       <p>告警管理页面集中展示所有触发的告警记录，支持按级别、时间、状态筛选，帮助您快速处理重要告警。</p>
@@ -164,12 +157,8 @@ const sectionContents = {
         <li>Webhook 推送（如企业微信、钉钉、飞书）</li>
         <li>浏览器桌面通知（需在浏览器中开启）</li>
       </ul>
-    `
-  },
-  {
-    id: 'slow-queries',
-    title: '慢查询分析',
-    content: `
+    `,
+  'slow-queries': `
       <h3>功能说明</h3>
       <p>慢查询分析自动捕获执行时间超过阈值的 SQL 语句，帮助您识别性能瓶颈，优化数据库查询效率。</p>
       <h3>阈值设置</h3>
@@ -196,12 +185,8 @@ const sectionContents = {
         <li>使用参数化查询，提高执行计划重用率</li>
         <li>大表分页查询使用 OFFSET/FETCH 或基于游标的方式</li>
       </ul>
-    `
-  },
-  {
-    id: 'blocking',
-    title: '阻塞进程',
-    content: `
+    `,
+  blocking: `
       <h3>什么是阻塞</h3>
       <p>阻塞是指一个事务持有资源的锁，而另一个事务需要等待该锁释放才能继续执行的现象。适度阻塞是正常的，但长时间阻塞会导致性能下降和应用超时。</p>
       <h3>功能说明</h3>
@@ -226,8 +211,7 @@ const sectionContents = {
         <li>使用较低的事务隔离级别（如 READ COMMITTED SNAPSHOT）</li>
         <li>在应用层控制并发，避免热点资源争抢</li>
       </ul>
-    `
-  },
+    `,
   disk: `
       <h3>功能说明</h3>
       <p>磁盘空间页面监控各实例的数据文件和日志文件空间使用情况，帮助您提前规划存储扩容，避免空间耗尽导致的数据库挂起。</p>
@@ -251,12 +235,8 @@ const sectionContents = {
         <li><strong>磁盘空间不足</strong>：扩容磁盘卷，或将部分数据库迁移到其他磁盘</li>
         <li><strong>tempdb 过大</strong>：检查是否有长时间运行的查询占用 tempdb → 优化查询或增加 tempdb 数据文件</li>
       </ul>
-    `
-  },
-  {
-    id: 'indexes',
-    title: '索引分析',
-    content: `
+    `,
+  indexes: `
       <h3>功能说明</h3>
       <p>索引分析页面通过分析 SQL Server 内部的索引使用统计和缺失索引 DMV，识别可能的性能优化点，帮助您合理设计索引。</p>
       <h3>缺失索引建议</h3>
@@ -287,12 +267,8 @@ const sectionContents = {
         <li>不要盲目创建所有建议的索引，过多索引会降低 INSERT/UPDATE/DELETE 性能</li>
         <li>建议先在测试环境验证索引效果，再在生产环境实施</li>
       </ul>
-    `
-  },
-  {
-    id: 'alert-rules',
-    title: '告警规则',
-    content: `
+    `,
+  'alert-rules': `
       <h3>功能说明</h3>
       <p>告警规则页面用于创建和管理告警规则，定义"什么情况下触发告警"以及"如何通知"，是整个告警系统的核心配置。</p>
       <h3>规则组成</h3>
@@ -322,8 +298,7 @@ const sectionContents = {
         <li>死锁发生（中）</li>
         <li>慢查询超过阈值（中）</li>
       </ul>
-    `
-  },
+    `,
   instances: `
       <h3>功能说明</h3>
       <p>实例管理页面用于添加和管理需要监控的 SQL Server 实例，是系统运行的基础。</p>
@@ -358,8 +333,7 @@ const sectionContents = {
           </ul>
         </li>
       </ul>
-    `
-  },
+    `,
   report: `
       <h3>功能说明</h3>
       <p>系统报告页面用于生成和导出数据库运行报告，帮助您定期回顾数据库健康状况，向上级汇报运维成果。</p>
@@ -387,12 +361,9 @@ const sectionContents = {
         <li>点击"导出 PDF"可下载为 PDF 文件保存或打印</li>
         <li>点击"保存为图片"可将单个图表导出为 PNG</li>
       </ul>
-    `
-  },
-  {
-    id: 'settings',
-    title: '系统设置',
-  >功能说明</h牌设置</h3>
+    `,
+  settings: `
+      <h3>品牌设置</h3>
       <ul>
         <li><strong>系统名称</strong>：显示在登录页、侧边栏顶部的平台名称</li>
         <li><strong>Logo 图标</strong>：上传自定义 Logo 图片</li>
@@ -417,8 +388,7 @@ const sectionContents = {
         <li>数据保留天数到期后数据会自动清理，重要报告请提前导出保存</li>
         <li>邮件和 Webhook 配置变更后，请务必进行测试验证</li>
       </ul>
-    `
-  },
+    `,
   users: `
       <h3>功能说明</h3>
       <p>用户管理页面供管理员创建和管理系统账号，分配不同权限角色，确保系统安全使用。</p>
@@ -459,8 +429,7 @@ const sectionContents = {
         <li>初始密码应设置为强密码，并要求用户首次登录后修改</li>
         <li>重要操作均记录在审计日志中，可在"审计日志"页面查看</li>
       </ul>
-    `
-  },
+    `,
   faq: `
       <h3>Q：添加实例时连接失败怎么办？</h3>
       <p>A：请按以下步骤排查：</p>
@@ -513,7 +482,6 @@ const sectionContents = {
       <h3>Q：支持监控多少个实例？</h3>
       <p>A：理论上没有上限，但建议单实例部署监控不超过 50 个 SQL Server 实例。超过 50 个建议关注后端服务器的资源占用情况，必要时进行水平扩展。</p>
     `
-  },
   contact: `
       <h3>技术支持</h3>
       <p>如果在使用过程中遇到问题，可以通过以下方式联系我们：</p>
@@ -532,7 +500,6 @@ const sectionContents = {
       <h3>版本信息</h3>
       <p>当前版本号请查看侧边栏底部或顶部栏。点击版本号可查看是否有新版本可用。</p>
     `
-  }
 }
 
 const sections = computed(() => [
