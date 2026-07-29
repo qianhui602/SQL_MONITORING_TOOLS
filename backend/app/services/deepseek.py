@@ -301,6 +301,121 @@ async def analyze_report(
         return f"报告分析异常: {str(e)}"
 
 
+async def plan_task(
+    user_query: str,
+    context_text: str,
+    api_key: str = "",
+    model: str = "deepseek-v4-flash",
+    base_url: str = "",
+    provider: str = "deepseek",
+) -> Optional[list]:
+    """根据用户需求和监控上下文，生成诊断任务执行计划（步骤列表）"""
+    if not api_key:
+        return None
+
+    url = base_url or _get_base_url(provider)
+
+    system_prompt = """你是一个 SQL Server 数据库诊断专家。根据用户的诊断需求和当前系统状态，生成一个诊断任务执行计划。
+
+请以 JSON 数组格式返回执行计划，每个步骤包含以下字段：
+- title: 步骤标题（简短描述）
+- description: 步骤详细描述
+- step_type: 步骤类型，必须是以下之一：metrics, deadlock, slow_query, disk, index, summary
+
+示例格式：
+[
+  {"title": "检查性能指标", "description": "查询 CPU、内存、连接数等核心指标", "step_type": "metrics"},
+  {"title": "分析死锁事件", "description": "查询近期死锁事件并分析原因", "step_type": "deadlock"},
+  {"title": "综合分析报告", "description": "基于所有检查结果生成综合诊断报告", "step_type": "summary"}
+]
+
+注意：
+1. 只返回 JSON 数组，不要包含其他文字
+2. 根据用户需求选择相关的检查步骤
+3. 最后一步通常是 summary（综合分析）
+4. 步骤数量控制在 3-6 个"""
+
+    try:
+        result = await _call_ai_api(
+            base_url=url,
+            api_key=api_key,
+            model=model,
+            system_prompt=system_prompt,
+            user_prompt=f"{context_text}\n\n## 用户需求\n{user_query}",
+            timeout=30.0,
+        )
+        if not result:
+            return None
+
+        # 解析 JSON 步骤列表
+        import json
+        import re
+
+        # 尝试提取 JSON 数组
+        json_match = re.search(r'\[.*\]', result, re.DOTALL)
+        if json_match:
+            steps = json.loads(json_match.group())
+            # 验证步骤格式
+            valid_steps = []
+            valid_types = {"metrics", "deadlock", "slow_query", "disk", "index", "summary"}
+            for i, step in enumerate(steps):
+                if isinstance(step, dict) and "title" in step and "step_type" in step:
+                    if step["step_type"] in valid_types:
+                        step["step_order"] = i + 1
+                        step.setdefault("description", "")
+                        valid_steps.append(step)
+            return valid_steps if valid_steps else None
+
+        return None
+    except Exception as e:
+        logger.error("AI 任务规划异常: %s", e)
+        return None
+
+
+async def execute_step(
+    step_type: str,
+    step_data: dict,
+    context_text: str,
+    api_key: str = "",
+    model: str = "deepseek-v4-flash",
+    base_url: str = "",
+    provider: str = "deepseek",
+) -> Optional[str]:
+    """执行单个诊断步骤，生成分析结果"""
+    if not api_key:
+        return None
+
+    url = base_url or _get_base_url(provider)
+
+    step_prompts = {
+        "metrics": "请根据以下性能指标数据，分析当前数据库的性能状况，指出异常项和优化建议。",
+        "deadlock": "请根据以下死锁相关信息，分析死锁风险和历史事件，给出优化建议。",
+        "slow_query": "请根据以下慢查询信息，分析性能瓶颈，给出索引优化和 SQL 改写建议。",
+        "disk": "请根据以下磁盘空间数据，评估存储健康状况，预警潜在风险。",
+        "index": "请根据以下索引信息，分析索引健康状况，给出维护建议。",
+        "summary": "请综合以下所有检查结果，生成一份完整的数据库健康诊断报告，包括总体评估、主要问题和优化建议。",
+    }
+
+    system_prompt = f"""你是一位资深的 SQL Server 数据库性能优化专家。
+{step_prompts.get(step_type, '请分析以下数据并给出专业建议。')}
+
+请用中文回答，输出格式清晰，重点突出。"""
+
+    try:
+        result = await _call_ai_api(
+            base_url=url,
+            api_key=api_key,
+            model=model,
+            system_prompt=system_prompt,
+            user_prompt=f"{context_text}\n\n## 步骤详情\n标题: {step_data.get('title', '')}\n描述: {step_data.get('description', '')}",
+            timeout=60.0,
+        )
+        return result or "分析结果为空"
+    except Exception as e:
+        logger.error("步骤执行异常: %s", e)
+        return f"执行异常: {str(e)}"
+
+
 # 向后兼容：旧函数名映射
 async def get_deepseek_config(db: AsyncSession) -> dict:
     """向后兼容：返回旧格式配置"""

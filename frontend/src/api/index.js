@@ -247,4 +247,21 @@ export function saveSetupConfig(data) {
 // ===== 版本检查 =====
 export function checkVersion() { return request.get('/version/check') }
 
+// ===== AI 任务相关 API =====
+export function createAiTask(query) {
+  return request.post('/ai/tasks', { query })
+}
+
+export function getAiTasks() {
+  return request.get('/ai/tasks')
+}
+
+export function getAiTaskDetail(taskId) {
+  return request.get(`/ai/tasks/${taskId}`)
+}
+
+export function deleteAiTask(taskId) {
+  return request.delete(`/ai/tasks/${taskId}`)
+}
+
 export default request

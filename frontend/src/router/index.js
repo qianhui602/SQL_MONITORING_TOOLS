@@ -130,6 +130,12 @@ const routes = [
     name: 'Help',
     component: () => import('@/views/Help.vue'),
     meta: { title: 'layout.menu.help', icon: 'help' }
+  },
+  {
+    path: '/ai-assistant',
+    name: 'AiAssistant',
+    component: () => import('@/views/AiAssistant.vue'),
+    meta: { title: 'layout.menu.aiAssistant', icon: 'ai' }
   }
 ]
 

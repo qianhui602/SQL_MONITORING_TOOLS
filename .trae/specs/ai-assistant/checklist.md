@@ -1,0 +1,28 @@
+# Checklist
+
+- [ ] `ai_tasks` 表已创建，包含 id、user_id、query、status、created_at、updated_at 字段
+- [ ] `ai_task_steps` 表已创建，包含 id、task_id、step_order、title、description、step_type、status、result、created_at 字段
+- [ ] Alembic 迁移脚本可正常执行
+- [ ] `ai_context.py` 可自动查询最新监控数据并构建系统上下文
+- [ ] `deepseek.py` 新增 `plan_task()` 函数，返回执行计划（步骤列表）
+- [ ] `deepseek.py` 新增 `execute_step()` 函数，根据步骤类型生成分析结果
+- [ ] `ai_executor.py` 任务执行引擎可按计划逐步执行步骤
+- [ ] `POST /api/ai/tasks` 接口正常工作，创建任务并返回步骤列表
+- [ ] `GET /api/ai/tasks` 返回当前用户任务列表
+- [ ] `GET /api/ai/tasks/{id}` 返回任务详情（含步骤状态和结果）
+- [ ] `DELETE /api/ai/tasks/{id}` 删除任务及其步骤
+- [ ] 路由已注册到 `main.py`
+- [ ] 前端 API 函数已添加（createTask, getTasks, getTaskDetail, deleteTask）
+- [ ] `/ai-assistant` 路由已添加到 router
+- [ ] AI 助手页面基础布局正确（左侧任务列表 + 右侧执行区）
+- [ ] 新建任务按钮可创建新任务
+- [ ] 任务历史列表显示历史任务，可点击切换查看
+- [ ] 任务可删除
+- [ ] 输入诊断需求后可创建任务，显示执行计划（步骤列表）
+- [ ] 步骤状态可正确展示（加载动画、绿色对勾、红色错误图标）
+- [ ] 已完成步骤可展开查看 AI 分析结果
+- [ ] 轮询任务状态可实时更新步骤进度
+- [ ] 侧边栏菜单中 AI 助手入口已添加
+- [ ] AI 助手图标已添加
+- [ ] i18n 翻译完整（中英文）
+- [ ] 所有 API 接口需要认证（Bearer token）

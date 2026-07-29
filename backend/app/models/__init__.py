@@ -17,6 +17,7 @@ from app.models.alert_rule import AlertRule as AlertRuleModel
 from app.models.audit_log import AuditLog
 from app.models.report import ReportRecord
 from app.models.notification_read import NotificationRead
+from app.models.ai_task import AiTask, AiTaskStep
 
 __all__ = [
     "MetricRecord",
@@ -36,4 +37,6 @@ __all__ = [
     "AuditLog",
     "ReportRecord",
     "NotificationRead",
+    "AiTask",
+    "AiTaskStep",
 ]
