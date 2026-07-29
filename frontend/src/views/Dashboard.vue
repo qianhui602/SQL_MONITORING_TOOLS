@@ -520,10 +520,10 @@ const rangeOptions = computed(() => [
 ])
 
 const rangeLabelMap = computed(() => ({
-  '1h': `（${t('dashboard.ranges["1h"]}）`,
-  '6h': `（${t('dashboard.ranges["6h"]}）`,
-  '24h': `（${t('dashboard.ranges["24h"]}）`,
-  '7d': `（${t('dashboard.ranges["7d"]}）`
+  '1h': `（${t('dashboard.ranges["1h"]')}）`,
+  '6h': `（${t('dashboard.ranges["6h"]')}）`,
+  '24h': `（${t('dashboard.ranges["24h"]')}）`,
+  '7d': `（${t('dashboard.ranges["7d"]')}）`
 }))
 const chartTitleSuffix = computed(() => rangeLabelMap.value[timeRange.value] || '')
 
