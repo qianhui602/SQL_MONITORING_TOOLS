@@ -1,6 +1,6 @@
 <template>
   <div class="ai-assistant">
-    <!-- Left sidebar -->
+    <!-- 左侧任务列表 -->
     <div class="task-sidebar">
       <div class="sidebar-header">
         <h3 class="sidebar-title">{{ t('aiAssistant.title') }}</h3>
@@ -30,9 +30,9 @@
       </div>
     </div>
 
-    <!-- Right main area -->
+    <!-- 右侧主区域 -->
     <div class="task-main">
-      <!-- Welcome / Input area -->
+      <!-- 欢迎页 -->
       <div v-if="!currentTask" class="welcome-area">
         <div class="welcome-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -62,8 +62,8 @@
         </div>
       </div>
 
-      <!-- Task execution view -->
-      <div v-else class="execution-area">
+      <!-- 任务执行视图 -->
+      <div v-else class="execution-area" ref="executionAreaRef">
         <div class="execution-header">
           <h3 class="execution-title">{{ currentTask.query }}</h3>
           <span class="execution-status" :class="'status-' + currentTask.status">
@@ -71,8 +71,8 @@
           </span>
         </div>
 
-        <!-- Steps list -->
-        <div class="steps-list">
+        <!-- 步骤列表 -->
+        <div class="steps-section">
           <div
             v-for="step in currentTask.steps"
             :key="step.id"
@@ -97,9 +97,10 @@
                 <span class="step-title">{{ step.title }}</span>
                 <span class="step-desc">{{ step.description }}</span>
               </div>
-              <span v-if="step.status === 'completed' || step.status === 'failed'" class="step-expand-icon">
+              <span v-if="(step.status === 'completed' || step.status === 'failed') && step.step_type !== 'followup'" class="step-expand-icon">
                 {{ expandedStep === step.id ? '▲' : '▼' }}
               </span>
+              <span v-if="step.step_type === 'followup'" class="step-tag followup-tag">{{ t('aiAssistant.followUp') }}</span>
             </div>
             <div v-if="expandedStep === step.id && step.result" class="step-result">
               <div class="result-content" v-html="renderMarkdown(step.result)"></div>
@@ -109,20 +110,46 @@
             </div>
           </div>
         </div>
+
+        <!-- 对话区域：追问消息 -->
+        <div v-if="followUpSteps.length > 0" class="chat-section">
+          <div
+            v-for="step in followUpSteps"
+            :key="'chat-' + step.id"
+            class="chat-message"
+          >
+            <div class="chat-bubble user-bubble">
+              <div class="chat-role">{{ t('aiAssistant.userMessage') }}</div>
+              <div class="chat-text">{{ step.title }}</div>
+            </div>
+            <div v-if="step.status === 'running'" class="chat-bubble ai-bubble">
+              <div class="chat-role">{{ t('aiAssistant.aiResponse') }}</div>
+              <div class="chat-thinking"><span class="spinner small"></span> {{ t('aiAssistant.sending') }}</div>
+            </div>
+            <div v-else-if="step.status === 'completed' && step.result" class="chat-bubble ai-bubble">
+              <div class="chat-role">{{ t('aiAssistant.aiResponse') }}</div>
+              <div class="chat-text" v-html="renderMarkdown(step.result)"></div>
+            </div>
+            <div v-else-if="step.status === 'failed'" class="chat-bubble ai-bubble error-bubble">
+              <div class="chat-role">{{ t('aiAssistant.aiResponse') }}</div>
+              <div class="chat-text error-text">{{ step.error || t('aiAssistant.followUpFailed') }}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Input at bottom when viewing a task -->
+      <!-- 底部输入框 -->
       <div v-if="currentTask" class="input-area bottom-input">
         <div class="input-wrap">
           <input
             v-model="newQuery"
             type="text"
             class="task-input"
-            :placeholder="t('aiAssistant.inputPlaceholder')"
+            :placeholder="t('aiAssistant.followUpPlaceholder')"
             :disabled="creating"
-            @keyup.enter="onCreateTask"
+            @keyup.enter="onFollowUp"
           />
-          <button class="send-btn" :disabled="!newQuery.trim() || creating" @click="onCreateTask">
+          <button class="send-btn" :disabled="!newQuery.trim() || creating" @click="onFollowUp">
             <svg v-if="!creating" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -136,9 +163,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { createAiTask, getAiTasks, getAiTaskDetail, deleteAiTask } from '@/api'
+import { createAiTask, getAiTasks, getAiTaskDetail, deleteAiTask, followUpAiTask } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
 
 const { t } = useI18n()
@@ -149,7 +176,14 @@ const currentTask = ref(null)
 const newQuery = ref('')
 const creating = ref(false)
 const expandedStep = ref(null)
+const executionAreaRef = ref(null)
 let pollTimer = null
+
+// 筛选出追问步骤
+const followUpSteps = computed(() => {
+  if (!currentTask.value || !currentTask.value.steps) return []
+  return currentTask.value.steps.filter(s => s.step_type === 'followup')
+})
 
 async function fetchTasks() {
   try {
@@ -165,6 +199,8 @@ async function selectTask(taskId) {
   try {
     currentTask.value = await getAiTaskDetail(taskId)
     startPolling()
+    await nextTick()
+    scrollToBottom()
   } catch (e) {
     console.error('获取任务详情失败', e)
   }
@@ -189,6 +225,21 @@ async function onCreateTask() {
     await selectTask(result.task_id)
   } catch (e) {
     console.error('创建任务失败', e)
+  } finally {
+    creating.value = false
+  }
+}
+
+async function onFollowUp() {
+  const query = newQuery.value.trim()
+  if (!query || creating.value || !currentTaskId.value) return
+  creating.value = true
+  try {
+    await followUpAiTask(currentTaskId.value, query)
+    newQuery.value = ''
+    await selectTask(currentTaskId.value)
+  } catch (e) {
+    console.error('追问失败', e)
   } finally {
     creating.value = false
   }
@@ -235,14 +286,75 @@ function formatTime(dt) {
   }
 }
 
+function scrollToBottom() {
+  if (executionAreaRef.value) {
+    executionAreaRef.value.scrollTop = executionAreaRef.value.scrollHeight
+  }
+}
+
+/**
+ * Markdown → HTML 渲染（轻量实现）
+ * 支持：标题 h1-h4、加粗、行内代码、代码块、无序/有序列表、引用块、链接、分割线、换行
+ */
 function renderMarkdown(text) {
   if (!text) return ''
-  return text
+  let html = text
+
+  // 1. HTML 转义
+  html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
+
+  // 2. 代码块（```...```）
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre class="md-code-block"><code>${code.trim()}</code></pre>`
+  })
+
+  // 3. 行内代码
+  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
+
+  // 4. 标题（支持 ### ~ #）
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
+
+  // 5. 加粗 & 斜体
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
+
+  // 6. 引用块
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+
+  // 7. 分割线
+  html = html.replace(/^---+$/gm, '<hr/>')
+
+  // 8. 无序列表
+  html = html.replace(/^(?:- (.+)\n?)+/gm, (match) => {
+    const items = match.trim().split('\n').map(l => `<li>${l.replace(/^- /, '')}</li>`).join('')
+    return `<ul>${items}</ul>`
+  })
+
+  // 9. 有序列表
+  html = html.replace(/^(?:\d+\. (.+)\n?)+/gm, (match) => {
+    const items = match.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('')
+    return `<ol>${items}</ol>`
+  })
+
+  // 10. 链接
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+
+  // 11. 换行（连续两个换行 → <br><br>，单个换行 → <br>）
+  html = html.replace(/\n\n/g, '</p><p>')
+  html = html.replace(/\n/g, '<br>')
+
+  // 包裹在段落中
+  html = `<p>${html}</p>`
+  // 清理空段落
+  html = html.replace(/<p>\s*<\/p>/g, '')
+
+  return html
 }
 
 function startPolling() {
@@ -260,6 +372,8 @@ function startPolling() {
         stopPolling()
         await fetchTasks()
       }
+      await nextTick()
+      scrollToBottom()
     } catch {
       // ignore polling errors
     }
@@ -290,7 +404,7 @@ onBeforeUnmount(() => {
   background: var(--bg-primary, #f5f6fa);
 }
 
-/* ===== Left Sidebar ===== */
+/* ===== 左侧栏 ===== */
 .task-sidebar {
   width: 280px;
   min-width: 280px;
@@ -301,16 +415,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.sidebar-header {
-  padding: 20px 16px 12px;
-}
-
-.sidebar-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary, #2c3e50);
-}
+.sidebar-header { padding: 20px 16px 12px; }
+.sidebar-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #2c3e50); }
 
 .new-task-btn {
   margin: 0 16px 12px;
@@ -324,16 +430,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: background 0.2s;
 }
+.new-task-btn:hover { background: #40a9ff; }
 
-.new-task-btn:hover {
-  background: #40a9ff;
-}
-
-.task-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 8px;
-}
+.task-list { flex: 1; overflow-y: auto; padding: 0 8px; }
 
 .task-card {
   display: flex;
@@ -346,47 +445,15 @@ onBeforeUnmount(() => {
   transition: background 0.15s;
   position: relative;
 }
+.task-card:hover { background: var(--bg-primary, #f5f6fa); }
+.task-card.active { background: #e6f7ff; }
+[data-theme='dark'] .task-card.active { background: rgba(24, 144, 255, 0.12); }
 
-.task-card:hover {
-  background: var(--bg-primary, #f5f6fa);
-}
+.task-card-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.task-card-text { font-size: 13px; color: var(--text-primary, #2c3e50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-card-time { font-size: 11px; color: var(--text-muted, #999); }
 
-.task-card.active {
-  background: #e6f7ff;
-}
-
-[data-theme='dark'] .task-card.active {
-  background: rgba(24, 144, 255, 0.12);
-}
-
-.task-card-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.task-card-text {
-  font-size: 13px;
-  color: var(--text-primary, #2c3e50);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.task-card-time {
-  font-size: 11px;
-  color: var(--text-muted, #999);
-}
-
-.task-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
+.task-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .task-status-dot.status-pending { background: #d9d9d9; }
 .task-status-dot.status-planning { background: #1890ff; }
 .task-status-dot.status-running { background: #1890ff; }
@@ -394,300 +461,107 @@ onBeforeUnmount(() => {
 .task-status-dot.status-failed { background: #ff4d4f; }
 
 .task-delete-btn {
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted, #999);
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
+  width: 20px; height: 20px; border: none; background: transparent;
+  color: var(--text-muted, #999); font-size: 16px; cursor: pointer;
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; opacity: 0; transition: opacity 0.15s, background 0.15s;
 }
+.task-card:hover .task-delete-btn { opacity: 1; }
+.task-delete-btn:hover { background: #fff1f0; color: #ff4d4f; }
 
-.task-card:hover .task-delete-btn {
-  opacity: 1;
-}
+.task-empty { text-align: center; padding: 40px 16px; color: var(--text-muted, #999); }
+.task-empty p { margin: 0; font-size: 13px; }
+.task-empty-hint { margin-top: 4px !important; font-size: 12px !important; opacity: 0.7; }
 
-.task-delete-btn:hover {
-  background: #fff1f0;
-  color: #ff4d4f;
-}
+/* ===== 右侧主区域 ===== */
+.task-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
-.task-empty {
-  text-align: center;
-  padding: 40px 16px;
-  color: var(--text-muted, #999);
-}
+/* ===== 欢迎页 ===== */
+.welcome-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+.welcome-icon { margin-bottom: 24px; }
+.welcome-title { margin: 0 0 8px; font-size: 24px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.welcome-subtitle { margin: 0 0 32px; font-size: 14px; color: var(--text-secondary, #666); }
 
-.task-empty p {
-  margin: 0;
-  font-size: 13px;
-}
-
-.task-empty-hint {
-  margin-top: 4px !important;
-  font-size: 12px !important;
-  opacity: 0.7;
-}
-
-/* ===== Right Main Area ===== */
-.task-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
-}
-
-/* ===== Welcome Area ===== */
-.welcome-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-}
-
-.welcome-icon {
-  margin-bottom: 24px;
-}
-
-.welcome-title {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-primary, #2c3e50);
-}
-
-.welcome-subtitle {
-  margin: 0 0 32px;
-  font-size: 14px;
-  color: var(--text-secondary, #666);
-}
-
-/* ===== Input Area ===== */
-.input-area {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-}
+/* ===== 输入框 ===== */
+.input-area { width: 100%; max-width: 640px; margin: 0 auto; }
 
 .input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border-color, #e8ecf4);
-  border-radius: 10px;
-  padding: 6px 6px 6px 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e8ecf4);
+  border-radius: 10px; padding: 6px 6px 6px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s;
 }
+.input-wrap:focus-within { border-color: #1890ff; box-shadow: 0 2px 12px rgba(24,144,255,0.12); }
 
-.input-wrap:focus-within {
-  border-color: #1890ff;
-  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.12);
-}
-
-.task-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  background: transparent;
-  color: var(--text-primary, #2c3e50);
-  min-width: 0;
-}
-
-.task-input::placeholder {
-  color: var(--text-muted, #999);
-}
-
-.task-input:disabled {
-  opacity: 0.6;
-}
+.task-input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; color: var(--text-primary, #2c3e50); min-width: 0; }
+.task-input::placeholder { color: var(--text-muted, #999); }
+.task-input:disabled { opacity: 0.6; }
 
 .send-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: #1890ff;
-  color: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s;
+  width: 36px; height: 36px; border: none; background: #1890ff; color: #fff;
+  border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.2s;
 }
+.send-btn:hover:not(:disabled) { background: #40a9ff; }
+.send-btn:disabled { background: #d9d9d9; cursor: not-allowed; }
 
-.send-btn:hover:not(:disabled) {
-  background: #40a9ff;
-}
-
-.send-btn:disabled {
-  background: #d9d9d9;
-  cursor: not-allowed;
-}
-
-/* ===== Bottom Input ===== */
+/* ===== 底部输入框 ===== */
 .bottom-input {
-  padding: 12px 24px 20px;
-  max-width: 100%;
+  padding: 12px 24px 20px; max-width: 100%;
   border-top: 1px solid var(--border-color, #e8ecf4);
   background: var(--bg-card, #fff);
 }
 
-/* ===== Execution Area ===== */
-.execution-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
+/* ===== 执行区域 ===== */
+.execution-area { flex: 1; overflow-y: auto; padding: 24px; }
 
-.execution-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.execution-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary, #2c3e50);
-}
+.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.execution-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary, #2c3e50); }
 
 .execution-status {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 500; white-space: nowrap;
 }
-
-.execution-status.status-pending {
-  background: #f5f5f5;
-  color: #8c8c8c;
-}
-
+.execution-status.status-pending { background: #f5f5f5; color: #8c8c8c; }
 .execution-status.status-planning,
-.execution-status.status-running {
-  background: #e6f7ff;
-  color: #1890ff;
-}
+.execution-status.status-running { background: #e6f7ff; color: #1890ff; }
+.execution-status.status-completed { background: #f6ffed; color: #52c41a; }
+.execution-status.status-failed { background: #fff1f0; color: #ff4d4f; }
 
-.execution-status.status-completed {
-  background: #f6ffed;
-  color: #52c41a;
-}
-
-.execution-status.status-failed {
-  background: #fff1f0;
-  color: #ff4d4f;
-}
-
-/* ===== Steps ===== */
-.steps-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+/* ===== 步骤卡片 ===== */
+.steps-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
 
 .step-card {
-  background: var(--bg-card, #fff);
-  border-radius: 8px;
+  background: var(--bg-card, #fff); border-radius: 8px;
   border: 1px solid var(--border-color, #e8ecf4);
-  overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
 }
-
-.step-card.step-running {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.1);
-}
-
-.step-card.step-completed {
-  border-color: #b7eb8f;
-}
-
-.step-card.step-failed {
-  border-color: #ffa39e;
-}
+.step-card.step-running { border-color: #1890ff; box-shadow: 0 0 0 1px rgba(24,144,255,0.1); }
+.step-card.step-completed { border-color: #b7eb8f; }
+.step-card.step-failed { border-color: #ffa39e; }
 
 .step-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  cursor: default;
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: default;
 }
-
 .step-card.step-completed .step-header,
-.step-card.step-failed .step-header {
-  cursor: pointer;
-}
-
+.step-card.step-failed .step-header { cursor: pointer; }
 .step-card.step-completed .step-header:hover,
-.step-card.step-failed .step-header:hover {
-  background: var(--bg-primary, #fafafa);
-}
+.step-card.step-failed .step-header:hover { background: var(--bg-primary, #fafafa); }
 
-.step-icon {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+.step-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step-dot { display: block; width: 10px; height: 10px; border-radius: 50%; }
+.step-dot.pending { background: #d9d9d9; }
 
-.step-dot {
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
+.step-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.step-title { font-size: 14px; font-weight: 500; color: var(--text-primary, #2c3e50); }
+.step-desc { font-size: 12px; color: var(--text-secondary, #666); }
 
-.step-dot.pending {
-  background: #d9d9d9;
-}
+.step-expand-icon { font-size: 12px; color: var(--text-muted, #999); flex-shrink: 0; margin-left: 8px; }
 
-.step-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.step-tag {
+  font-size: 11px; padding: 1px 8px; border-radius: 10px; flex-shrink: 0; margin-left: 8px;
 }
-
-.step-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary, #2c3e50);
-}
-
-.step-desc {
-  font-size: 12px;
-  color: var(--text-secondary, #666);
-}
-
-.step-expand-icon {
-  font-size: 12px;
-  color: var(--text-muted, #999);
-  flex-shrink: 0;
-  margin-left: 8px;
-}
+.followup-tag { background: #fff7e6; color: #d46b08; }
 
 .step-result {
   border-top: 1px solid var(--border-color, #e8ecf4);
@@ -696,68 +570,124 @@ onBeforeUnmount(() => {
 }
 
 .result-content {
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text-primary, #2c3e50);
+  font-size: 13px; line-height: 1.7; color: var(--text-primary, #2c3e50);
   word-break: break-word;
 }
-
-.result-content :deep(strong) {
-  font-weight: 600;
+.result-content :deep(strong) { font-weight: 600; }
+.result-content :deep(h1),
+.result-content :deep(h2),
+.result-content :deep(h3),
+.result-content :deep(h4) { margin: 12px 0 6px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.result-content :deep(h1) { font-size: 18px; }
+.result-content :deep(h2) { font-size: 16px; }
+.result-content :deep(h3) { font-size: 14px; }
+.result-content :deep(h4) { font-size: 13px; }
+.result-content :deep(ul),
+.result-content :deep(ol) { margin: 6px 0; padding-left: 20px; }
+.result-content :deep(li) { margin: 2px 0; }
+.result-content :deep(blockquote) {
+  margin: 8px 0; padding: 6px 12px; border-left: 3px solid #1890ff;
+  background: #e6f7ff; border-radius: 0 4px 4px 0; color: #0958d9;
 }
+.result-content :deep(.md-code-block) {
+  margin: 8px 0; padding: 10px 14px; background: #1e1e1e; color: #d4d4d4;
+  border-radius: 6px; font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px; overflow-x: auto; white-space: pre;
+}
+.result-content :deep(.md-inline-code) {
+  padding: 1px 5px; background: #f0f0f0; border-radius: 3px;
+  font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px; color: #d4380d;
+}
+.result-content :deep(hr) { border: none; border-top: 1px solid var(--border-color, #e8ecf4); margin: 12px 0; }
+.result-content :deep(a) { color: #1890ff; text-decoration: none; }
+.result-content :deep(a:hover) { text-decoration: underline; }
 
 .step-error {
-  border-top: 1px solid #ffa39e;
-  padding: 14px 16px 14px 52px;
-  background: #fff1f0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: #cf1322;
-  word-break: break-word;
+  border-top: 1px solid #ffa39e; padding: 14px 16px 14px 52px;
+  background: #fff1f0; font-size: 13px; line-height: 1.6;
+  color: #cf1322; word-break: break-word;
+}
+
+/* ===== 对话区域 ===== */
+.chat-section {
+  border-top: 1px solid var(--border-color, #e8ecf4);
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-message { display: flex; flex-direction: column; gap: 8px; }
+
+.chat-bubble { max-width: 85%; }
+.user-bubble { align-self: flex-end; }
+.ai-bubble { align-self: flex-start; }
+
+.chat-role {
+  font-size: 11px; font-weight: 600; color: var(--text-muted, #999);
+  margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.user-bubble .chat-role { text-align: right; }
+
+.chat-text {
+  font-size: 13px; line-height: 1.7; color: var(--text-primary, #2c3e50);
+  padding: 10px 14px; border-radius: 10px; word-break: break-word;
+}
+.user-bubble .chat-text {
+  background: #1890ff; color: #fff; border-bottom-right-radius: 2px;
+}
+.ai-bubble .chat-text {
+  background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e8ecf4);
+  border-bottom-left-radius: 2px;
+}
+.ai-bubble .chat-text :deep(strong) { font-weight: 600; }
+.ai-bubble .chat-text :deep(ul),
+.ai-bubble .chat-text :deep(ol) { margin: 4px 0; padding-left: 18px; }
+.ai-bubble .chat-text :deep(li) { margin: 2px 0; }
+.ai-bubble .chat-text :deep(blockquote) {
+  margin: 6px 0; padding: 4px 10px; border-left: 3px solid #1890ff;
+  background: #e6f7ff; border-radius: 0 4px 4px 0; font-size: 12px;
+}
+.ai-bubble .chat-text :deep(.md-code-block) {
+  margin: 6px 0; padding: 8px 12px; background: #1e1e1e; color: #d4d4d4;
+  border-radius: 6px; font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px; overflow-x: auto; white-space: pre;
+}
+.ai-bubble .chat-text :deep(.md-inline-code) {
+  padding: 1px 4px; background: #f0f0f0; border-radius: 3px;
+  font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px;
+}
+
+.error-bubble .chat-text { background: #fff1f0; border-color: #ffa39e; }
+.error-text { color: #cf1322; }
+
+.chat-thinking {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-muted, #999);
+  padding: 10px 14px; background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e8ecf4);
+  border-radius: 10px; border-bottom-left-radius: 2px;
 }
 
 /* ===== Spinner ===== */
 .spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.6s linear infinite;
 }
-
 .spinner.small {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
-  border-color: rgba(24, 144, 255, 0.25);
-  border-top-color: #1890ff;
+  width: 16px; height: 16px; border-width: 2px;
+  border-color: rgba(24,144,255,0.25); border-top-color: #1890ff;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ===== Scrollbar ===== */
+/* ===== 滚动条 ===== */
 .task-list::-webkit-scrollbar,
-.execution-area::-webkit-scrollbar {
-  width: 6px;
-}
-
+.execution-area::-webkit-scrollbar { width: 6px; }
 .task-list::-webkit-scrollbar-track,
-.execution-area::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.execution-area::-webkit-scrollbar-track { background: transparent; }
 .task-list::-webkit-scrollbar-thumb,
-.execution-area::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 3px;
-}
-
+.execution-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
 .task-list::-webkit-scrollbar-thumb:hover,
-.execution-area::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
+.execution-area::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 </style>

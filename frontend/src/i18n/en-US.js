@@ -747,5 +747,11 @@ export default {
     fetchFailed: 'Failed to load tasks',
     createFailed: 'Failed to create task',
     deleteFailed: 'Failed to delete task',
+    followUpPlaceholder: 'Ask a follow-up question based on the analysis...',
+    followUpFailed: 'Follow-up failed',
+    userMessage: 'User',
+    aiResponse: 'AI Assistant',
+    stepResult: 'Step Result',
+    followUp: 'Follow-up',
   },
 }

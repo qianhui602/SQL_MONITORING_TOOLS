@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_factory, get_db
 from app.models.ai_task import AiTask, AiTaskStep
 from app.models.user import User
-from app.services.ai_executor import create_task, execute_task
+from app.services.ai_executor import create_task, execute_task, execute_followup
 from app.services.auth_service import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,12 @@ router = APIRouter()
 
 class TaskCreateRequest(BaseModel):
     """创建任务请求体"""
+
+    query: str
+
+
+class FollowUpRequest(BaseModel):
+    """追加追问请求体"""
 
     query: str
 
@@ -168,6 +174,78 @@ async def get_ai_task(
             for s in steps
         ],
     )
+
+
+@router.post("/tasks/{task_id}/followup", response_model=TaskStepResponse, summary="追问")
+async def followup_ai_task(
+    task_id: int,
+    req: FollowUpRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """在已完成的任务上追加追问，AI 基于上下文回答"""
+    task = await db.get(AiTask, task_id)
+    if not task or task.user_id != _.id:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 获取已有步骤（用于上下文）
+    stmt = (
+        select(AiTaskStep)
+        .where(AiTaskStep.task_id == task_id)
+        .order_by(AiTaskStep.step_order)
+    )
+    result = await db.execute(stmt)
+    existing_steps = result.scalars().all()
+
+    step_order = max((s.step_order for s in existing_steps), default=0) + 1
+
+    # 创建 followup 步骤（先设为 running，异步执行）
+    step = AiTaskStep(
+        task_id=task_id,
+        step_order=step_order,
+        title=req.query[:200],
+        description="",
+        step_type="followup",
+        status="running",
+    )
+    db.add(step)
+    await db.commit()
+    await db.refresh(step)
+
+    # 异步执行
+    asyncio.create_task(_run_followup(task_id, step.id, task.query, existing_steps, req.query))
+
+    return TaskStepResponse(
+        id=step.id,
+        step_order=step.step_order,
+        title=step.title,
+        description=step.description or "",
+        step_type=step.step_type,
+        status=step.status,
+        result=step.result,
+        error=step.error,
+    )
+
+
+async def _run_followup(
+    task_id: int,
+    step_id: int,
+    original_query: str,
+    existing_steps: list,
+    followup_query: str,
+) -> None:
+    """后台执行追问（使用独立的数据库会话）"""
+    async with async_session_factory() as db:
+        try:
+            await execute_followup(db, task_id, step_id, original_query, existing_steps, followup_query)
+        except Exception as e:
+            logger.error("追问执行失败: task_id=%s, error=%s", task_id, e)
+            # 标记步骤失败
+            step = await db.get(AiTaskStep, step_id)
+            if step:
+                step.status = "failed"
+                step.error = str(e)
+                await db.commit()
 
 
 @router.delete("/tasks/{task_id}", summary="删除任务")

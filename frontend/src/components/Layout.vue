@@ -231,7 +231,9 @@ function addTab(tabRoute) {
   const exists = tabs.value.find(t => t.path === tabRoute.path)
   if (!exists) {
     const menuItem = visibleMenuItems.value.find(m => m.path === tabRoute.path)
-    tabs.value.push({ path: tabRoute.path, label: t(tabRoute.meta?.title || 'Unknown'), closable: tabRoute.path !== '/dashboard' })
+    const label = (menuItem && menuItem.label) || t(tabRoute.meta?.title) || tabRoute.name || ''
+    if (!label) return
+    tabs.value.push({ path: tabRoute.path, label, closable: tabRoute.path !== '/dashboard' })
   }
 }
 function switchTab(tab) { router.push(tab.path) }

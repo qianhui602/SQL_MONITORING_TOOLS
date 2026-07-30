@@ -743,5 +743,11 @@ export default {
     fetchFailed: '获取任务列表失败',
     createFailed: '创建任务失败',
     deleteFailed: '删除任务失败',
+    followUpPlaceholder: '基于以上分析继续提问...',
+    followUpFailed: '追问失败',
+    userMessage: '用户',
+    aiResponse: 'AI 助手',
+    stepResult: '步骤结果',
+    followUp: '追问',
   },
 }

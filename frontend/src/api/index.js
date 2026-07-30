@@ -264,4 +264,8 @@ export function deleteAiTask(taskId) {
   return request.delete(`/ai/tasks/${taskId}`)
 }
 
+export function followUpAiTask(taskId, query) {
+  return request.post(`/ai/tasks/${taskId}/followup`, { query })
+}
+
 export default request

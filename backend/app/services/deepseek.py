@@ -99,6 +99,11 @@ def _get_base_url(provider: str, custom_base_url: str = "") -> str:
     return preset.get("base_url", "https://api.deepseek.com")
 
 
+def get_base_url(provider: str, custom_base_url: str = "") -> str:
+    """获取提供商的 API Base URL（公共接口）"""
+    return _get_base_url(provider, custom_base_url)
+
+
 def _build_prompt(deadlock_info: dict) -> str:
     involve_parts = []
     for s in deadlock_info.get("sql_statements", []):
@@ -163,6 +168,52 @@ async def _call_ai_api(
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
+                "temperature": 0.3,
+                "max_tokens": 2048,
+            },
+        )
+        if resp.status_code != 200:
+            logger.error("AI API error: %s %s", resp.status_code, resp.text)
+            return None
+
+        data = resp.json()
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        return content.strip() if content else None
+
+
+async def chat_completion(
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    timeout: float = 120.0,
+) -> Optional[str]:
+    """调用 OpenAI 兼容的 Chat Completions API（多轮对话）
+
+    Args:
+        base_url: API 基础地址
+        api_key: API 密钥
+        model: 模型名称
+        messages: 消息列表 [{"role": "system/user/assistant", "content": "..."}]
+        timeout: 超时时间（秒）
+    """
+    if not api_key or not messages:
+        return None
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.post(
+            f"{base_url}/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": 2048,
             },

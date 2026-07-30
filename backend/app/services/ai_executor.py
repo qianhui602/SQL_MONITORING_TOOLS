@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.ai_task import AiTask, AiTaskStep
 from app.services.ai_tools import execute_tool, format_tool_result_for_ai
 from app.services.ai_context import build_monitoring_context, format_context_for_ai
-from app.services.deepseek import get_ai_config, plan_task, execute_step
+from app.services.deepseek import get_ai_config, plan_task, execute_step, chat_completion, get_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,85 @@ async def create_task(db: AsyncSession, user_id: int, query: str) -> dict:
         db.add(step)
 
     await db.commit()
+
+
+async def execute_followup(
+    db: AsyncSession,
+    task_id: int,
+    step_id: int,
+    original_query: str,
+    existing_steps: list,
+    followup_query: str,
+) -> None:
+    """执行追问：基于任务历史上下文，回答用户的后续问题
+
+    Args:
+        db: 数据库会话
+        task_id: 任务 ID
+        step_id: 追问步骤 ID
+        original_query: 原始任务查询
+        existing_steps: 已有步骤列表
+        followup_query: 追问内容
+    """
+    # 获取 AI 配置
+    ai_config = await get_ai_config(db)
+    if not ai_config.get("api_key"):
+        step = await db.get(AiTaskStep, step_id)
+        if step:
+            step.status = "failed"
+            step.error = "未配置 AI API Key"
+            await db.commit()
+        return
+
+    # 构建对话历史
+    messages = []
+
+    # System prompt
+    messages.append({
+        "role": "system",
+        "content": (
+            "你是一位资深的 SQL Server 数据库性能优化专家。"
+            "用户之前发起了一个数据库诊断任务，你已经给出了分析结果。"
+            "现在用户有后续问题，请基于之前的分析上下文进行回答。"
+            "请用中文回答，输出格式清晰，重点突出。"
+        ),
+    })
+
+    # 原始任务
+    messages.append({
+        "role": "user",
+        "content": f"我的原始需求：{original_query}",
+    })
+
+    # 历史步骤结果作为 assistant 回复
+    for s in existing_steps:
+        if s.status == "completed" and s.result:
+            messages.append({
+                "role": "assistant",
+                "content": f"**{s.title}** 分析结果：\n\n{s.result}",
+            })
+
+    # 追问内容
+    messages.append({
+        "role": "user",
+        "content": followup_query,
+    })
+
+    # 调用 AI
+    url = ai_config.get("base_url", "") or get_base_url(ai_config.get("provider", "deepseek"))
+    ai_result = await chat_completion(
+        base_url=url,
+        api_key=ai_config["api_key"],
+        model=ai_config["model"],
+        messages=messages,
+    )
+
+    # 更新步骤
+    step = await db.get(AiTaskStep, step_id)
+    if step:
+        step.result = ai_result or "AI 未能生成回复"
+        step.status = "completed"
+        await db.commit()
     await db.refresh(task)
 
     return {
