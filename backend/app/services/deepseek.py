@@ -192,15 +192,7 @@ async def chat_completion(
     messages: list[dict],
     timeout: float = 120.0,
 ) -> Optional[str]:
-    """调用 OpenAI 兼容的 Chat Completions API（多轮对话）
-
-    Args:
-        base_url: API 基础地址
-        api_key: API 密钥
-        model: 模型名称
-        messages: 消息列表 [{"role": "system/user/assistant", "content": "..."}]
-        timeout: 超时时间（秒）
-    """
+    """调用 OpenAI 兼容的 Chat Completions API（多轮对话）"""
     if not api_key or not messages:
         return None
 
@@ -229,6 +221,54 @@ async def chat_completion(
             .get("content", "")
         )
         return content.strip() if content else None
+
+
+async def chat_completion_stream(
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    timeout: float = 120.0,
+):
+    """流式调用 Chat Completions API，逐块 yield 内容文本"""
+    import json as _json
+
+    if not api_key or not messages:
+        return
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        async with client.stream(
+            "POST",
+            f"{base_url}/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": 0.3,
+                "max_tokens": 4096,
+                "stream": True,
+            },
+        ) as resp:
+            if resp.status_code != 200:
+                logger.error("AI streaming API error: %s", resp.status_code)
+                return
+            async for line in resp.aiter_lines():
+                if not line or not line.startswith("data: "):
+                    continue
+                data = line[6:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    chunk = _json.loads(data)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield content
+                except _json.JSONDecodeError:
+                    continue
 
 
 async def analyze_deadlock(

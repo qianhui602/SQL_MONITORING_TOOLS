@@ -749,5 +749,9 @@ export default {
     aiResponse: 'AI 助手',
     stepResult: '步骤结果',
     followUp: '追问',
+    taskPlanning: '思考 / 任务拆解',
+    diagnosticReport: '诊断报告',
+    generatingReport: '正在生成报告...',
+    taskAwaitingReport: '等待报告生成',
   },
 }

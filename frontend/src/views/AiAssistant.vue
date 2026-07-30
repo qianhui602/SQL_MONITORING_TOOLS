@@ -71,10 +71,20 @@
           </span>
         </div>
 
-        <!-- 步骤列表 -->
+        <!-- 思考 / 任务拆解区域 -->
+        <div class="thinking-section">
+          <div class="section-label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            <span>{{ t('aiAssistant.taskPlanning') }}</span>
+          </div>
+        </div>
+
+        <!-- 工具调用步骤列表（折叠） -->
         <div class="steps-section">
           <div
-            v-for="step in currentTask.steps"
+            v-for="step in toolSteps"
             :key="step.id"
             class="step-card"
             :class="['step-' + step.status, { expanded: isStepExpanded(step.id) }]"
@@ -83,11 +93,11 @@
               <div class="step-icon">
                 <span v-if="step.status === 'pending'" class="step-dot pending"></span>
                 <span v-else-if="step.status === 'running'" class="spinner small"></span>
-                <svg v-else-if="step.status === 'completed'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg v-else-if="step.status === 'completed'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                <svg v-else-if="step.status === 'failed'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg v-else-if="step.status === 'failed'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="15" y1="9" x2="9" y2="15"></line>
                   <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -95,12 +105,10 @@
               </div>
               <div class="step-info">
                 <span class="step-title">{{ step.title }}</span>
-                <span class="step-desc">{{ step.description }}</span>
               </div>
-              <span v-if="(step.status === 'completed' || step.status === 'failed') && step.step_type !== 'followup'" class="step-expand-icon">
+              <span v-if="step.status === 'completed' || step.status === 'failed'" class="step-expand-icon">
                 {{ isStepExpanded(step.id) ? '▲' : '▼' }}
               </span>
-              <span v-if="step.step_type === 'followup'" class="step-tag followup-tag">{{ t('aiAssistant.followUp') }}</span>
             </div>
             <div v-if="isStepExpanded(step.id) && step.result" class="step-result">
               <div class="result-content" v-html="renderMarkdown(step.result)"></div>
@@ -108,6 +116,28 @@
             <div v-if="isStepExpanded(step.id) && step.error" class="step-error">
               {{ step.error }}
             </div>
+          </div>
+        </div>
+
+        <!-- 诊断报告区域（流式输出） -->
+        <div v-if="showReportArea" class="report-section">
+          <div class="report-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            <span class="report-title">{{ t('aiAssistant.diagnosticReport') }}</span>
+            <span v-if="reportStreaming" class="report-status streaming">
+              <span class="typing-dots"><span></span><span></span><span></span></span>
+            </span>
+          </div>
+          <div class="report-content" v-html="renderMarkdown(reportText)"></div>
+          <div v-if="reportStreaming && !reportText" class="report-loading">
+            <span class="spinner small"></span>
+            <span>{{ t('aiAssistant.generatingReport') }}</span>
           </div>
         </div>
 
@@ -179,10 +209,34 @@ const expandedSteps = ref([])
 const executionAreaRef = ref(null)
 let pollTimer = null
 
-// 筛选出追问步骤
+// 报告流式状态
+const reportText = ref('')
+const reportStreaming = ref(false)
+let streamAbortController = null
+
+// 工具步骤（非 summary、非 followup）
+const toolSteps = computed(() => {
+  if (!currentTask.value || !currentTask.value.steps) return []
+  return currentTask.value.steps.filter(s => s.step_type !== 'summary' && s.step_type !== 'followup')
+})
+
+// 追问步骤
 const followUpSteps = computed(() => {
   if (!currentTask.value || !currentTask.value.steps) return []
   return currentTask.value.steps.filter(s => s.step_type === 'followup')
+})
+
+// 是否显示报告区域
+const showReportArea = computed(() => {
+  if (!currentTask.value) return false
+  // 当所有工具步骤完成，或任务进入 awaiting_report / completed 状态
+  const status = currentTask.value.status
+  if (status === 'awaiting_report' || status === 'completed' || status === 'failed') {
+    return toolSteps.value.length > 0 || reportText.value.length > 0
+  }
+  // 如果已有报告内容也显示
+  if (reportText.value) return true
+  return false
 })
 
 async function fetchTasks() {
@@ -196,14 +250,15 @@ async function fetchTasks() {
 async function selectTask(taskId) {
   currentTaskId.value = taskId
   expandedSteps.value = []
+  reportText.value = ''
+  reportStreaming.value = false
+  stopStream()
   try {
     currentTask.value = await getAiTaskDetail(taskId)
-    if (currentTask.value?.steps) {
-      currentTask.value.steps.forEach(step => {
-        if ((step.status === 'completed' || step.status === 'failed') && step.result) {
-          expandedSteps.value.push(step.id)
-        }
-      })
+    // 如果任务已完成且 summary 步骤有结果，直接显示
+    const summaryStep = currentTask.value.steps?.find(s => s.step_type === 'summary')
+    if (summaryStep?.result && summaryStep?.status === 'completed') {
+      reportText.value = summaryStep.result
     }
     startPolling()
     await nextTick()
@@ -218,7 +273,10 @@ function startNewTask() {
   currentTask.value = null
   newQuery.value = ''
   expandedSteps.value = []
+  reportText.value = ''
+  reportStreaming.value = false
   stopPolling()
+  stopStream()
 }
 
 async function onCreateTask() {
@@ -260,6 +318,7 @@ async function onDeleteTask(task) {
       currentTaskId.value = null
       currentTask.value = null
       stopPolling()
+      stopStream()
     }
     await fetchTasks()
   } catch (e) {
@@ -287,6 +346,7 @@ function statusLabel(status) {
     pending: t('aiAssistant.taskPending'),
     planning: t('aiAssistant.taskRunning'),
     running: t('aiAssistant.taskRunning'),
+    awaiting_report: t('aiAssistant.taskAwaitingReport'),
     completed: t('aiAssistant.taskCompleted'),
     failed: t('aiAssistant.taskFailed'),
   }
@@ -309,65 +369,145 @@ function scrollToBottom() {
 }
 
 /**
+ * 连接 SSE 流式获取报告
+ */
+async function startStreamReport(taskId) {
+  if (reportStreaming.value) return
+
+  // 如果已有完整报告，不重复请求
+  const summaryStep = currentTask.value?.steps?.find(s => s.step_type === 'summary')
+  if (summaryStep?.result && summaryStep?.status === 'completed') {
+    reportText.value = summaryStep.result
+    return
+  }
+
+  reportStreaming.value = true
+  reportText.value = ''
+
+  const token = localStorage.getItem('sql_monitor_token')
+  streamAbortController = new AbortController()
+
+  try {
+    const resp = await fetch(`/api/ai/tasks/${taskId}/stream-report`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
+      },
+      signal: streamAbortController.signal,
+    })
+
+    if (!resp.ok) {
+      reportText.value = '报告获取失败：' + resp.status
+      reportStreaming.value = false
+      return
+    }
+
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (!data) continue
+
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed.done) {
+            reportStreaming.value = false
+            // 刷新任务详情
+            await fetchTasks()
+            break
+          }
+          if (parsed.error) {
+            reportText.value += `\n\n**错误：** ${parsed.error}`
+            reportStreaming.value = false
+            break
+          }
+          if (parsed.content) {
+            reportText.value += parsed.content
+            await nextTick()
+            scrollToBottom()
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.error('流式报告连接失败', e)
+      reportText.value = '报告连接失败：' + (e.message || e)
+    }
+  } finally {
+    reportStreaming.value = false
+    streamAbortController = null
+  }
+}
+
+function stopStream() {
+  if (streamAbortController) {
+    streamAbortController.abort()
+    streamAbortController = null
+  }
+  reportStreaming.value = false
+}
+
+/**
  * Markdown → HTML 渲染（轻量实现）
- * 支持：标题 h1-h4、加粗、行内代码、代码块、无序/有序列表、引用块、链接、分割线、换行
  */
 function renderMarkdown(text) {
   if (!text) return ''
   let html = text
 
-  // 1. HTML 转义
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // 2. 代码块（```...```）
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     return `<pre class="md-code-block"><code>${code.trim()}</code></pre>`
   })
 
-  // 3. 行内代码
   html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
 
-  // 4. 标题（支持 ### ~ #）
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>')
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
 
-  // 5. 加粗 & 斜体
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
 
-  // 6. 引用块
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
 
-  // 7. 分割线
   html = html.replace(/^---+$/gm, '<hr/>')
 
-  // 8. 无序列表
   html = html.replace(/^(?:- (.+)\n?)+/gm, (match) => {
     const items = match.trim().split('\n').map(l => `<li>${l.replace(/^- /, '')}</li>`).join('')
     return `<ul>${items}</ul>`
   })
 
-  // 9. 有序列表
   html = html.replace(/^(?:\d+\. (.+)\n?)+/gm, (match) => {
     const items = match.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('')
     return `<ol>${items}</ol>`
   })
 
-  // 10. 链接
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
 
-  // 11. 换行（连续两个换行 → <br><br>，单个换行 → <br>）
   html = html.replace(/\n\n/g, '</p><p>')
   html = html.replace(/\n/g, '<br>')
 
-  // 包裹在段落中
   html = `<p>${html}</p>`
-  // 清理空段落
   html = html.replace(/<p>\s*<\/p>/g, '')
 
   return html
@@ -380,25 +520,34 @@ function startPolling() {
     try {
       const detail = await getAiTaskDetail(currentTaskId.value)
       currentTask.value = detail
-      
-      // 自动展开新完成的步骤
-      if (detail.steps) {
-        detail.steps.forEach(step => {
-          if ((step.status === 'completed' || step.status === 'failed') && 
-              step.result && !expandedSteps.value.includes(step.id)) {
-            expandedSteps.value.push(step.id)
-          }
-        })
-      }
-      
+
       const idx = tasks.value.findIndex(t => t.id === detail.id)
       if (idx > -1) {
         tasks.value[idx].status = detail.status
       }
-      if (detail.status === 'completed' || detail.status === 'failed') {
+
+      // 当工具步骤全部完成，任务进入 awaiting_report 时，启动流式报告
+      if (detail.status === 'awaiting_report' && !reportStreaming.value && !reportText.value) {
+        stopPolling()
+        startStreamReport(detail.id)
+        return
+      }
+
+      // 如果任务已完成且 summary 有结果
+      if (detail.status === 'completed') {
+        const summaryStep = detail.steps?.find(s => s.step_type === 'summary')
+        if (summaryStep?.result && !reportText.value) {
+          reportText.value = summaryStep.result
+        }
         stopPolling()
         await fetchTasks()
       }
+
+      if (detail.status === 'failed') {
+        stopPolling()
+        await fetchTasks()
+      }
+
       await nextTick()
       scrollToBottom()
     } catch {
@@ -420,6 +569,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopPolling()
+  stopStream()
 })
 </script>
 
@@ -486,6 +636,7 @@ onBeforeUnmount(() => {
 .task-status-dot.status-pending { background: #d9d9d9; }
 .task-status-dot.status-planning { background: #1890ff; }
 .task-status-dot.status-running { background: #1890ff; }
+.task-status-dot.status-awaiting-report { background: #faad14; }
 .task-status-dot.status-completed { background: #52c41a; }
 .task-status-dot.status-failed { background: #ff4d4f; }
 
@@ -544,7 +695,7 @@ onBeforeUnmount(() => {
 /* ===== 执行区域 ===== */
 .execution-area { flex: 1; overflow-y: auto; padding: 16px 24px; }
 
-.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .execution-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #2c3e50); }
 
 .execution-status {
@@ -554,87 +705,160 @@ onBeforeUnmount(() => {
 .execution-status.status-pending { background: #f5f5f5; color: #8c8c8c; }
 .execution-status.status-planning,
 .execution-status.status-running { background: #e6f7ff; color: #1890ff; }
+.execution-status.status-awaiting-report { background: #fff7e6; color: #faad14; }
 .execution-status.status-completed { background: #f6ffed; color: #52c41a; }
 .execution-status.status-failed { background: #fff1f0; color: #ff4d4f; }
 
-/* ===== 步骤卡片 ===== */
-.steps-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+/* ===== 思考/任务拆解区域 ===== */
+.thinking-section { margin-bottom: 8px; }
+.section-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary, #666);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* ===== 工具步骤卡片（折叠） ===== */
+.steps-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 
 .step-card {
   background: var(--bg-card, #fff); border-radius: 6px;
   border: 1px solid var(--border-color, #e8ecf4);
-  overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden; transition: border-color 0.2s;
 }
-.step-card.step-running { border-color: #1890ff; box-shadow: 0 0 0 1px rgba(24,144,255,0.1); }
-.step-card.step-completed { border-color: #b7eb8f; }
+.step-card.step-running { border-color: #1890ff; }
+.step-card.step-completed { border-color: #d9f7be; }
 .step-card.step-failed { border-color: #ffa39e; }
 
 .step-header {
-  display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: default;
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: default;
 }
 .step-card.step-completed .step-header,
 .step-card.step-failed .step-header { cursor: pointer; }
 .step-card.step-completed .step-header:hover,
 .step-card.step-failed .step-header:hover { background: var(--bg-primary, #fafafa); }
 
-.step-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.step-dot { display: block; width: 10px; height: 10px; border-radius: 50%; }
+.step-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step-dot { display: block; width: 8px; height: 8px; border-radius: 50%; }
 .step-dot.pending { background: #d9d9d9; }
 
-.step-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.step-title { font-size: 14px; font-weight: 500; color: var(--text-primary, #2c3e50); }
-.step-desc { font-size: 12px; color: var(--text-secondary, #666); }
+.step-info { flex: 1; min-width: 0; }
+.step-title { font-size: 13px; font-weight: 500; color: var(--text-primary, #2c3e50); }
 
-.step-expand-icon { font-size: 12px; color: var(--text-muted, #999); flex-shrink: 0; margin-left: 8px; }
-
-.step-tag {
-  font-size: 11px; padding: 1px 8px; border-radius: 10px; flex-shrink: 0; margin-left: 8px;
-}
-.followup-tag { background: #fff7e6; color: #d46b08; }
+.step-expand-icon { font-size: 10px; color: var(--text-muted, #999); flex-shrink: 0; }
 
 .step-result {
   border-top: 1px solid var(--border-color, #e8ecf4);
-  padding: 10px 14px 10px 50px;
+  padding: 8px 12px 8px 42px;
   background: var(--bg-primary, #fafafa);
 }
 
 .result-content {
-  font-size: 13px; line-height: 1.7; color: var(--text-primary, #2c3e50);
+  font-size: 12px; line-height: 1.6; color: var(--text-primary, #2c3e50);
   word-break: break-word;
 }
 .result-content :deep(strong) { font-weight: 600; }
 .result-content :deep(h1),
 .result-content :deep(h2),
 .result-content :deep(h3),
-.result-content :deep(h4) { margin: 12px 0 6px; font-weight: 600; color: var(--text-primary, #2c3e50); }
-.result-content :deep(h1) { font-size: 18px; }
-.result-content :deep(h2) { font-size: 16px; }
-.result-content :deep(h3) { font-size: 14px; }
-.result-content :deep(h4) { font-size: 13px; }
+.result-content :deep(h4) { margin: 8px 0 4px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.result-content :deep(h1) { font-size: 16px; }
+.result-content :deep(h2) { font-size: 14px; }
+.result-content :deep(h3) { font-size: 13px; }
+.result-content :deep(h4) { font-size: 12px; }
 .result-content :deep(ul),
-.result-content :deep(ol) { margin: 6px 0; padding-left: 20px; }
+.result-content :deep(ol) { margin: 4px 0; padding-left: 18px; }
 .result-content :deep(li) { margin: 2px 0; }
 .result-content :deep(blockquote) {
-  margin: 8px 0; padding: 6px 12px; border-left: 3px solid #1890ff;
+  margin: 6px 0; padding: 4px 10px; border-left: 3px solid #1890ff;
   background: #e6f7ff; border-radius: 0 4px 4px 0; color: #0958d9;
 }
 .result-content :deep(.md-code-block) {
-  margin: 8px 0; padding: 10px 14px; background: #1e1e1e; color: #d4d4d4;
+  margin: 6px 0; padding: 8px 12px; background: #1e1e1e; color: #d4d4d4;
   border-radius: 6px; font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 12px; overflow-x: auto; white-space: pre;
+  font-size: 11px; overflow-x: auto; white-space: pre;
 }
 .result-content :deep(.md-inline-code) {
-  padding: 1px 5px; background: #f0f0f0; border-radius: 3px;
-  font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px; color: #d4380d;
+  padding: 1px 4px; background: #f0f0f0; border-radius: 3px;
+  font-family: 'Fira Code', 'Consolas', monospace; font-size: 11px; color: #d4380d;
 }
-.result-content :deep(hr) { border: none; border-top: 1px solid var(--border-color, #e8ecf4); margin: 12px 0; }
+.result-content :deep(hr) { border: none; border-top: 1px solid var(--border-color, #e8ecf4); margin: 8px 0; }
 .result-content :deep(a) { color: #1890ff; text-decoration: none; }
-.result-content :deep(a:hover) { text-decoration: underline; }
 
 .step-error {
-  border-top: 1px solid #ffa39e; padding: 14px 16px 14px 52px;
-  background: #fff1f0; font-size: 13px; line-height: 1.6;
-  color: #cf1322; word-break: break-word;
+  border-top: 1px solid #ffa39e; padding: 8px 12px 8px 42px;
+  background: #fff1f0; font-size: 12px; color: #cf1322;
+}
+
+/* ===== 诊断报告区域 ===== */
+.report-section {
+  background: var(--bg-card, #fff);
+  border: 1px solid #d9f7be;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.report-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
+  border-bottom: 1px solid var(--border-color, #e8ecf4);
+}
+.report-title {
+  font-size: 14px; font-weight: 600; color: var(--text-primary, #2c3e50);
+}
+.report-status.streaming { margin-left: auto; }
+
+.typing-dots { display: inline-flex; gap: 3px; }
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%; background: #1890ff;
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.report-content {
+  padding: 16px;
+  font-size: 13px; line-height: 1.8; color: var(--text-primary, #2c3e50);
+  word-break: break-word;
+}
+.report-content :deep(strong) { font-weight: 600; }
+.report-content :deep(h1),
+.report-content :deep(h2),
+.report-content :deep(h3),
+.report-content :deep(h4) { margin: 14px 0 8px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.report-content :deep(h1) { font-size: 18px; }
+.report-content :deep(h2) { font-size: 16px; }
+.report-content :deep(h3) { font-size: 14px; }
+.report-content :deep(h4) { font-size: 13px; }
+.report-content :deep(p) { margin: 6px 0; }
+.report-content :deep(ul),
+.report-content :deep(ol) { margin: 8px 0; padding-left: 22px; }
+.report-content :deep(li) { margin: 3px 0; }
+.report-content :deep(blockquote) {
+  margin: 10px 0; padding: 8px 14px; border-left: 3px solid #1890ff;
+  background: #e6f7ff; border-radius: 0 6px 6px 0; color: #0958d9;
+}
+.report-content :deep(.md-code-block) {
+  margin: 10px 0; padding: 12px 16px; background: #1e1e1e; color: #d4d4d4;
+  border-radius: 8px; font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px; overflow-x: auto; white-space: pre;
+}
+.report-content :deep(.md-inline-code) {
+  padding: 2px 6px; background: #f0f0f0; border-radius: 4px;
+  font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px; color: #d4380d;
+}
+.report-content :deep(hr) { border: none; border-top: 1px solid var(--border-color, #e8ecf4); margin: 14px 0; }
+.report-content :deep(a) { color: #1890ff; text-decoration: none; }
+.report-content :deep(a:hover) { text-decoration: underline; }
+
+.report-loading {
+  display: flex; align-items: center; gap: 8px;
+  padding: 20px 16px; font-size: 13px; color: var(--text-muted, #999);
 }
 
 /* ===== 对话区域 ===== */

@@ -4,10 +4,12 @@ AI 诊断任务路由
 """
 
 import asyncio
+import json
 import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import delete, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_factory, get_db
 from app.models.ai_task import AiTask, AiTaskStep
 from app.models.user import User
-from app.services.ai_executor import create_task, execute_task, execute_followup
+from app.services.ai_executor import create_task, execute_task, execute_followup, execute_summary_stream
 from app.services.auth_service import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -265,3 +267,36 @@ async def delete_ai_task(
     await db.flush()
 
     return {"success": True}
+
+
+@router.get("/tasks/{task_id}/stream-report", summary="流式获取诊断报告")
+async def stream_report(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """流式输出 summary 步骤的报告内容（SSE）"""
+    task = await db.get(AiTask, task_id)
+    if not task or task.user_id != _.id:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    async def event_stream():
+        async with async_session_factory() as sdb:
+            try:
+                async for chunk in execute_summary_stream(sdb, task_id):
+                    data = json.dumps({"content": chunk}, ensure_ascii=False)
+                    yield f"data: {data}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+            except Exception as e:
+                logger.error("流式报告异常: %s", e)
+                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

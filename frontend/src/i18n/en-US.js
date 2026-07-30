@@ -753,5 +753,9 @@ export default {
     aiResponse: 'AI Assistant',
     stepResult: 'Step Result',
     followUp: 'Follow-up',
+    taskPlanning: 'Thinking / Task Planning',
+    diagnosticReport: 'Diagnostic Report',
+    generatingReport: 'Generating report...',
+    taskAwaitingReport: 'Awaiting report',
   },
 }

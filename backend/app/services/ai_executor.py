@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.ai_task import AiTask, AiTaskStep
 from app.services.ai_tools import execute_tool, format_tool_result_for_ai
 from app.services.ai_context import build_monitoring_context, format_context_for_ai
-from app.services.deepseek import get_ai_config, plan_task, execute_step, chat_completion, get_base_url
+from app.services.deepseek import get_ai_config, plan_task, execute_step, chat_completion, chat_completion_stream, get_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +220,10 @@ async def execute_task(db: AsyncSession, task_id: int) -> None:
 
     try:
         for step in steps:
+            # summary 步骤由流式接口单独处理，此处跳过
+            if step.step_type == "summary":
+                continue
+
             step.status = "running"
             await db.commit()
 
@@ -273,9 +277,121 @@ async def execute_task(db: AsyncSession, task_id: int) -> None:
 
             await db.commit()
 
-        task.status = "completed"
+        # 所有工具步骤完成，等待报告生成
+        task.status = "awaiting_report"
     except Exception as e:
         logger.error("任务执行异常: %s", e)
         task.status = "failed"
 
     await db.commit()
+
+
+async def execute_summary_stream(db: AsyncSession, task_id: int):
+    """流式执行 summary 步骤，逐块 yield 报告内容"""
+
+    task = await db.get(AiTask, task_id)
+    if not task:
+        yield "错误：任务不存在"
+        return
+
+    # 查询步骤
+    stmt = (
+        select(AiTaskStep)
+        .where(AiTaskStep.task_id == task_id)
+        .order_by(AiTaskStep.step_order)
+    )
+    result = await db.execute(stmt)
+    steps = result.scalars().all()
+
+    # 找到 summary 步骤
+    summary_step = None
+    for s in steps:
+        if s.step_type == "summary":
+            summary_step = s
+            break
+
+    if not summary_step:
+        yield "错误：未找到报告步骤"
+        return
+
+    # 如果已经有结果，直接返回
+    if summary_step.result and summary_step.status == "completed":
+        yield summary_step.result
+        return
+
+    # 标记为 running
+    summary_step.status = "running"
+    task.status = "running"
+    await db.commit()
+
+    # 获取 AI 配置
+    ai_config = await get_ai_config(db)
+    if not ai_config.get("api_key"):
+        summary_step.status = "failed"
+        summary_step.error = "未配置 AI API Key"
+        task.status = "failed"
+        await db.commit()
+        yield "错误：未配置 AI API Key"
+        return
+
+    # 构建上下文
+    context = await build_monitoring_context(db)
+    context_text = format_context_for_ai(context)
+
+    # 聚合所有工具步骤的结果
+    tool_results = []
+    for s in steps:
+        if s.step_type != "summary" and s.status == "completed" and s.result:
+            tool_results.append(f"### {s.title}\n{s.result}")
+
+    accumulated = "\n\n".join(tool_results) if tool_results else _get_accumulated_tool_results()
+
+    tool_result_formatted = format_tool_result_for_ai(
+        step_type="summary",
+        step_title=summary_step.title,
+        tool_output=accumulated,
+    )
+
+    # 构建消息
+    url = ai_config.get("base_url", "") or get_base_url(ai_config.get("provider", "deepseek"))
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是一位资深的 SQL Server 数据库性能优化专家。"
+                "请基于前面所有步骤的执行结果，生成一份完整的数据库健康诊断报告。"
+                "包括总体评估、主要发现的问题、优化建议（按优先级排序）。"
+                "请用中文回答，输出格式清晰，使用 Markdown 格式。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"## 系统概览\n{context_text}\n\n## 工具执行结果\n{tool_result_formatted}",
+        },
+    ]
+
+    # 流式输出
+    full_result = []
+    try:
+        async for chunk in chat_completion_stream(
+            base_url=url,
+            api_key=ai_config["api_key"],
+            model=ai_config["model"],
+            messages=messages,
+        ):
+            full_result.append(chunk)
+            yield chunk
+
+        # 保存完整结果
+        summary_step.result = "".join(full_result)
+        summary_step.status = "completed"
+        task.status = "completed"
+        await db.commit()
+
+    except Exception as e:
+        logger.error("流式报告生成异常: %s", e)
+        summary_step.status = "failed"
+        summary_step.error = str(e)
+        task.status = "failed"
+        await db.commit()
+        yield f"\n\n报告生成异常: {str(e)}"
