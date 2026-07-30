@@ -579,7 +579,7 @@ onBeforeUnmount(() => {
 .tab-context-menu { position: fixed; z-index: 2000; background: #fff; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px; min-width: 120px; border: 1px solid #e8e8e8; }
 .context-menu-item { padding: 6px 12px; font-size: 12px; color: #333; border-radius: 4px; cursor: pointer; transition: background 0.15s; }
 .context-menu-item:hover { background: #f0f5ff; color: #1890ff; }
-.content { flex: 1; padding: 24px; overflow-y: auto; background-color: var(--bg-primary); }
+.content { flex: 1; padding: 24px; overflow: hidden; background-color: var(--bg-primary); }
 .footer { height: 40px; background-color: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-color); flex-shrink: 0; }
 @media (max-width: 768px) {
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; width: 100%; max-width: 280px; }

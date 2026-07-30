@@ -77,7 +77,7 @@
             v-for="step in currentTask.steps"
             :key="step.id"
             class="step-card"
-            :class="['step-' + step.status, { expanded: expandedStep === step.id }]"
+            :class="['step-' + step.status, { expanded: isStepExpanded(step.id) }]"
           >
             <div class="step-header" @click="toggleStep(step)">
               <div class="step-icon">
@@ -98,14 +98,14 @@
                 <span class="step-desc">{{ step.description }}</span>
               </div>
               <span v-if="(step.status === 'completed' || step.status === 'failed') && step.step_type !== 'followup'" class="step-expand-icon">
-                {{ expandedStep === step.id ? '▲' : '▼' }}
+                {{ isStepExpanded(step.id) ? '▲' : '▼' }}
               </span>
               <span v-if="step.step_type === 'followup'" class="step-tag followup-tag">{{ t('aiAssistant.followUp') }}</span>
             </div>
-            <div v-if="expandedStep === step.id && step.result" class="step-result">
+            <div v-if="isStepExpanded(step.id) && step.result" class="step-result">
               <div class="result-content" v-html="renderMarkdown(step.result)"></div>
             </div>
-            <div v-if="expandedStep === step.id && step.error" class="step-error">
+            <div v-if="isStepExpanded(step.id) && step.error" class="step-error">
               {{ step.error }}
             </div>
           </div>
@@ -175,7 +175,7 @@ const currentTaskId = ref(null)
 const currentTask = ref(null)
 const newQuery = ref('')
 const creating = ref(false)
-const expandedStep = ref(null)
+const expandedSteps = ref([])
 const executionAreaRef = ref(null)
 let pollTimer = null
 
@@ -195,9 +195,16 @@ async function fetchTasks() {
 
 async function selectTask(taskId) {
   currentTaskId.value = taskId
-  expandedStep.value = null
+  expandedSteps.value = []
   try {
     currentTask.value = await getAiTaskDetail(taskId)
+    if (currentTask.value?.steps) {
+      currentTask.value.steps.forEach(step => {
+        if ((step.status === 'completed' || step.status === 'failed') && step.result) {
+          expandedSteps.value.push(step.id)
+        }
+      })
+    }
     startPolling()
     await nextTick()
     scrollToBottom()
@@ -210,7 +217,7 @@ function startNewTask() {
   currentTaskId.value = null
   currentTask.value = null
   newQuery.value = ''
-  expandedStep.value = null
+  expandedSteps.value = []
   stopPolling()
 }
 
@@ -262,8 +269,17 @@ async function onDeleteTask(task) {
 
 function toggleStep(step) {
   if (step.status === 'completed' || step.status === 'failed') {
-    expandedStep.value = expandedStep.value === step.id ? null : step.id
+    const idx = expandedSteps.value.indexOf(step.id)
+    if (idx === -1) {
+      expandedSteps.value.push(step.id)
+    } else {
+      expandedSteps.value.splice(idx, 1)
+    }
   }
+}
+
+function isStepExpanded(stepId) {
+  return expandedSteps.value.includes(stepId)
 }
 
 function statusLabel(status) {
@@ -364,6 +380,17 @@ function startPolling() {
     try {
       const detail = await getAiTaskDetail(currentTaskId.value)
       currentTask.value = detail
+      
+      // 自动展开新完成的步骤
+      if (detail.steps) {
+        detail.steps.forEach(step => {
+          if ((step.status === 'completed' || step.status === 'failed') && 
+              step.result && !expandedSteps.value.includes(step.id)) {
+            expandedSteps.value.push(step.id)
+          }
+        })
+      }
+      
       const idx = tasks.value.findIndex(t => t.id === detail.id)
       if (idx > -1) {
         tasks.value[idx].status = detail.status
@@ -399,9 +426,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .ai-assistant {
   display: flex;
-  height: calc(100vh - 56px);
+  height: calc(100vh - 190px);
   overflow: hidden;
   background: var(--bg-primary, #f5f6fa);
+  padding: 0;
+  margin: -24px;
 }
 
 /* ===== 左侧栏 ===== */
@@ -507,16 +536,16 @@ onBeforeUnmount(() => {
 
 /* ===== 底部输入框 ===== */
 .bottom-input {
-  padding: 12px 24px 20px; max-width: 100%;
+  padding: 8px 24px 12px; max-width: 100%;
   border-top: 1px solid var(--border-color, #e8ecf4);
   background: var(--bg-card, #fff);
 }
 
 /* ===== 执行区域 ===== */
-.execution-area { flex: 1; overflow-y: auto; padding: 24px; }
+.execution-area { flex: 1; overflow-y: auto; padding: 16px 24px; }
 
-.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-.execution-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.execution-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #2c3e50); }
 
 .execution-status {
   display: inline-block; padding: 2px 10px; border-radius: 12px;
@@ -529,10 +558,10 @@ onBeforeUnmount(() => {
 .execution-status.status-failed { background: #fff1f0; color: #ff4d4f; }
 
 /* ===== 步骤卡片 ===== */
-.steps-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.steps-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 
 .step-card {
-  background: var(--bg-card, #fff); border-radius: 8px;
+  background: var(--bg-card, #fff); border-radius: 6px;
   border: 1px solid var(--border-color, #e8ecf4);
   overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -541,7 +570,7 @@ onBeforeUnmount(() => {
 .step-card.step-failed { border-color: #ffa39e; }
 
 .step-header {
-  display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: default;
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: default;
 }
 .step-card.step-completed .step-header,
 .step-card.step-failed .step-header { cursor: pointer; }
@@ -565,7 +594,7 @@ onBeforeUnmount(() => {
 
 .step-result {
   border-top: 1px solid var(--border-color, #e8ecf4);
-  padding: 14px 16px 14px 52px;
+  padding: 10px 14px 10px 50px;
   background: var(--bg-primary, #fafafa);
 }
 
@@ -611,10 +640,10 @@ onBeforeUnmount(() => {
 /* ===== 对话区域 ===== */
 .chat-section {
   border-top: 1px solid var(--border-color, #e8ecf4);
-  padding-top: 20px;
+  padding-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .chat-message { display: flex; flex-direction: column; gap: 8px; }
