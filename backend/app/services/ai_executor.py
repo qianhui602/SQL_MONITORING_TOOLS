@@ -84,6 +84,25 @@ async def create_task(db: AsyncSession, user_id: int, query: str) -> dict:
         db.add(step)
 
     await db.commit()
+    await db.refresh(task)
+
+    return {
+        "task_id": task.id,
+        "status": task.status,
+        "steps": [
+            {
+                "id": s.id,
+                "step_order": s.step_order,
+                "title": s.title,
+                "description": s.description,
+                "step_type": s.step_type,
+                "status": s.status,
+            }
+            for s in (await db.execute(
+                select(AiTaskStep).where(AiTaskStep.task_id == task.id).order_by(AiTaskStep.step_order)
+            )).scalars().all()
+        ],
+    }
 
 
 async def execute_followup(
@@ -163,25 +182,6 @@ async def execute_followup(
         step.result = ai_result or "AI 未能生成回复"
         step.status = "completed"
         await db.commit()
-    await db.refresh(task)
-
-    return {
-        "task_id": task.id,
-        "status": task.status,
-        "steps": [
-            {
-                "id": s.id,
-                "step_order": s.step_order,
-                "title": s.title,
-                "description": s.description,
-                "step_type": s.step_type,
-                "status": s.status,
-            }
-            for s in (await db.execute(
-                select(AiTaskStep).where(AiTaskStep.task_id == task.id).order_by(AiTaskStep.step_order)
-            )).scalars().all()
-        ],
-    }
 
 
 async def execute_task(db: AsyncSession, task_id: int) -> None:
