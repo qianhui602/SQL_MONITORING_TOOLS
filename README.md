@@ -2,6 +2,8 @@
 
 基于 FastAPI + Vue.js + PostgreSQL 的 MS SQL Server 性能监控与告警平台。
 
+**简体中文** | [English](./README.en.md)
+
 ## 功能特性
 
 ### 核心监控
@@ -113,7 +115,8 @@ npm run dev
 ├── Docs/                 # 项目文档
 │   ├── PROJECT_DOCUMENTATION.md    # 项目文档
 │   ├── TECHNICAL_DOCUMENTATION.md  # 技术文档
-│   └── 指标监控说明文档.md          # 指标监控说明
+│   ├── 指标监控说明文档.md          # 指标监控说明
+│   └── en/                         # 英文文档
 ├── docker-compose.yml    # Docker Compose 编排文件
 └── .env                  # 环境变量配置
 ```
@@ -126,6 +129,13 @@ npm run dev
 - [技术文档](./Docs/TECHNICAL_DOCUMENTATION.md) - 技术架构、API 设计、部署架构
 - [用户手册](./Docs/USER_MANUAL.md) - 系统操作指南、功能使用说明
 - [指标监控说明](./Docs/指标监控说明文档.md) - 监控指标详解、采集机制、数据存储
+
+**英文文档 (English)：**
+
+- [Project Documentation](./Docs/en/PROJECT_DOCUMENTATION.md)
+- [Technical Documentation](./Docs/en/TECHNICAL_DOCUMENTATION.md)
+- [User Manual](./Docs/en/USER_MANUAL.md)
+- [Metrics Monitoring Guide](./Docs/en/METRICS_MONITORING.md)
 
 ## 默认账号
 

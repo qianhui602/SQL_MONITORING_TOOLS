@@ -1,16 +1,16 @@
-# SQL 监控平台 - 技术文档
+# SQL Monitoring Platform - Technical Documentation
 
-**简体中文** | [English](./en/TECHNICAL_DOCUMENTATION.md)
+[简体中文](../TECHNICAL_DOCUMENTATION.md) | **English**
 
-## 1. 技术架构
+## 1. Technical Architecture
 
-### 1.1 整体架构
+### 1.1 Overall Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                          客户端层 (Client)                          │
+│                          Client Layer                                │
 │  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                    Vue.js 3 前端应用                           │  │
+│  │                    Vue.js 3 Frontend Application               │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │  │
 │  │  │ Dashboard│ │ Trends   │ │ Deadlocks│ │ Alerts   │  ...    │  │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘         │  │
@@ -18,230 +18,230 @@
 │                              │ HTTP/AJAX                             │
 │                              ▼                                       │
 ├──────────────────────────────────────────────────────────────────────┤
-│                        网关层 (Gateway)                             │
+│                          Gateway Layer                               │
 │  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                    Nginx 反向代理                              │  │
-│  │  - 静态文件服务                                                │  │
-│  │  - API 请求转发 (/api → backend:8000)                         │  │
+│  │                    Nginx Reverse Proxy                         │  │
+│  │  - Static file serving                                        │  │
+│  │  - API request forwarding (/api → backend:8000)               │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 │                              │                                       │
 │                              ▼                                       │
 ├──────────────────────────────────────────────────────────────────────┤
-│                       应用层 (Application)                          │
+│                       Application Layer                              │
 │  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                    FastAPI 后端服务                             │  │
+│  │                    FastAPI Backend Service                     │  │
 │  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │  │
 │  │  │   Routers   │ │  Services   │ │  Collectors │              │  │
-│  │  │  (API 路由) │ │ (业务逻辑)  │ │ (数据采集)  │              │  │
+│  │  │ (API routes)│ │(business)   │ │ (collection)│              │  │
 │  │  └─────────────┘ └─────────────┘ └─────────────┘              │  │
 │  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │  │
 │  │  │   Models    │ │  Scheduler  │ │   Config    │              │  │
-│  │  │ (数据模型)  │ │ (定时任务)  │ │  (配置管理) │              │  │
+│  │  │(data models)│ │ (scheduler) │ │ (config)    │              │  │
 │  │  └─────────────┘ └─────────────┘ └─────────────┘              │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 │                    │                           │                     │
 │                    ▼                           ▼                     │
 ├──────────────────────────────────────────────────────────────────────┤
-│                        数据层 (Data)                                 │
+│                           Data Layer                                 │
 │  ┌─────────────────────┐           ┌─────────────────────┐          │
 │  │    PostgreSQL 16    │           │    SQL Server       │          │
-│  │  (监控数据存储)     │           │  (被监控目标)       │          │
+│  │  (monitoring data)  │           │  (monitored target) │          │
 │  └─────────────────────┘           └─────────────────────┘          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 数据流
+### 1.2 Data Flow
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │  SQL Server │───▶│  Collectors │───▶│  Scheduler  │───▶│ PostgreSQL  │
-│  (数据源)   │    │  (数据采集) │    │ (定时调度)  │    │  (数据存储) │
+│  (data src) │    │(collection) │    │ (scheduler) │    │  (storage)  │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
                           │                  │                  │
                           │                  ▼                  │
                           │           ┌─────────────┐          │
                           │           │ AlertEngine │          │
-                          │           │ (告警引擎)  │          │
+                          │           │ (alert)     │          │
                           │           └─────────────┘          │
                           │                  │                  │
                           │                  ▼                  │
                           │           ┌─────────────┐          │
                           │           │ Notification│          │
-                          │           │ (通知服务)  │          │
+                          │           │ (notify)    │          │
                           │           └─────────────┘          │
                           │                                      │
                           ▼                                      ▼
                    ┌─────────────┐                        ┌─────────────┐
                    │   FastAPI   │◀───────────────────────│   FastAPI   │
-                   │  (后端API)  │                        │  (后端API)  │
+                   │  (backend)  │                        │  (backend)  │
                    └─────────────┘                        └─────────────┘
                           │                                      │
                           ▼                                      ▼
                    ┌─────────────┐                        ┌─────────────┐
                    │   Vue.js    │                        │   Vue.js    │
-                   │  (前端UI)   │                        │  (前端UI)   │
+                   │  (frontend) │                        │  (frontend) │
                    └─────────────┘                        └─────────────┘
 ```
 
-### 1.3 技术栈版本
+### 1.3 Technology Stack Versions
 
-| 组件 | 技术 | 版本 |
-|------|------|------|
-| **后端框架** | FastAPI | 0.115.0+ |
-| **ASGI 服务器** | Uvicorn | 0.30.0+ |
+| Component | Technology | Version |
+|-----------|------------|---------|
+| **Backend framework** | FastAPI | 0.115.0+ |
+| **ASGI server** | Uvicorn | 0.30.0+ |
 | **ORM** | SQLAlchemy | 2.0+ |
-| **PostgreSQL 驱动** | asyncpg | 0.29.0+ |
-| **SQL Server 驱动** | pymssql | 2.3.0+ |
-| **数据库迁移** | Alembic | 1.13.0+ |
-| **定时任务** | APScheduler | 3.10.0+ |
-| **配置管理** | pydantic-settings | 2.0.0+ |
-| **密码加密** | bcrypt | 4.1.0+ |
+| **PostgreSQL driver** | asyncpg | 0.29.0+ |
+| **SQL Server driver** | pymssql | 2.3.0+ |
+| **DB migrations** | Alembic | 1.13.0+ |
+| **Scheduler** | APScheduler | 3.10.0+ |
+| **Config management** | pydantic-settings | 2.0.0+ |
+| **Password hashing** | bcrypt | 4.1.0+ |
 | **JWT** | PyJWT | 2.8.0+ |
-| **HTTP 客户端** | httpx | 0.27.0+ |
-| **前端框架** | Vue.js | 3.4.0+ |
-| **路由** | Vue Router | 4.3.0+ |
-| **构建工具** | Vite | 5.4.0+ |
-| **HTTP 客户端** | Axios | 1.7.0+ |
-| **图表库** | ECharts | 5.5.0+ |
-| **数据库** | PostgreSQL | 16 |
-| **容器化** | Docker | 20.10+ |
-| **容器编排** | Docker Compose | 2.0+ |
-| **Web 服务器** | Nginx | 1.26+ |
+| **HTTP client** | httpx | 0.27.0+ |
+| **Frontend framework** | Vue.js | 3.4.0+ |
+| **Router** | Vue Router | 4.3.0+ |
+| **Build tool** | Vite | 5.4.0+ |
+| **HTTP client** | Axios | 1.7.0+ |
+| **Chart library** | ECharts | 5.5.0+ |
+| **Database** | PostgreSQL | 16 |
+| **Containerization** | Docker | 20.10+ |
+| **Orchestration** | Docker Compose | 2.0+ |
+| **Web server** | Nginx | 1.26+ |
 
-## 2. 项目结构
+## 2. Project Structure
 
-### 2.1 后端结构
+### 2.1 Backend Structure
 
 ```
 backend/
-├── alembic/                    # 数据库迁移脚本
-│   ├── versions/              # 迁移版本文件
-│   ├── env.py                 # 迁移环境配置
-│   └── script.py.mako         # 迁移脚本模板
-├── app/                        # 应用代码
-│   ├── collectors/            # 数据采集器
+├── alembic/                    # Database migration scripts
+│   ├── versions/              # Migration version files
+│   ├── env.py                 # Migration environment config
+│   └── script.py.mako         # Migration script template
+├── app/                        # Application code
+│   ├── collectors/            # Data collectors
 │   │   ├── __init__.py
-│   │   ├── collector.py       # 采集协调器
-│   │   ├── sqlserver.py       # SQL Server 连接管理
-│   │   ├── performance.py     # 性能指标采集
-│   │   ├── deadlock.py        # 死锁检测
-│   │   ├── slow_query.py      # 慢查询采集
-│   │   ├── blocking.py        # 阻塞进程采集
-│   │   ├── disk.py            # 磁盘空间采集
-│   │   └── index_analyzer.py  # 索引分析
-│   ├── models/                # 数据模型
+│   │   ├── collector.py       # Collection coordinator
+│   │   ├── sqlserver.py       # SQL Server connection management
+│   │   ├── performance.py     # Performance metric collection
+│   │   ├── deadlock.py        # Deadlock detection
+│   │   ├── slow_query.py      # Slow query collection
+│   │   ├── blocking.py        # Blocking process collection
+│   │   ├── disk.py            # Disk space collection
+│   │   └── index_analyzer.py  # Index analysis
+│   ├── models/                # Data models
 │   │   ├── __init__.py
-│   │   ├── performance.py     # 性能指标模型
-│   │   ├── deadlock.py        # 死锁事件模型
-│   │   ├── alert.py           # 告警日志模型
-│   │   ├── alert_rule.py      # 告警规则模型
-│   │   ├── user.py            # 用户模型
-│   │   ├── instance.py        # 监控实例模型
-│   │   ├── slow_query.py      # 慢查询模型
-│   │   ├── blocking.py        # 阻塞事件模型
-│   │   ├── disk.py            # 磁盘空间模型
-│   │   ├── index_analysis.py  # 索引分析模型
-│   │   ├── audit_log.py       # 审计日志模型
-│   │   ├── config.py          # 系统配置模型
-│   │   └── report.py          # 报告记录模型
-│   ├── routers/               # API 路由
+│   │   ├── performance.py     # Performance metric model
+│   │   ├── deadlock.py        # Deadlock event model
+│   │   ├── alert.py           # Alert log model
+│   │   ├── alert_rule.py      # Alert rule model
+│   │   ├── user.py            # User model
+│   │   ├── instance.py        # Monitored instance model
+│   │   ├── slow_query.py      # Slow query model
+│   │   ├── blocking.py        # Blocking event model
+│   │   ├── disk.py            # Disk space model
+│   │   ├── index_analysis.py  # Index analysis model
+│   │   ├── audit_log.py       # Audit log model
+│   │   ├── config.py          # System config model
+│   │   └── report.py          # Report record model
+│   ├── routers/               # API routers
 │   │   ├── __init__.py
-│   │   ├── auth.py            # 认证接口
-│   │   ├── users.py           # 用户管理接口
-│   │   ├── metrics.py         # 性能指标接口
-│   │   ├── deadlocks.py       # 死锁接口
-│   │   ├── alerts.py          # 告警接口
-│   │   ├── alert_rules.py     # 告警规则接口
-│   │   ├── instances.py       # 实例管理接口
-│   │   ├── slow_queries.py    # 慢查询接口
-│   │   ├── blocking.py        # 阻塞接口
-│   │   ├── disk.py            # 磁盘接口
-│   │   ├── indexes.py         # 索引接口
-│   │   ├── audit_logs.py      # 审计日志接口
-│   │   ├── config.py          # 配置接口
-│   │   ├── export.py          # 数据导出接口
-│   │   ├── notifications.py   # 通知接口
-│   │   ├── reports.py         # 报告接口
-│   │   └── upgrade.py         # 在线升级接口
-│   ├── services/              # 业务服务
+│   │   ├── auth.py            # Authentication endpoints
+│   │   ├── users.py           # User management endpoints
+│   │   ├── metrics.py         # Performance metric endpoints
+│   │   ├── deadlocks.py       # Deadlock endpoints
+│   │   ├── alerts.py          # Alert endpoints
+│   │   ├── alert_rules.py     # Alert rule endpoints
+│   │   ├── instances.py       # Instance management endpoints
+│   │   ├── slow_queries.py    # Slow query endpoints
+│   │   ├── blocking.py        # Blocking endpoints
+│   │   ├── disk.py            # Disk endpoints
+│   │   ├── indexes.py         # Index endpoints
+│   │   ├── audit_logs.py      # Audit log endpoints
+│   │   ├── config.py          # Config endpoints
+│   │   ├── export.py          # Data export endpoints
+│   │   ├── notifications.py   # Notification endpoints
+│   │   ├── reports.py         # Report endpoints
+│   │   └── upgrade.py         # Online upgrade endpoints
+│   ├── services/              # Business services
 │   │   ├── __init__.py
-│   │   ├── auth_service.py    # 认证服务
-│   │   ├── alert_service.py   # 告警服务
-│   │   ├── audit_service.py   # 审计服务
-│   │   ├── notification.py    # 通知服务
-│   │   ├── deepseek.py        # AI 分析服务
-│   │   └── upgrade_service.py # 在线升级服务
+│   │   ├── auth_service.py    # Authentication service
+│   │   ├── alert_service.py   # Alert service
+│   │   ├── audit_service.py   # Audit service
+│   │   ├── notification.py    # Notification service
+│   │   ├── deepseek.py        # AI analysis service
+│   │   └── upgrade_service.py # Online upgrade service
 │   ├── __init__.py
-│   ├── config.py              # 配置管理
-│   ├── database.py            # 数据库连接
-│   ├── init_db.py             # 数据库初始化
-│   ├── main.py                # 应用入口
-│   └── scheduler.py           # 定时任务调度
-├── .env.example               # 环境变量模板
-├── Dockerfile                 # Docker 构建文件
-├── alembic.ini                # Alembic 配置
-└── requirements.txt           # Python 依赖
+│   ├── config.py              # Config management
+│   ├── database.py            # Database connection
+│   ├── init_db.py             # Database initialization
+│   ├── main.py                # Application entry point
+│   └── scheduler.py           # Scheduled task management
+├── .env.example               # Environment variable template
+├── Dockerfile                 # Docker build file
+├── alembic.ini                # Alembic config
+└── requirements.txt           # Python dependencies
 ```
 
-### 2.2 前端结构
+### 2.2 Frontend Structure
 
 ```
 frontend/
 ├── src/
-│   ├── api/                   # API 客户端
-│   │   └── index.js           # Axios 实例和 API 函数
-│   ├── components/            # 公共组件
-│   │   └── Layout.vue         # 布局组件
-│   ├── router/                # 路由配置
-│   │   └── index.js           # 路由定义
-│   ├── stores/                # 状态管理
-│   │   ├── auth.js            # 认证状态
-│   │   └── theme.js           # 主题状态
-│   ├── styles/                # 样式文件
-│   │   └── theme.css          # 主题样式
-│   ├── utils/                 # 工具函数
-│   │   └── datetime.js        # 日期时间工具
-│   ├── views/                 # 页面组件
-│   │   ├── Dashboard.vue      # 仪表盘
-│   │   ├── Trends.vue         # 性能趋势
-│   │   ├── Deadlocks.vue      # 死锁监控
-│   │   ├── Alerts.vue         # 告警管理
-│   │   ├── AlertRules.vue     # 告警规则
-│   │   ├── SlowQueries.vue    # 慢查询分析
-│   │   ├── Blocking.vue       # 阻塞进程
-│   │   ├── Disk.vue           # 磁盘空间
-│   │   ├── Indexes.vue        # 索引分析
-│   │   ├── Instances.vue      # 实例管理
-│   │   ├── Users.vue          # 用户管理
-│   │   ├── AuditLogs.vue      # 审计日志
-│   │   ├── Settings.vue       # 系统设置
-│   │   ├── Report.vue         # 系统报告
-│   │   ├── Upgrade.vue        # 在线升级
-│   │   ├── Login.vue          # 登录页面
-│   │   ├── ForgotPassword.vue  # 找回密码
-│   │   ├── ResetPassword.vue   # 重置密码（重定向到找回密码）
-│   │   ├── Profile.vue         # 个人设置
-│   │   └── Setup.vue           # 安装引导
-│   ├── App.vue                # 根组件
-│   └── main.js                # 应用入口
-├── Dockerfile                 # Docker 构建文件
-├── index.html                 # HTML 入口
-├── package.json               # Node.js 依赖
-├── package-lock.json          # 依赖锁定文件
-└── vite.config.js             # Vite 配置
+│   ├── api/                   # API client
+│   │   └── index.js           # Axios instance and API functions
+│   ├── components/            # Shared components
+│   │   └── Layout.vue         # Layout component
+│   ├── router/                # Router config
+│   │   └── index.js           # Route definitions
+│   ├── stores/                # State management
+│   │   ├── auth.js            # Auth state
+│   │   └── theme.js           # Theme state
+│   ├── styles/                # Style files
+│   │   └── theme.css          # Theme styles
+│   ├── utils/                 # Utility functions
+│   │   └── datetime.js        # Date/time utilities
+│   ├── views/                 # Page components
+│   │   ├── Dashboard.vue      # Dashboard
+│   │   ├── Trends.vue         # Performance trends
+│   │   ├── Deadlocks.vue      # Deadlock monitoring
+│   │   ├── Alerts.vue         # Alert management
+│   │   ├── AlertRules.vue     # Alert rules
+│   │   ├── SlowQueries.vue    # Slow query analysis
+│   │   ├── Blocking.vue       # Blocking processes
+│   │   ├── Disk.vue           # Disk space
+│   │   ├── Indexes.vue        # Index analysis
+│   │   ├── Instances.vue      # Instance management
+│   │   ├── Users.vue          # User management
+│   │   ├── AuditLogs.vue      # Audit logs
+│   │   ├── Settings.vue       # System settings
+│   │   ├── Report.vue         # System reports
+│   │   ├── Upgrade.vue        # Online upgrade
+│   │   ├── Login.vue          # Login page
+│   │   ├── ForgotPassword.vue  # Forgot password
+│   │   ├── ResetPassword.vue   # Reset password (redirects to forgot password)
+│   │   ├── Profile.vue         # Personal settings
+│   │   └── Setup.vue           # Installation wizard
+│   ├── App.vue                # Root component
+│   └── main.js                # Application entry
+├── Dockerfile                 # Docker build file
+├── index.html                 # HTML entry
+├── package.json               # Node.js dependencies
+├── package-lock.json          # Dependency lock file
+└── vite.config.js             # Vite config
 ```
 
-## 3. 核心模块实现
+## 3. Core Module Implementation
 
-### 3.1 数据采集模块
+### 3.1 Data Collection Module
 
-#### 3.1.1 采集协调器 (collector.py)
+#### 3.1.1 Collection Coordinator (collector.py)
 
-采集协调器是数据采集的核心组件，负责整合多个采集器：
+The collection coordinator is the core component of data collection, responsible for integrating multiple collectors:
 
 ```python
 class MetricsCollector:
-    """指标采集协调器"""
+    """Metric collection coordinator"""
     
     def __init__(self, connection_manager: MSSQLConnectionManager = None):
         self.connection_manager = connection_manager or MSSQLConnectionManager()
@@ -250,38 +250,38 @@ class MetricsCollector:
         self.slow_query_collector = SlowQueryCollector()
     
     def collect_all_metrics(self) -> Dict[str, Any]:
-        """执行一次完整的采集"""
+        """Run one full collection cycle"""
         result = {
             "metrics": [],
             "deadlocks": [],
             "slow_queries": [],
         }
         
-        # 获取连接
+        # Get connection
         connection = self.connection_manager.get_connection()
         
-        # 采集性能指标
+        # Collect performance metrics
         perf_metrics = self.performance_collector.collect_all(connection)
-        # ... 处理性能指标
+        # ... process performance metrics
         
-        # 采集死锁事件
+        # Collect deadlock events
         deadlock_events = self.deadlock_detector.detect(connection)
-        # ... 处理死锁事件
+        # ... process deadlock events
         
-        # 采集慢查询
+        # Collect slow queries
         slow_query_data = self.slow_query_collector.collect_slow_queries(connection)
-        # ... 处理慢查询
+        # ... process slow queries
         
         return result
 ```
 
-#### 3.1.2 SQL Server 连接管理 (sqlserver.py)
+#### 3.1.2 SQL Server Connection Management (sqlserver.py)
 
-连接管理器负责管理到 SQL Server 的连接：
+The connection manager is responsible for managing connections to SQL Server:
 
 ```python
 class MSSQLConnectionManager:
-    """SQL Server 连接管理器"""
+    """SQL Server connection manager"""
     
     def __init__(self, host=None, port=None, user=None, password=None, database=None):
         self.host = host or settings.MSSQL_HOST
@@ -292,11 +292,11 @@ class MSSQLConnectionManager:
         self._connection = None
     
     def get_connection(self) -> pymssql.Connection:
-        """获取 SQL Server 连接（含重试机制）"""
+        """Get SQL Server connection (with retry mechanism)"""
         if self._connection and self._test_connection_alive():
             return self._connection
         
-        # 重试逻辑
+        # Retry logic
         for attempt in range(1, _RETRY_MAX + 1):
             try:
                 self._connection = pymssql.connect(
@@ -316,60 +316,60 @@ class MSSQLConnectionManager:
         raise MSSQLConnectionError(...)
 ```
 
-#### 3.1.3 性能指标采集 (performance.py)
+#### 3.1.3 Performance Metric Collection (performance.py)
 
-性能采集器从 SQL Server DMV 采集各类指标：
+The performance collector gathers various metrics from SQL Server DMVs:
 
 ```python
 class PerformanceCollector:
-    """SQL Server 性能指标采集器"""
+    """SQL Server performance metric collector"""
     
     def collect_cpu(self, connection) -> Dict[str, Any]:
-        """采集 CPU 使用率"""
-        # 查询 sys.dm_os_ring_buffers 获取 CPU 使用率
+        """Collect CPU usage"""
+        # Query sys.dm_os_ring_buffers for CPU usage
         pass
     
     def collect_memory(self, connection) -> Dict[str, Any]:
-        """采集内存使用量"""
-        # 查询 sys.dm_os_performance_counters 获取内存指标
+        """Collect memory usage"""
+        # Query sys.dm_os_performance_counters for memory metrics
         pass
     
     def collect_connections(self, connection) -> Dict[str, Any]:
-        """采集连接信息"""
-        # 查询 sys.dm_exec_sessions 获取连接数
+        """Collect connection info"""
+        # Query sys.dm_exec_sessions for connection counts
         pass
     
     def collect_io(self, connection) -> Dict[str, Any]:
-        """采集 IO 统计"""
-        # 查询 sys.dm_io_virtual_file_stats 获取 IO 指标
+        """Collect I/O statistics"""
+        # Query sys.dm_io_virtual_file_stats for I/O metrics
         pass
 ```
 
-#### 3.1.4 死锁检测 (deadlock.py)
+#### 3.1.4 Deadlock Detection (deadlock.py)
 
-死锁检测器从 SQL Server 系统健康会话捕获死锁事件：
+The deadlock detector captures deadlock events from SQL Server system health sessions:
 
 ```python
 class DeadlockDetector:
-    """死锁事件检测器"""
+    """Deadlock event detector"""
     
     def detect(self, connection) -> List[Dict[str, Any]]:
-        """检测死锁事件"""
-        # 查询 system_health 会话中的 xml_deadlock_report
-        # 解析死锁 XML，提取相关信息
+        """Detect deadlock events"""
+        # Query xml_deadlock_report in the system_health session
+        # Parse deadlock XML and extract relevant info
         pass
 ```
 
-### 3.2 定时任务调度 (scheduler.py)
+### 3.2 Scheduled Task Management (scheduler.py)
 
-调度器使用 APScheduler 管理定时采集任务：
+The scheduler uses APScheduler to manage scheduled collection tasks:
 
 ```python
 class SchedulerManager:
-    """APScheduler 调度器管理器"""
+    """APScheduler manager"""
     
     def setup(self, app, settings: Settings):
-        """配置调度器"""
+        """Configure the scheduler"""
         self.scheduler = AsyncIOScheduler()
         self._alert_engine = AlertEngine(db_session_factory=async_session_factory)
         
@@ -377,11 +377,11 @@ class SchedulerManager:
         self.add_collect_job(interval_seconds=interval)
     
     async def _collect_and_store(self):
-        """采集任务：遍历所有活跃实例采集指标并写入 PostgreSQL"""
-        # 加载运行时配置
+        """Collection task: iterate all active instances, collect metrics, write to PostgreSQL"""
+        # Load runtime config
         runtime_config = await self._load_runtime_config()
         
-        # 判断是否启用多实例模式
+        # Determine whether multi-instance mode is enabled
         instances_enabled = runtime_config.get("mssql_instances_enabled", "false").lower() == "true"
         
         if instances_enabled:
@@ -390,37 +390,37 @@ class SchedulerManager:
             await self._collect_single_instance(runtime_config)
     
     async def _collect_multi_instance(self, runtime_config):
-        """多实例采集模式"""
+        """Multi-instance collection mode"""
         instances = await self._load_active_instances()
         
         for instance in instances:
-            # 为每个实例创建独立的连接管理器
+            # Create an independent connection manager for each instance
             conn_mgr = MSSQLConnectionManager.get_connection_for_instance(...)
             collector = MetricsCollector(connection_manager=conn_mgr)
             data = collector.collect_all_metrics()
             
-            # 存储数据
+            # Store data
             await self._store_metrics(session, data["metrics"], server_address)
             await self._store_deadlocks(session, data["deadlocks"], server_address)
             await self._store_slow_queries(session, data["slow_queries"], server_address)
         
-        # 执行告警检查
+        # Run alert checks
         await self._run_alert_checks(aggregated_data)
 ```
 
-### 3.3 告警引擎 (alert_service.py)
+### 3.3 Alert Engine (alert_service.py)
 
-告警引擎负责检查告警规则并触发告警：
+The alert engine is responsible for checking alert rules and triggering alerts:
 
 ```python
 class AlertEngine:
-    """告警规则引擎"""
+    """Alert rule engine"""
     
     def __init__(self, db_session_factory):
         self.session_factory = db_session_factory
         self.notification_service = NotificationService()
         
-        # 内置告警规则
+        # Built-in alert rules
         self._builtin_rules = [
             AlertRule(
                 alert_type="memory_high",
@@ -446,15 +446,15 @@ class AlertEngine:
         ]
     
     async def process_metrics(self, metrics_data: Dict[str, Any]) -> List[AlertLog]:
-        """执行完整告警流程"""
-        # 1. 检查内置规则
+        """Run the full alert flow"""
+        # 1. Check built-in rules
         triggered = await self.check_rules(metrics_data)
         
-        # 2. 加载并检查自定义规则
+        # 2. Load and check custom rules
         custom_triggered = await self._check_custom_rules(metrics_data)
         triggered.extend(custom_triggered)
         
-        # 3. 检查冷却期 → 创建告警
+        # 3. Check cooldown → create alert
         for alert_type, severity, message in triggered:
             cooldown = self._get_cooldown_minutes(alert_type)
             if await self._is_in_cooldown(alert_type, cooldown):
@@ -464,13 +464,13 @@ class AlertEngine:
         return created_alerts
 ```
 
-### 3.4 通知服务 (notification.py)
+### 3.4 Notification Service (notification.py)
 
-通知服务支持多种通知渠道：
+The notification service supports multiple notification channels:
 
 ```python
 class NotificationService:
-    """组合通知服务"""
+    """Composite notification service"""
     
     def __init__(self):
         self.email_notifier = EmailNotifier()
@@ -478,47 +478,47 @@ class NotificationService:
         self.wecom_notifier = WeComNotifier()
     
     async def notify_all(self, subject: str, body: str) -> Dict[str, bool]:
-        """同时发送所有渠道通知"""
+        """Send notifications through all channels simultaneously"""
         result = {
             "email": False,
             "dingtalk": False,
             "wecom": False,
         }
         
-        # 邮件同步发送
+        # Email sent synchronously
         result["email"] = self.email_notifier.send(subject, body)
         
-        # 钉钉异步发送
+        # DingTalk sent asynchronously
         result["dingtalk"] = await self.dingtalk_notifier.send(body)
         
-        # 企业微信异步发送
+        # WeCom sent asynchronously
         result["wecom"] = await self.wecom_notifier.send(body)
         
         return result
 ```
 
-### 3.5 认证服务 (auth_service.py)
+### 3.5 Authentication Service (auth_service.py)
 
-认证服务提供 JWT 认证和权限控制：
+The authentication service provides JWT authentication and permission control:
 
 ```python
 class AuthService:
-    """认证服务"""
+    """Authentication service"""
     
     @staticmethod
     def hash_password(plain: str) -> str:
-        """使用 bcrypt 哈希密码"""
+        """Hash password using bcrypt"""
         salt = bcrypt.gensalt(rounds=12)
         return bcrypt.hashpw(plain.encode("utf-8"), salt).decode("utf-8")
     
     @staticmethod
     def verify_password(plain: str, hashed: str) -> bool:
-        """验证密码"""
+        """Verify password"""
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     
     @staticmethod
     def create_access_token(user_id: int, username: str, role: str) -> str:
-        """生成 JWT access token"""
+        """Generate JWT access token"""
         now = datetime.now(timezone.utc)
         payload = {
             "sub": str(user_id),
@@ -531,7 +531,7 @@ class AuthService:
     
     @staticmethod
     def decode_token(token: str) -> Optional[dict]:
-        """解码 JWT token"""
+        """Decode JWT token"""
         try:
             return jwt.decode(
                 token,
@@ -544,13 +544,13 @@ class AuthService:
             return None
 ```
 
-#### 密码重置验证码
+#### Password Reset Verification Code
 
-密码重置采用验证码方式，验证码存储在内存中（30 分钟过期）：
+Password reset uses a verification code stored in memory (expires in 30 minutes):
 
 ```python
 def generate_reset_code(user_id: int) -> str:
-    """生成 6 位数字验证码"""
+    """Generate a 6-digit verification code"""
     code = "".join(random.choices(string.digits, k=6))
     _PASSWORD_RESET_CODES[code] = {
         "user_id": user_id,
@@ -559,22 +559,22 @@ def generate_reset_code(user_id: int) -> str:
     return code
 
 def verify_reset_code(code: str) -> Optional[int]:
-    """验证验证码，返回 user_id"""
+    """Verify the code and return user_id"""
     data = _PASSWORD_RESET_CODES.get(code)
     if not data or datetime.now(timezone.utc) > data["expires_at"]:
         return None
     return data["user_id"]
 ```
 
-验证码使用后立即失效，同一用户重新生成时会清除旧验证码。
+The code is invalidated immediately after use; regenerating for the same user clears the old code.
 
-### 3.6 AI 分析服务 (deepseek.py)
+### 3.6 AI Analysis Service (deepseek.py)
 
-AI 分析服务集成 DeepSeek API 进行智能分析：
+The AI analysis service integrates the DeepSeek API for intelligent analysis:
 
 ```python
 async def analyze_deadlock(deadlock_info: dict) -> Optional[str]:
-    """使用 DeepSeek AI 分析死锁"""
+    """Analyze deadlock using DeepSeek AI"""
     prompt = _build_prompt(deadlock_info)
     
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -589,7 +589,7 @@ async def analyze_deadlock(deadlock_info: dict) -> Optional[str]:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "你是一位资深的 SQL Server 数据库性能优化专家...",
+                        "content": "You are a senior SQL Server database performance optimization expert...",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -603,9 +603,9 @@ async def analyze_deadlock(deadlock_info: dict) -> Optional[str]:
         return content.strip()
 ```
 
-## 4. 数据库设计
+## 4. Database Design
 
-### 4.1 ER 图
+### 4.1 ER Diagram
 
 ```
 ┌─────────────────┐       ┌─────────────────┐
@@ -737,53 +737,53 @@ async def analyze_deadlock(deadlock_info: dict) -> Optional[str]:
 └─────────────────┘
 ```
 
-### 4.2 索引设计
+### 4.2 Index Design
 
 ```sql
--- 性能指标表索引
+-- Performance metrics table indexes
 CREATE INDEX idx_metrics_collected_at ON metrics(collected_at);
 CREATE INDEX idx_metrics_category ON metrics(category);
 CREATE INDEX idx_metrics_server_address ON metrics(server_address);
 CREATE INDEX idx_metrics_category_name_collected ON metrics(category, metric_name, collected_at);
 
--- 死锁事件表索引
+-- Deadlock events table indexes
 CREATE INDEX idx_deadlocks_occur_at ON deadlocks(occur_at);
 CREATE INDEX idx_deadlocks_server_address ON deadlocks(server_address);
 
--- 告警日志表索引
+-- Alert logs table indexes
 CREATE INDEX idx_alert_logs_triggered_at ON alert_logs(triggered_at);
 CREATE INDEX idx_alert_logs_alert_type ON alert_logs(alert_type);
 CREATE INDEX idx_alert_logs_severity ON alert_logs(severity);
 
--- 慢查询表索引
+-- Slow queries table indexes
 CREATE INDEX idx_slow_queries_collected_at ON slow_queries(collected_at);
 CREATE INDEX idx_slow_queries_server_address ON slow_queries(server_address);
 CREATE INDEX idx_slow_queries_sql_hash ON slow_queries(sql_hash);
 
--- 用户表索引
+-- Users table indexes
 CREATE UNIQUE INDEX idx_users_username ON users(username);
 
--- 监控实例表索引
+-- Monitored instances table indexes
 CREATE INDEX idx_monitored_instances_is_active ON monitored_instances(is_active);
 CREATE INDEX idx_monitored_instances_is_connected ON monitored_instances(is_connected);
 
--- 审计日志表索引
+-- Audit logs table indexes
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 ```
 
-## 5. API 设计
+## 5. API Design
 
-### 5.1 RESTful API 规范
+### 5.1 RESTful API Conventions
 
-- 使用标准 HTTP 方法：GET、POST、PUT、DELETE
-- 使用 JSON 格式进行数据交换
-- 使用 HTTP 状态码表示请求结果
-- 使用 JWT 进行身份验证
-- 所有 API 以 `/api` 为前缀
+- Standard HTTP methods: GET, POST, PUT, DELETE
+- JSON format for data exchange
+- HTTP status codes indicate request results
+- JWT for authentication
+- All APIs are prefixed with `/api`
 
-### 5.2 认证流程
+### 5.2 Authentication Flow
 
 ```
 ┌──────────┐                    ┌──────────┐                    ┌──────────┐
@@ -793,44 +793,44 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
      │  1. POST /api/auth/login      │                               │
      │  {username, password}         │                               │
      │──────────────────────────────▶│                               │
-     │                               │  2. 查询用户                  │
+     │                               │  2. Query user               │
      │                               │──────────────────────────────▶│
-     │                               │  3. 返回用户信息              │
+     │                               │  3. Return user info         │
      │                               │◀──────────────────────────────│
      │                               │                               │
-     │                               │  4. 验证密码                  │
-     │                               │  5. 生成 JWT                  │
+     │                               │  4. Verify password          │
+     │                               │  5. Generate JWT             │
      │                               │                               │
-     │  6. 返回 {access_token, user} │                               │
+     │  6. Return {access_token, user}│                              │
      │◀──────────────────────────────│                               │
      │                               │                               │
      │  7. GET /api/metrics/realtime │                               │
      │  Authorization: Bearer <token>│                               │
      │──────────────────────────────▶│                               │
-     │                               │  8. 验证 JWT                  │
-     │                               │  9. 查询数据                  │
+     │                               │  8. Verify JWT               │
+     │                               │  9. Query data               │
      │                               │──────────────────────────────▶│
-     │                               │  10. 返回数据                 │
+     │                               │  10. Return data             │
      │                               │◀──────────────────────────────│
-     │  11. 返回指标数据             │                               │
+     │  11. Return metrics data      │                               │
      │◀──────────────────────────────│                               │
      │                               │                               │
 ```
 
-### 5.3 API 端点详细说明
+### 5.3 Detailed API Endpoints
 
-#### 5.3.1 认证接口
+#### 5.3.1 Authentication Endpoints
 
 **POST /api/auth/login**
-- 描述：用户登录
-- 请求体：
+- Description: User login
+- Request body:
   ```json
   {
     "username": "string",
     "password": "string"
   }
   ```
-- 响应：
+- Response:
   ```json
   {
     "access_token": "string",
@@ -845,9 +845,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/auth/me**
-- 描述：获取当前用户信息
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get current user info
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "id": 1,
@@ -861,68 +861,68 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **POST /api/auth/change_password**
-- 描述：修改密码
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Change password
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "old_password": "string",
     "new_password": "string"
   }
   ```
-- 响应：
+- Response:
   ```json
   {
-    "message": "密码修改成功"
+    "message": "Password changed successfully"
   }
   ```
 
 **POST /api/auth/forgot_password**
-- 描述：请求密码重置验证码
-- 请求体：
+- Description: Request password reset verification code
+- Request body:
   ```json
   { "email": "string" }
   ```
-- 响应：
+- Response:
   ```json
-  { "message": "如果该邮箱已注册，将收到验证码" }
+  { "message": "If the email is registered, you will receive a verification code" }
   ```
 
 **POST /api/auth/reset_password**
-- 描述：通过验证码重置密码
-- 请求体：
+- Description: Reset password with verification code
+- Request body:
   ```json
   {
     "email": "string",
-    "code": "6位数字验证码",
+    "code": "6-digit verification code",
     "new_password": "string"
   }
   ```
-- 响应：
+- Response:
   ```json
-  { "message": "密码重置成功" }
+  { "message": "Password reset successfully" }
   ```
 
 **PUT /api/auth/me**
-- 描述：更新当前用户个人信息（姓名、邮箱）
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Update current user profile (name, email)
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "full_name": "string",
     "email": "string"
   }
   ```
-- 响应：返回更新后的用户信息
+- Response: Returns updated user info
 
-#### 5.3.2 性能指标接口
+#### 5.3.2 Performance Metric Endpoints
 
 **GET /api/metrics/realtime**
-- 描述：获取实时指标
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get real-time metrics
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   {
     "cpu": {
@@ -948,16 +948,16 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/metrics/history**
-- 描述：获取历史指标
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `category` (必填)：指标分类
-  - `metric_name` (可选)：指标名称
-  - `start_time` (必填)：起始时间
-  - `end_time` (必填)：结束时间
-  - `limit` (可选)：返回记录数上限，默认 1000
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get historical metrics
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `category` (required): metric category
+  - `metric_name` (optional): metric name
+  - `start_time` (required): start time
+  - `end_time` (required): end time
+  - `limit` (optional): max records, default 1000
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -969,11 +969,11 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/metrics/summary**
-- 描述：获取指标摘要
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get metric summary
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   {
     "cpu_usage": 45.2,
@@ -985,17 +985,17 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   }
   ```
 
-#### 5.3.3 死锁接口
+#### 5.3.3 Deadlock Endpoints
 
 **GET /api/deadlocks**
-- 描述：获取死锁列表
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `limit` (可选)：返回记录数上限
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get deadlock list
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `limit` (optional): max records
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1009,9 +1009,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/deadlocks/{id}**
-- 描述：获取死锁详情
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get deadlock details
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "id": 1,
@@ -1032,26 +1032,26 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **POST /api/deadlocks/{id}/analyze**
-- 描述：AI 分析死锁
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: AI analysis of deadlock
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "analysis_result": "..."
   }
   ```
 
-#### 5.3.4 告警接口
+#### 5.3.4 Alert Endpoints
 
 **GET /api/alerts**
-- 描述：获取告警列表
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `severity` (可选)：严重级别
-  - `limit` (可选)：返回记录数上限
-- 响应：
+- Description: Get alert list
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `severity` (optional): severity level
+  - `limit` (optional): max records
+- Response:
   ```json
   [
     {
@@ -1067,27 +1067,27 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **PUT /api/alerts/{id}/acknowledge**
-- 描述：确认告警
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Acknowledge alert
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "告警已确认"
+    "message": "Alert acknowledged"
   }
   ```
 
-#### 5.3.5 告警规则接口
+#### 5.3.5 Alert Rule Endpoints
 
 **GET /api/alert-rules**
-- 描述：获取告警规则列表
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get alert rule list
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   [
     {
       "id": 1,
-      "name": "内存使用率过高",
-      "description": "内存使用率超过 85% 时触发告警",
+      "name": "High memory usage",
+      "description": "Alert when memory usage exceeds 85%",
       "metric_category": "os_memory",
       "metric_name": "memory_usage_pct",
       "operator": "gt",
@@ -1101,9 +1101,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **POST /api/alert-rules**
-- 描述：创建告警规则
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Create alert rule
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "name": "string",
@@ -1118,7 +1118,7 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
     "silence_end": "HH:MM:SS"
   }
   ```
-- 响应：
+- Response:
   ```json
   {
     "id": 1,
@@ -1128,25 +1128,25 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **PUT /api/alert-rules/{id}**
-- 描述：更新告警规则
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：同创建
-- 响应：同创建
+- Description: Update alert rule
+- Request header: `Authorization: Bearer <token>`
+- Request body: same as create
+- Response: same as create
 
 **DELETE /api/alert-rules/{id}**
-- 描述：删除告警规则
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Delete alert rule
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "告警规则已删除"
+    "message": "Alert rule deleted"
   }
   ```
 
 **PUT /api/alert-rules/{id}/toggle**
-- 描述：启用/禁用告警规则
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Enable/disable alert rule
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "id": 1,
@@ -1154,17 +1154,17 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   }
   ```
 
-#### 5.3.6 实例管理接口
+#### 5.3.6 Instance Management Endpoints
 
 **GET /api/instances**
-- 描述：获取实例列表
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get instance list
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   [
     {
       "id": 1,
-      "name": "生产环境",
+      "name": "Production",
       "host": "10.0.0.1",
       "port": 1433,
       "username": "sa",
@@ -1174,15 +1174,15 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
       "last_connected_at": "2024-01-01T00:00:00Z",
       "last_disconnected_at": null,
       "connection_error": null,
-      "description": "生产环境 SQL Server"
+      "description": "Production SQL Server"
     }
   ]
   ```
 
 **POST /api/instances**
-- 描述：创建实例
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Create instance
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "name": "string",
@@ -1195,46 +1195,46 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
     "description": "string"
   }
   ```
-- 响应：同获取实例列表中的单个对象
+- Response: same as a single object in the instance list
 
 **PUT /api/instances/{id}**
-- 描述：更新实例
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：同创建
-- 响应：同创建
+- Description: Update instance
+- Request header: `Authorization: Bearer <token>`
+- Request body: same as create
+- Response: same as create
 
 **DELETE /api/instances/{id}**
-- 描述：删除实例
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Delete instance
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "实例已删除"
+    "message": "Instance deleted"
   }
   ```
 
 **POST /api/instances/{id}/test**
-- 描述：测试实例连接
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Test instance connection
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "success": true,
-    "message": "连接成功"
+    "message": "Connection successful"
   }
   ```
 
-#### 5.3.7 慢查询接口
+#### 5.3.7 Slow Query Endpoints
 
 **GET /api/slow-queries**
-- 描述：获取慢查询列表
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `limit` (可选)：返回记录数上限
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get slow query list
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `limit` (optional): max records
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1253,13 +1253,13 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/slow-queries/stats**
-- 描述：获取慢查询统计
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get slow query statistics
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   {
     "total_count": 100,
@@ -1269,14 +1269,14 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   }
   ```
 
-#### 5.3.8 阻塞接口
+#### 5.3.8 Blocking Endpoints
 
 **GET /api/blocking/realtime**
-- 描述：获取实时阻塞
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get real-time blocking
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1291,23 +1291,23 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/blocking/history**
-- 描述：获取阻塞历史
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `limit` (可选)：返回记录数上限
-  - `server_address` (可选)：按实例筛选
-- 响应：同实时阻塞
+- Description: Get blocking history
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `limit` (optional): max records
+  - `server_address` (optional): filter by instance
+- Response: same as real-time blocking
 
-#### 5.3.9 磁盘接口
+#### 5.3.9 Disk Endpoints
 
 **GET /api/disk/space**
-- 描述：获取磁盘空间
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get disk space
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1324,24 +1324,24 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/disk/history**
-- 描述：获取磁盘历史
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `database_name` (可选)：数据库名称
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `server_address` (可选)：按实例筛选
-- 响应：同磁盘空间
+- Description: Get disk history
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `database_name` (optional): database name
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `server_address` (optional): filter by instance
+- Response: same as disk space
 
-#### 5.3.10 索引接口
+#### 5.3.10 Index Endpoints
 
 **GET /api/indexes/missing**
-- 描述：获取缺失索引
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `limit` (可选)：返回记录数上限
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get missing indexes
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `limit` (optional): max records
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1359,14 +1359,14 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/indexes/fragmentation**
-- 描述：获取索引碎片
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `database_name` (可选)：数据库名称
-  - `threshold` (可选)：碎片率阈值
-  - `limit` (可选)：返回记录数上限
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get index fragmentation
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `database_name` (optional): database name
+  - `threshold` (optional): fragmentation threshold
+  - `limit` (optional): max records
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   [
     {
@@ -1380,18 +1380,18 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ]
   ```
 
-#### 5.3.11 审计日志接口
+#### 5.3.11 Audit Log Endpoints
 
 **GET /api/audit-logs**
-- 描述：获取审计日志
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `user_id` (可选)：用户 ID
-  - `action` (可选)：操作类型
-  - `limit` (可选)：返回记录数上限
-- 响应：
+- Description: Get audit logs
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `user_id` (optional): user ID
+  - `action` (optional): operation type
+  - `limit` (optional): max records
+- Response:
   ```json
   [
     {
@@ -1399,60 +1399,60 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
       "user_id": 1,
       "username": "admin",
       "action": "login",
-      "detail": "用户登录成功",
+      "detail": "User logged in successfully",
       "ip_address": "192.168.1.1",
       "created_at": "2024-01-01T00:00:00Z"
     }
   ]
   ```
 
-#### 5.3.12 数据导出接口
+#### 5.3.12 Data Export Endpoints
 
 **GET /api/export/metrics**
-- 描述：导出指标数据
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (必填)：起始时间
-  - `end_time` (必填)：结束时间
-  - `category` (可选)：指标分类
-  - `server_address` (可选)：按实例筛选
-- 响应：CSV 文件
+- Description: Export metrics data
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (required): start time
+  - `end_time` (required): end time
+  - `category` (optional): metric category
+  - `server_address` (optional): filter by instance
+- Response: CSV file
 
 **GET /api/export/alerts**
-- 描述：导出告警数据
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (必填)：起始时间
-  - `end_time` (必填)：结束时间
-  - `severity` (可选)：严重级别
-- 响应：CSV 文件
+- Description: Export alert data
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (required): start time
+  - `end_time` (required): end time
+  - `severity` (optional): severity level
+- Response: CSV file
 
 **GET /api/export/deadlocks**
-- 描述：导出死锁数据
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (必填)：起始时间
-  - `end_time` (必填)：结束时间
-  - `server_address` (可选)：按实例筛选
-- 响应：CSV 文件
+- Description: Export deadlock data
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (required): start time
+  - `end_time` (required): end time
+  - `server_address` (optional): filter by instance
+- Response: CSV file
 
 **GET /api/export/slow-queries**
-- 描述：导出慢查询数据
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (必填)：起始时间
-  - `end_time` (必填)：结束时间
-  - `server_address` (可选)：按实例筛选
-- 响应：CSV 文件
+- Description: Export slow query data
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (required): start time
+  - `end_time` (required): end time
+  - `server_address` (optional): filter by instance
+- Response: CSV file
 
-#### 5.3.13 通知接口
+#### 5.3.13 Notification Endpoints
 
 **GET /api/notifications**
-- 描述：获取通知列表
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `limit` (可选)：返回记录数上限，默认 20
-- 响应：
+- Description: Get notification list
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `limit` (optional): max records, default 20
+- Response:
   ```json
   [
     {
@@ -1467,45 +1467,45 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **PUT /api/notifications/{id}/read**
-- 描述：标记通知已读
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Mark notification as read
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "通知已标记为已读"
+    "message": "Notification marked as read"
   }
   ```
 
 **DELETE /api/notifications/{id}**
-- 描述：删除通知
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Delete notification
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "通知已删除"
+    "message": "Notification deleted"
   }
   ```
 
 **POST /api/notifications/read-all**
-- 描述：标记所有通知已读
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Mark all notifications as read
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "所有通知已标记为已读"
+    "message": "All notifications marked as read"
   }
   ```
 
-#### 5.3.14 报告接口
+#### 5.3.14 Report Endpoints
 
 **GET /api/reports/summary**
-- 描述：获取报告摘要
-- 请求头：`Authorization: Bearer <token>`
-- 查询参数：
-  - `start_time` (可选)：起始时间
-  - `end_time` (可选)：结束时间
-  - `server_address` (可选)：按实例筛选
-- 响应：
+- Description: Get report summary
+- Request header: `Authorization: Bearer <token>`
+- Query parameters:
+  - `start_time` (optional): start time
+  - `end_time` (optional): end time
+  - `server_address` (optional): filter by instance
+- Response:
   ```json
   {
     "summary": {
@@ -1539,9 +1539,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **POST /api/reports/save**
-- 描述：保存报告
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Save report
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "title": "string",
@@ -1550,7 +1550,7 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
     "ai_analysis": "string"
   }
   ```
-- 响应：
+- Response:
   ```json
   {
     "id": 1,
@@ -1560,9 +1560,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **GET /api/reports/history**
-- 描述：获取报告历史
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get report history
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   [
     {
@@ -1574,103 +1574,103 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
   ```
 
 **DELETE /api/reports/history/{id}**
-- 描述：删除报告
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Delete report
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
-    "message": "报告已删除"
+    "message": "Report deleted"
   }
   ```
 
-#### 5.3.15 配置接口
+#### 5.3.15 Config Endpoints
 
 **GET /api/config**
-- 描述：获取所有配置
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get all config
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   [
     {
       "id": 1,
       "config_key": "mssql_host",
       "config_value": "10.0.0.1",
-      "description": "SQL Server 服务器地址"
+      "description": "SQL Server server address"
     }
   ]
   ```
 
 **GET /api/config/{key}**
-- 描述：获取单个配置
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Get single config
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "id": 1,
     "config_key": "mssql_host",
     "config_value": "10.0.0.1",
-    "description": "SQL Server 服务器地址"
+    "description": "SQL Server server address"
   }
   ```
 
 **PUT /api/config/{key}**
-- 描述：更新配置
-- 请求头：`Authorization: Bearer <token>`
-- 请求体：
+- Description: Update config
+- Request header: `Authorization: Bearer <token>`
+- Request body:
   ```json
   {
     "config_value": "string"
   }
   ```
-- 响应：
+- Response:
   ```json
   {
     "id": 1,
     "config_key": "mssql_host",
     "config_value": "10.0.0.2",
-    "description": "SQL Server 服务器地址"
+    "description": "SQL Server server address"
   }
   ```
 
-#### 5.3.16 版本检查接口
+#### 5.3.16 Version Check Endpoint
 
 **GET /api/version/check**
-- 描述：检查是否有新版本可用，对比本地版本与 GitHub 最新版本
-- 请求头：`Authorization: Bearer <token>`
-- 响应：
+- Description: Check whether a new version is available, comparing the local version with the latest GitHub version
+- Request header: `Authorization: Bearer <token>`
+- Response:
   ```json
   {
     "current_version": "1.0.11",
     "latest_version": "1.1.0",
     "has_update": true,
     "github_url": "https://github.com/qianhui602/SQL_MONITORING_TOOLS",
-    "message": "发现新版本 v1.1.0，当前版本 v1.0.11，建议升级以获取最新功能和安全修复。"
+    "message": "New version v1.1.0 found, current version v1.0.11. Upgrade recommended for the latest features and security fixes."
   }
   ```
 
-## 6. 前端架构
+## 6. Frontend Architecture
 
-### 6.1 组件结构
+### 6.1 Component Structure
 
 ```
 App.vue
 └── Layout.vue
-    ├── Sidebar (侧边栏)
+    ├── Sidebar
     │   ├── Logo
     │   ├── Navigation Menu
     │   ├── Collapse Button
-    │   └── Version Display (版本号 + 更新提示)
-    ├── Topbar (顶部栏)
+    │   └── Version Display (version + update indicator)
+    ├── Topbar
     │   ├── Page Title
     │   ├── Notification Bell
     │   ├── Theme Toggle
     │   └── User Menu
-    ├── TabBar (多标签页导航)
-    │   ├── Tab Items (标签列表，支持关闭)
+    ├── TabBar (multi-tab navigation)
+    │   ├── Tab Items (closable tabs)
     │   ├── Close Others Button
-    │   └── Context Menu (右键菜单)
-    ├── Update Banner (版本更新横幅)
-    └── Main Content (主内容区)
+    │   └── Context Menu (right-click menu)
+    ├── Update Banner (version update banner)
+    └── Main Content
         ├── Dashboard.vue
         ├── Trends.vue
         ├── Deadlocks.vue
@@ -1693,7 +1693,7 @@ App.vue
         └── Setup.vue
 ```
 
-### 6.2 路由配置
+### 6.2 Router Configuration
 
 ```javascript
 const routes = [
@@ -1701,7 +1701,7 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
-    meta: { title: '登录', public: true, layout: false }
+    meta: { title: 'Login', public: true, layout: false }
   },
   {
     path: '/',
@@ -1711,27 +1711,27 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('@/views/Dashboard.vue'),
-    meta: { title: '总览', icon: 'dashboard' }
+    meta: { title: 'Dashboard', icon: 'dashboard' }
   },
-  // ... 其他路由
+  // ... other routes
 ]
 
-// 路由守卫
+// Route guard
 router.beforeEach((to, from, next) => {
   const isPublic = to.meta?.public
   const authed = authStore.isAuthenticated.value
 
-  // 未登录用户访问受保护页面时重定向到登录页
+  // Redirect unauthenticated users to the login page
   if (!isPublic && !authed) {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
-  // 非管理员访问需要管理员权限的页面时重定向到仪表盘
+  // Redirect non-admin users away from admin-only pages
   if (to.meta?.requiresAdmin && !authStore.isAdmin.value) {
     return next({ path: '/dashboard' })
   }
 
-  // 已登录用户访问登录页时重定向到仪表盘
+  // Redirect logged-in users away from the login page
   if (to.path === '/login' && authed) {
     return next({ path: '/dashboard' })
   }
@@ -1740,9 +1740,9 @@ router.beforeEach((to, from, next) => {
 })
 ```
 
-### 6.3 状态管理
+### 6.3 State Management
 
-使用 Vue 3 的响应式 API 进行状态管理：
+Uses Vue 3 reactive APIs for state management:
 
 ```javascript
 // stores/auth.js
@@ -1772,9 +1772,9 @@ export const authStore = {
   roleLabel: computed(() => {
     if (!state.user) return ''
     const map = {
-      super_admin: '超级管理员',
-      admin: '管理员',
-      viewer: '只读用户'
+      super_admin: 'Super Admin',
+      admin: 'Admin',
+      viewer: 'Read-only User'
     }
     return map[state.user.role] || state.user.role
   }),
@@ -1806,7 +1806,7 @@ export const authStore = {
 }
 ```
 
-### 6.4 API 客户端
+### 6.4 API Client
 
 ```javascript
 // api/index.js
@@ -1820,7 +1820,7 @@ const request = axios.create({
   }
 })
 
-// 请求拦截器：添加 JWT token
+// Request interceptor: attach JWT token
 request.interceptors.request.use(
   (config) => {
     const token = getToken()
@@ -1832,9 +1832,9 @@ request.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// 响应拦截器：处理 401 错误
-// 公开路径白名单：/login、/forgot-password、/reset-password、/setup
-// 在公开页面上的 401 不再强制跳转登录页
+// Response interceptor: handle 401 errors
+// Public path whitelist: /login, /forgot-password, /reset-password, /setup
+// 401 on public pages no longer forces a redirect to the login page
 request.interceptors.response.use(
   (response) => response.data,
   (error) => {
@@ -1853,7 +1853,7 @@ request.interceptors.response.use(
   }
 )
 
-// API 函数
+// API functions
 export function getRealtimeMetrics() {
   return request.get('/metrics/realtime')
 }
@@ -1862,12 +1862,12 @@ export function getHistoryMetrics(params) {
   return request.get('/metrics/history', { params })
 }
 
-// ... 其他 API 函数
+// ... other API functions
 ```
 
-### 6.5 图表组件
+### 6.5 Chart Components
 
-使用 ECharts 进行数据可视化：
+Uses ECharts for data visualization:
 
 ```vue
 <template>
@@ -1895,7 +1895,7 @@ const chartOption = ref({
     trigger: 'axis'
   },
   legend: {
-    data: ['CPU 使用率', '内存使用率']
+    data: ['CPU Usage', 'Memory Usage']
   },
   xAxis: {
     type: 'time'
@@ -1908,12 +1908,12 @@ const chartOption = ref({
   },
   series: [
     {
-      name: 'CPU 使用率',
+      name: 'CPU Usage',
       type: 'line',
       data: []
     },
     {
-      name: '内存使用率',
+      name: 'Memory Usage',
       type: 'line',
       data: []
     }
@@ -1922,9 +1922,9 @@ const chartOption = ref({
 </script>
 ```
 
-## 7. 部署架构
+## 7. Deployment Architecture
 
-### 7.1 Docker Compose 部署
+### 7.1 Docker Compose Deployment
 
 ```yaml
 # docker-compose.yml
@@ -1995,54 +1995,54 @@ networks:
     driver: bridge
 ```
 
-### 7.2 后端 Dockerfile
+### 7.2 Backend Dockerfile
 
 ```dockerfile
-# 多阶段构建
+# Multi-stage build
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# 安装系统依赖
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     freetds-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Python 依赖
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# 运行阶段
+# Runtime stage
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# 安装运行时系统库
+# Install runtime system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     libct4 \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 Python 包
+# Copy Python packages
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
-# 复制应用代码
+# Copy application code
 COPY . .
 
-# 暴露端口
+# Expose port
 EXPOSE 8000
 
-# 启动命令
+# Start command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### 7.3 前端 Dockerfile
+### 7.3 Frontend Dockerfile
 
 ```dockerfile
-# 构建阶段
+# Build stage
 FROM node:20-alpine AS build
 
 WORKDIR /app
@@ -2053,7 +2053,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# 生产阶段
+# Production stage
 FROM nginx:1.26-alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -2063,21 +2063,21 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-### 7.4 Nginx 配置
+### 7.4 Nginx Configuration
 
 ```nginx
 server {
     listen 80;
     server_name localhost;
 
-    # 静态文件
+    # Static files
     location / {
         root /usr/share/nginx/html;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
 
-    # API 代理
+    # API proxy
     location /api/ {
         proxy_pass http://backend:8000;
         proxy_set_header Host $host;
@@ -2088,75 +2088,75 @@ server {
 }
 ```
 
-## 8. 性能优化
+## 8. Performance Optimization
 
-### 8.1 后端优化
+### 8.1 Backend Optimization
 
-1. **异步处理**：使用 FastAPI 的异步特性，提高并发处理能力
-2. **连接池**：使用 SQLAlchemy 的连接池，减少数据库连接开销
-3. **缓存**：对频繁查询的数据进行缓存
-4. **批量操作**：使用批量插入减少数据库交互次数
-5. **索引优化**：确保数据库表有适当的索引
+1. **Async processing**: use FastAPI's async features to improve concurrency
+2. **Connection pooling**: use SQLAlchemy's connection pool to reduce DB connection overhead
+3. **Caching**: cache frequently queried data
+4. **Batch operations**: use batch inserts to reduce DB interactions
+5. **Index optimization**: ensure tables have appropriate indexes
 
-### 8.2 前端优化
+### 8.2 Frontend Optimization
 
-1. **代码分割**：使用 Vite 的代码分割功能，按需加载组件
-2. **图片优化**：使用适当的图片格式和压缩
-3. **缓存**：利用浏览器缓存减少请求
-4. **懒加载**：对非首屏组件进行懒加载
-5. **虚拟滚动**：对大数据列表使用虚拟滚动
+1. **Code splitting**: use Vite's code splitting to load components on demand
+2. **Image optimization**: use appropriate image formats and compression
+3. **Caching**: leverage browser caching to reduce requests
+4. **Lazy loading**: lazy-load non-first-screen components
+5. **Virtual scrolling**: use virtual scrolling for large data lists
 
-### 8.3 数据库优化
+### 8.3 Database Optimization
 
-1. **索引优化**：
-   - 为常用查询字段创建索引
-   - 使用复合索引优化多字段查询
-   - 定期分析索引使用情况
+1. **Index optimization**:
+   - Create indexes for frequently queried fields
+   - Use composite indexes for multi-field queries
+   - Regularly analyze index usage
 
-2. **查询优化**：
-   - 使用 EXPLAIN ANALYZE 分析查询计划
-   - 避免 SELECT *，只查询需要的字段
-   - 使用 LIMIT 限制返回记录数
+2. **Query optimization**:
+   - Use EXPLAIN ANALYZE to analyze query plans
+   - Avoid SELECT *, only query needed fields
+   - Use LIMIT to cap returned records
 
-3. **数据清理**：
-   - 定期清理历史数据
-   - 使用分区表管理大数据量
+3. **Data cleanup**:
+   - Regularly clean historical data
+   - Use partitioned tables for large data volumes
 
-## 9. 安全设计
+## 9. Security Design
 
-### 9.1 认证安全
+### 9.1 Authentication Security
 
-1. **密码加密**：使用 bcrypt 加密存储密码
-2. **JWT 令牌**：使用 JWT 进行身份验证
-3. **令牌过期**：设置合理的令牌过期时间
-4. **HTTPS**：生产环境使用 HTTPS
+1. **Password encryption**: passwords stored encrypted with bcrypt
+2. **JWT tokens**: JWT for authentication
+3. **Token expiration**: reasonable token expiration times
+4. **HTTPS**: use HTTPS in production
 
-### 9.2 接口安全
+### 9.2 API Security
 
-1. **权限控制**：基于角色的权限控制
-2. **输入验证**：使用 Pydantic 进行输入验证
-3. **SQL 注入防护**：使用参数化查询
-4. **XSS 防护**：对输出进行转义
+1. **Permission control**: role-based access control
+2. **Input validation**: use Pydantic for input validation
+3. **SQL injection protection**: use parameterized queries
+4. **XSS protection**: escape output
 
-### 9.3 数据安全
+### 9.3 Data Security
 
-1. **敏感信息加密**：对敏感配置进行加密存储
-2. **访问控制**：限制数据库访问权限
-3. **审计日志**：记录所有关键操作
-4. **数据备份**：定期备份数据
+1. **Sensitive info encryption**: encrypt sensitive configuration at rest
+2. **Access control**: restrict database access permissions
+3. **Audit logs**: record all critical operations
+4. **Data backup**: regularly back up data
 
-## 10. 监控与运维
+## 10. Monitoring & Operations
 
-### 10.1 健康检查
+### 10.1 Health Check
 
 ```python
 @app.get("/health")
 async def health_check():
-    """健康检查接口"""
+    """Health check endpoint"""
     return {"status": "ok", "service": settings.PROJECT_NAME}
 ```
 
-### 10.2 日志配置
+### 10.2 Logging Configuration
 
 ```python
 logging.basicConfig(
@@ -2165,23 +2165,23 @@ logging.basicConfig(
 )
 ```
 
-### 10.3 性能监控
+### 10.3 Performance Monitoring
 
-1. **请求延迟**：监控 API 请求延迟
-2. **错误率**：监控 API 错误率
-3. **数据库连接**：监控数据库连接池使用情况
-4. **系统资源**：监控 CPU、内存、磁盘使用情况
+1. **Request latency**: monitor API request latency
+2. **Error rate**: monitor API error rate
+3. **Database connections**: monitor connection pool usage
+4. **System resources**: monitor CPU, memory, and disk usage
 
-### 10.4 告警配置
+### 10.4 Alert Configuration
 
-1. **服务宕机**：监控服务是否正常运行
-2. **性能下降**：监控 API 响应时间
-3. **错误增多**：监控错误日志
-4. **资源不足**：监控系统资源使用情况
+1. **Service outage**: monitor whether services are running
+2. **Performance degradation**: monitor API response times
+3. **Error spikes**: monitor error logs
+4. **Resource exhaustion**: monitor system resource usage
 
-## 11. 测试策略
+## 11. Testing Strategy
 
-### 11.1 单元测试
+### 11.1 Unit Tests
 
 ```python
 import pytest
@@ -2204,7 +2204,7 @@ def test_login():
     assert "access_token" in response.json()
 ```
 
-### 11.2 集成测试
+### 11.2 Integration Tests
 
 ```python
 import pytest
@@ -2214,14 +2214,14 @@ from app.main import app
 @pytest.mark.asyncio
 async def test_metrics_api():
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # 先登录获取 token
+        # Login first to get a token
         login_response = await client.post("/api/auth/login", json={
             "username": "Admin",
             "password": "Chuz0001"
         })
         token = login_response.json()["access_token"]
         
-        # 测试获取实时指标
+        # Test getting real-time metrics
         response = await client.get(
             "/api/metrics/realtime",
             headers={"Authorization": f"Bearer {token}"}
@@ -2229,7 +2229,7 @@ async def test_metrics_api():
         assert response.status_code == 200
 ```
 
-### 11.3 端到端测试
+### 11.3 End-to-End Tests
 
 ```javascript
 // tests/e2e/specs/login.js
@@ -2244,134 +2244,135 @@ describe('Login', () => {
 })
 ```
 
-## 12. 常见问题
+## 12. FAQ
 
-### 12.1 连接问题
+### 12.1 Connection Issues
 
-**Q: 无法连接到 SQL Server**
-A: 检查以下配置：
-1. SQL Server 是否允许远程连接
-2. 防火墙是否开放 1433 端口
-3. SQL Server 是否启用 TCP/IP 协议
-4. 用户名和密码是否正确
+**Q: Cannot connect to SQL Server**
+A: Check the following:
+1. Whether SQL Server allows remote connections
+2. Whether the firewall allows port 1433
+3. Whether TCP/IP protocol is enabled for SQL Server
+4. Whether username and password are correct
 
-**Q: 无法连接到 PostgreSQL**
-A: 检查以下配置：
-1. PostgreSQL 是否允许远程连接
-2. 防火墙是否开放 5432 端口
-3. pg_hba.conf 是否允许连接
-4. 用户名和密码是否正确
+**Q: Cannot connect to PostgreSQL**
+A: Check the following:
+1. Whether PostgreSQL allows remote connections
+2. Whether the firewall allows port 5432
+3. Whether pg_hba.conf allows connections
+4. Whether username and password are correct
 
-### 12.2 性能问题
+### 12.2 Performance Issues
 
-**Q: 采集间隔设置为多少合适**
-A: 根据实际需求设置：
-- 生产环境：60-300 秒
-- 测试环境：10-60 秒
-- 开发环境：5-10 秒
+**Q: What collection interval should I set**
+A: Depends on actual needs:
+- Production: 60-300 seconds
+- Testing: 10-60 seconds
+- Development: 5-10 seconds
 
-**Q: 历史数据保留多久**
-A: 建议：
-- 性能指标：保留 30-90 天
-- 死锁事件：保留 90-180 天
-- 告警日志：保留 90-180 天
-- 审计日志：保留 180-365 天
+**Q: How long should historical data be retained**
+A: Recommendations:
+- Performance metrics: 30-90 days
+- Deadlock events: 90-180 days
+- Alert logs: 90-180 days
+- Audit logs: 180-365 days
 
-### 12.3 告警问题
+### 12.3 Alert Issues
 
-**Q: 告警没有触发**
-A: 检查以下配置：
-1. 告警规则是否启用
-2. 告警阈值是否合理
-3. 是否处于静默时段
-4. 是否处于冷却期
+**Q: Alerts are not triggering**
+A: Check the following:
+1. Whether the alert rule is enabled
+2. Whether the alert threshold is reasonable
+3. Whether you are in a silent period
+4. Whether you are in a cooldown period
 
-**Q: 告警通知没有发送**
-A: 检查以下配置：
-1. 通知渠道是否配置正确
-2. SMTP 服务器是否正常
-3. 钉钉/企业微信 Webhook 是否有效
-4. 网络是否正常
+**Q: Alert notifications are not being sent**
+A: Check the following:
+1. Whether notification channels are configured correctly
+2. Whether the SMTP server is working
+3. Whether DingTalk/WeCom webhooks are valid
+4. Whether the network is normal
 
-## 13. 版本历史
+## 13. Version History
 
 ### v1.0.0 (2024-01-01)
-- 初始版本发布
-- 实现基本监控功能
-- 实现告警管理功能
-- 实现用户管理功能
+- Initial release
+- Basic monitoring features
+- Alert management
+- User management
 
 ### v1.1.0 (2024-02-01)
-- 新增慢查询分析功能
-- 新增阻塞进程监控功能
-- 新增磁盘空间监控功能
-- 新增索引分析功能
+- Added slow query analysis
+- Added blocking process monitoring
+- Added disk space monitoring
+- Added index analysis
 
 ### v1.2.0 (2024-03-01)
-- 新增多实例监控支持
-- 新增 AI 分析功能
-- 新增报告生成功能
-- 优化性能和稳定性
+- Added multi-instance monitoring support
+- Added AI analysis
+- Added report generation
+- Improved performance and stability
 
 ### v1.3.0 (2024-04-01)
-- 新增企业微信通知支持
-- 新增数据导出功能
-- 新增审计日志功能
-- 优化用户体验
+- Added WeCom notification support
+- Added data export
+- Added audit logs
+- Improved user experience
 
 ### v1.4.0 (2026-01-01)
-- 新增密码找回功能（邮箱验证码方式）
-- 新增个人设置页面（修改姓名、邮箱）
-- 新增安装引导页面（首次部署向导）
-- 新增通知声音提醒功能
-- 新增品牌定制（自定义标题和 Logo）
-- 新增前端访问地址配置项
-- 优化：公开页面 401 不再强制跳转登录页
+- Added password recovery (email verification code)
+- Added personal settings page (change name, email)
+- Added installation wizard (first-deployment guide)
+- Added notification sound alerts
+- Added brand customization (custom title and logo)
+- Added frontend access URL config
+- Optimization: 401 on public pages no longer forces login redirect
 
 ### v1.5.0 (2026-07-09)
-- 新增 SQL 断联监控功能
-  - 采集前主动 ping 检测连接存活状态
-  - 连接断开/恢复自动触发告警通知
-  - monitored_instances 表新增连接状态字段
-- 新增 Dashboard 数据库连接状态显示
-  - 显示所有实例的在线/离线状态
-  - 呼吸灯动画指示在线状态
-- 新增多标签页导航栏（参考 Dify 风格）
-  - 自动创建标签，支持点击切换和关闭
-  - 右键菜单支持关闭当前/其他/全部
-- 新增帮助中心页面（/help）
-  - 左侧目录导航 + 搜索过滤
-  - 涵盖所有模块使用说明和 FAQ
-- 新增版本检测与升级提醒
-  - 自动对比本地与 GitHub 最新版本
-  - 侧边栏版本号显示更新提示圆点
-  - 底部弹出升级通知横幅
-- UI 优化
-  - Dashboard 统计卡片添加彩色渐变图标
-  - 统计卡片支持显示/隐藏自定义
-  - 登录页面 UI 全面升级（玻璃拟态风格）
-  - 移除告警管理页面确认按钮
-  - 响应式布局优化
-- 文档更新
-  - README 新增升级指南和一键升级脚本
-  - 新增用户手册（Docs/USER_MANUAL.md）
+- Added SQL disconnection monitoring
+  - Active ping to detect connection health before collection
+  - Automatic alerts on disconnect/recovery
+  - Connection status fields added to monitored_instances table
+- Added Dashboard database connection status display
+  - Shows online/offline status of all instances
+  - Breathing-light animation for online status
+- Added multi-tab navigation bar (Dify-inspired)
+  - Auto-creates tabs, click to switch, closable
+  - Right-click menu: close current/others/all
+- Added Help Center page (/help)
+  - Left TOC navigation + search filter
+  - Usage instructions for all modules and FAQ
+- Added version detection and upgrade reminders
+  - Auto-compare local with latest GitHub version
+  - Update indicator dot on sidebar version number
+  - Upgrade notification banner at the bottom
+- UI improvements
+  - Dashboard stat cards with colorful gradient icons
+  - Show/hide customization for stat cards
+  - Login page UI overhaul (glassmorphism)
+  - Removed acknowledge button on alert management page
+  - Responsive layout optimization
+- Documentation updates
+  - README with upgrade guide and one-click upgrade scripts
+  - Added user manual (Docs/USER_MANUAL.md)
 
-## 14. 未来规划
+## 14. Future Plans
 
-### 14.1 功能扩展
-1. **更多数据库支持**：支持 MySQL、Oracle 等数据库
-2. **更丰富的图表**：支持更多类型的图表
-3. **更智能的告警**：基于机器学习的异常检测
-4. **更完善的报告**：支持自定义报告模板
+### 14.1 Feature Expansion
+1. **More database support**: MySQL, Oracle, etc.
+2. **Richer charts**: more chart types
+3. **Smarter alerts**: machine-learning-based anomaly detection
+4. **Better reports**: custom report templates
 
-### 14.2 性能优化
-1. **数据压缩**：对历史数据进行压缩存储
-2. **分库分表**：支持大数据量的分库分表
-3. **读写分离**：支持数据库读写分离
-4. **缓存优化**：引入 Redis 缓存
+### 14.2 Performance Optimization
+1. **Data compression**: compressed storage for historical data
+2. **Sharding**: support for large data volumes
+3. **Read/write splitting**: database read/write separation
+4. **Cache optimization**: introduce Redis caching
 
-### 14.3 运维优化
-1. **自动化部署**：支持 CI/CD 自动化部署
-2. **容器编排**：支持 Kubernetes 部署
-3. **监控告警**：完善运维监控体系
-4. **日志分析**：引入 ELK 日志分析
+### 14.3 Operations Optimization
+1. **Automated deployment**: CI/CD support
+2. **Container orchestration**: Kubernetes deployment
+3. **Monitoring & alerting**: complete operations monitoring
+4. **Log analysis**: ELK-based log analysis
+

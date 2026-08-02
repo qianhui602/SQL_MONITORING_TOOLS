@@ -1,5 +1,7 @@
 # SQL 监控平台 - 用户手册
 
+**简体中文** | [English](./en/USER_MANUAL.md)
+
 ## 1. 系统概述
 
 SQL 监控平台是一个用于监控 MS SQL Server 性能的 Web 应用，提供实时监控、告警通知、历史分析等功能。

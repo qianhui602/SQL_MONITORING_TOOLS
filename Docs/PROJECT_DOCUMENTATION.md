@@ -1,5 +1,7 @@
 # SQL 监控平台 - 项目文档
 
+**简体中文** | [English](./en/PROJECT_DOCUMENTATION.md)
+
 ## 1. 项目概述
 
 ### 1.1 项目简介
