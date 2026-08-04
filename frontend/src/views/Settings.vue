@@ -59,6 +59,51 @@
         </div>
       </div>
 
+      <!-- AI 模型配置 -->
+      <div class="config-section">
+        <h3 class="section-title">{{ t('settings.aiConfig') }}</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.aiProvider') }}</label>
+            <select v-model="aiConfigs.ai_provider" class="config-select" @change="onProviderChange">
+              <option value="deepseek">DeepSeek</option>
+              <option value="openai">OpenAI</option>
+              <option value="xiaomi">Xiaomi MiMo</option>
+              <option value="custom">自定义（OpenAI 兼容）</option>
+            </select>
+            <span class="config-desc">选择 AI 服务提供商</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.aiKey') }}</label>
+            <input
+              type="password"
+              v-model="aiConfigs.ai_api_key"
+              class="config-input"
+              placeholder="API Key"
+            />
+            <span class="config-desc">{{ t('settings.aiKeyDesc', { provider: providerName }) }}</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.aiModel') }}</label>
+            <select v-if="currentModels.length" v-model="aiConfigs.ai_model" class="config-select">
+              <option v-for="m in currentModels" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+            <input v-else v-model="aiConfigs.ai_model" class="config-input" placeholder="输入模型名称" />
+            <span class="config-desc">{{ t('settings.aiModelDesc') }}</span>
+          </div>
+          <div class="config-item" v-if="aiConfigs.ai_provider === 'custom'">
+            <label class="config-label">{{ t('settings.aiBaseUrl') }}</label>
+            <input
+              type="text"
+              v-model="aiConfigs.ai_base_url"
+              class="config-input"
+              placeholder="https://your-api.com"
+            />
+            <span class="config-desc">{{ t('settings.aiBaseUrlDesc') }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 系统设置 -->
       <div class="config-section">
         <h3 class="section-title">{{ t('settings.system') }}</h3>
@@ -324,51 +369,6 @@
           <span v-if="smtpTestResult" :class="['smtp-test-result', smtpTestOk ? 'ok' : 'fail']">
             {{ smtpTestResult }}
           </span>
-        </div>
-      </div>
-
-      <!-- AI 模型配置 -->
-      <div class="config-section">
-        <h3 class="section-title">{{ t('settings.aiConfig') }}</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.aiProvider') }}</label>
-            <select v-model="aiConfigs.ai_provider" class="config-select" @change="onProviderChange">
-              <option value="deepseek">DeepSeek</option>
-              <option value="openai">OpenAI</option>
-              <option value="xiaomi">Xiaomi MiMo</option>
-              <option value="custom">自定义（OpenAI 兼容）</option>
-            </select>
-            <span class="config-desc">选择 AI 服务提供商</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.aiKey') }}</label>
-            <input
-              type="password"
-              v-model="aiConfigs.ai_api_key"
-              class="config-input"
-              placeholder="API Key"
-            />
-            <span class="config-desc">{{ t('settings.aiKeyDesc', { provider: providerName }) }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.aiModel') }}</label>
-            <select v-if="currentModels.length" v-model="aiConfigs.ai_model" class="config-select">
-              <option v-for="m in currentModels" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-            <input v-else v-model="aiConfigs.ai_model" class="config-input" placeholder="输入模型名称" />
-            <span class="config-desc">{{ t('settings.aiModelDesc') }}</span>
-          </div>
-          <div class="config-item" v-if="aiConfigs.ai_provider === 'custom'">
-            <label class="config-label">{{ t('settings.aiBaseUrl') }}</label>
-            <input
-              type="text"
-              v-model="aiConfigs.ai_base_url"
-              class="config-input"
-              placeholder="https://your-api.com"
-            />
-            <span class="config-desc">{{ t('settings.aiBaseUrlDesc') }}</span>
-          </div>
         </div>
       </div>
     </div>
