@@ -665,6 +665,9 @@ onBeforeUnmount(() => {
 /* ===== 输入框 ===== */
 .input-area { width: 100%; max-width: 640px; margin: 0 auto; }
 
+/* 底部输入框重置 .input-area 的居中样式,撑满主区域 */
+.bottom-input.input-area { margin: 0; max-width: 100%; }
+
 .input-wrap {
   display: flex; align-items: center; gap: 8px;
   background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e8ecf4);
@@ -693,10 +696,10 @@ onBeforeUnmount(() => {
 }
 
 /* ===== 执行区域 ===== */
-.execution-area { flex: 1; overflow-y: auto; padding: 16px 24px; }
+.execution-area { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; padding: 16px 24px; }
 
-.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.execution-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #2c3e50); }
+.execution-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; min-width: 0; }
+.execution-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #2c3e50); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .execution-status {
   display: inline-block; padding: 2px 10px; border-radius: 12px;
