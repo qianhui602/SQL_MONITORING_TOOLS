@@ -788,25 +788,25 @@ onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
 .config-sections {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 .config-section {
   background: #fff;
   border-radius: 8px;
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .section-title {
-  margin: 0 0 16px;
+  margin: 0 0 10px;
   font-size: 15px;
   color: #1890ff;
   border-bottom: 1px solid #e8e8e8;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 .config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  gap: 10px 14px;
 }
 .config-item {
   display: flex;
