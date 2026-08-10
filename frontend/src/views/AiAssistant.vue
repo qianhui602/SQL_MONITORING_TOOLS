@@ -576,17 +576,16 @@ onBeforeUnmount(() => {
 <style scoped>
 .ai-assistant {
   display: flex;
-  height: calc(100vh - 190px);
+  height: calc(100vh - 152px);
   overflow: hidden;
   background: var(--bg-primary, #f5f6fa);
-  padding: 0;
-  margin: -24px;
+  border-radius: 8px;
 }
 
 /* ===== 左侧栏 ===== */
 .task-sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 220px;
+  min-width: 220px;
   background: var(--bg-card, #fff);
   border-right: 1px solid var(--border-color, #e8ecf4);
   display: flex;
