@@ -936,15 +936,14 @@ onBeforeUnmount(() => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== 滚动条（极致淡化） ===== */
+/* ===== 滚动条（完全隐藏，保留滚轮滚动） ===== */
+.task-list,
+.execution-area {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
 .task-list::-webkit-scrollbar,
-.execution-area::-webkit-scrollbar { width: 4px; }
-.task-list::-webkit-scrollbar-track,
-.execution-area::-webkit-scrollbar-track { background: transparent; }
-.task-list::-webkit-scrollbar-thumb,
-.execution-area::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
-.task-list:hover::-webkit-scrollbar-thumb,
-.execution-area:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
-.task-list::-webkit-scrollbar-thumb:hover,
-.execution-area::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+.execution-area::-webkit-scrollbar {
+  display: none;                   /* Chrome/Safari */
+}
 </style>
