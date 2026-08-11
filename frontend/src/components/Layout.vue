@@ -439,6 +439,13 @@ watch(() => route.path, () => {
   nextTick(() => { const active = tabBarRef.value?.querySelector('.tab-item.active'); if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) })
 }, { immediate: true })
 
+watch(currentLang, () => {
+  tabs.value.forEach(tab => {
+    const menuItem = visibleMenuItems.value.find(m => m.path === tab.path)
+    if (menuItem) tab.label = menuItem.label
+  })
+})
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchNotifications()
