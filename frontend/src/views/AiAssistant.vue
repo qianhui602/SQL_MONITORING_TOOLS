@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .ai-assistant {
   display: flex;
-  height: calc(100vh - 136px);
+  height: calc(100vh - 130px);
   overflow: hidden;
   background: var(--bg-primary, #f5f6fa);
   border-radius: 8px;
