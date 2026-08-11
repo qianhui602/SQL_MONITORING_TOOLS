@@ -936,13 +936,15 @@ onBeforeUnmount(() => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== 滚动条 ===== */
+/* ===== 滚动条（极致淡化） ===== */
 .task-list::-webkit-scrollbar,
-.execution-area::-webkit-scrollbar { width: 6px; }
+.execution-area::-webkit-scrollbar { width: 4px; }
 .task-list::-webkit-scrollbar-track,
 .execution-area::-webkit-scrollbar-track { background: transparent; }
 .task-list::-webkit-scrollbar-thumb,
-.execution-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+.execution-area::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+.task-list:hover::-webkit-scrollbar-thumb,
+.execution-area:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
 .task-list::-webkit-scrollbar-thumb:hover,
-.execution-area::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+.execution-area::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
 </style>
