@@ -462,8 +462,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.layout { display: flex; height: 100vh; overflow: hidden; }
-.sidebar { width: 240px; background: var(--bg-sidebar); color: #fff; display: flex; flex-direction: column; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15); }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 240px; background: var(--bg-sidebar); color: #fff; display: flex; flex-direction: column; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15); position: sticky; top: 0; height: 100vh; }
 .sidebar.collapsed { width: 64px; }
 .sidebar-header { height: 72px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .sidebar-logo-img { max-width: 200px; max-height: 50px; object-fit: contain; }
