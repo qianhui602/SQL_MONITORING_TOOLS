@@ -285,143 +285,196 @@
       <!-- 通知渠道配置 -->
       <div class="config-section">
         <h3 class="section-title">{{ t('settings.notifyChannel') }}</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.wecomToggle') }}</label>
-            <label class="toggle-label">
-              <input type="checkbox" v-model="notifyConfigs.wecom_enabled" class="toggle-input" />
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ notifyConfigs.wecom_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
-            </label>
-            <span class="config-desc">{{ t('settings.wecomToggleDesc') }}</span>
+        <div class="channel-grid">
+          <div class="channel-card" @click="openChannelModal('wecom')">
+            <div class="channel-icon wecom-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="channel-info">
+              <span class="channel-name">{{ t('settings.wecomChannel') }}</span>
+              <span class="channel-status" :class="notifyConfigs.wecom_enabled === 'true' ? 'on' : 'off'">
+                {{ notifyConfigs.wecom_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}
+              </span>
+            </div>
+            <div class="channel-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
           </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.wecomWebhook') }}</label>
-            <input
-              type="text"
-              v-model="notifyConfigs.wecom_webhook_url"
-              class="config-input"
-              placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
-            />
-            <span class="config-desc">{{ t('settings.wecomWebhookDesc') }}</span>
+
+          <div class="channel-card" @click="openChannelModal('feishu_app')">
+            <div class="channel-icon feishu-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a2 2 0 0 1-3.46 0H6.73a2 2 0 0 1-3.46 0H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+            </div>
+            <div class="channel-info">
+              <span class="channel-name">{{ t('settings.feishuAppChannel') }}</span>
+              <span class="channel-status" :class="feishuAppConfigs.feishu_app_enabled === 'true' ? 'on' : 'off'">
+                {{ feishuAppConfigs.feishu_app_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}
+              </span>
+            </div>
+            <div class="channel-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+
+          <div class="channel-card" @click="openChannelModal('smtp')">
+            <div class="channel-icon smtp-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="channel-info">
+              <span class="channel-name">{{ t('settings.smtpChannel') }}</span>
+              <span class="channel-status" :class="smtpConfigs.smtp_enabled === 'true' ? 'on' : 'off'">
+                {{ smtpConfigs.smtp_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}
+              </span>
+            </div>
+            <div class="channel-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+
+          <div class="channel-card" @click="openChannelModal('feishu')">
+            <div class="channel-icon feishu-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div class="channel-info">
+              <span class="channel-name">{{ t('settings.feishuWebhookChannel') }}</span>
+              <span class="channel-status" :class="feishuConfigs.feishu_enabled === 'true' ? 'on' : 'off'">
+                {{ feishuConfigs.feishu_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}
+              </span>
+            </div>
+            <div class="channel-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 飞书应用通知配置（关键错误） -->
-      <div class="config-section">
-        <h3 class="section-title">{{ t('settings.feishuAppConfig') }}</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.feishuAppToggle') }}</label>
-            <label class="toggle-label">
-              <input type="checkbox" v-model="feishuAppConfigs.feishu_app_enabled" class="toggle-input" />
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ feishuAppConfigs.feishu_app_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
-            </label>
-            <span class="config-desc">{{ t('settings.feishuAppToggleDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.feishuAppId') }}</label>
-            <input
-              type="text"
-              v-model="feishuAppConfigs.feishu_app_id"
-              class="config-input"
-              placeholder="cli_xxxxxxxxxxxx"
-            />
-            <span class="config-desc">{{ t('settings.feishuAppIdDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.feishuAppSecret') }}</label>
-            <input
-              type="password"
-              v-model="feishuAppConfigs.feishu_app_secret"
-              class="config-input"
-              placeholder="应用密钥"
-            />
-            <span class="config-desc">{{ t('settings.feishuAppSecretDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.feishuOpenId') }}</label>
-            <input
-              type="text"
-              v-model="feishuAppConfigs.feishu_receive_open_id"
-              class="config-input"
-              placeholder="ou_xxxxxxxxxxxx"
-            />
-            <span class="config-desc">{{ t('settings.feishuOpenIdDesc') }}</span>
-          </div>
-        </div>
-        <div style="margin-top: 12px;">
-          <button class="btn btn-sm btn-test" @click="testFeishu" :disabled="feishuTesting">
-            {{ feishuTesting ? t('common.submit') : t('settings.feishuSendTest') }}
+    <!-- 通知渠道配置弹窗 -->
+    <div v-if="channelModalVisible" class="modal-overlay" @click.self="closeChannelModal">
+      <div class="channel-modal">
+        <div class="modal-header">
+          <h3>{{ channelModalTitle }}</h3>
+          <button class="modal-close" @click="closeChannelModal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <span v-if="feishuTestResult" :class="['smtp-test-result', feishuTestOk ? 'ok' : 'fail']">
-            {{ feishuTestResult }}
-          </span>
         </div>
-      </div>
+        <div class="modal-body">
+          <!-- 企业微信 -->
+          <template v-if="currentChannel === 'wecom'">
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.wecomToggle') }}</label>
+              <label class="toggle-label">
+                <input type="checkbox" v-model="notifyConfigs.wecom_enabled" class="toggle-input" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">{{ notifyConfigs.wecom_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
+              </label>
+              <span class="modal-desc">{{ t('settings.wecomToggleDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.wecomWebhook') }}</label>
+              <input type="text" v-model="notifyConfigs.wecom_webhook_url" class="modal-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx" />
+              <span class="modal-desc">{{ t('settings.wecomWebhookDesc') }}</span>
+            </div>
+          </template>
 
-      <!-- SMTP 邮件配置 -->
-      <div class="config-section">
-        <h3 class="section-title">{{ t('settings.smtpConfig') }}</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <label class="toggle-label">
-              <input type="checkbox" v-model="smtpConfigs.smtp_enabled" class="toggle-input" />
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">{{ smtpConfigs.smtp_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
-            </label>
-            <span class="config-desc">{{ t('settings.smtpToggleDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.smtpServer') }}</label>
-            <input
-              type="text"
-              v-model="smtpConfigs.smtp_server"
-              class="config-input"
-              placeholder="smtp.example.com"
-            />
-            <span class="config-desc">{{ t('settings.smtpServerDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.smtpPort') }}</label>
-            <input
-              type="number"
-              v-model="smtpConfigs.smtp_port"
-              class="config-input"
-              placeholder="587"
-            />
-            <span class="config-desc">{{ t('settings.smtpPortDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.smtpUser') }}</label>
-            <input
-              type="text"
-              v-model="smtpConfigs.smtp_user"
-              class="config-input"
-              placeholder="alert@example.com"
-            />
-            <span class="config-desc">{{ t('settings.smtpUserDesc') }}</span>
-          </div>
-          <div class="config-item">
-            <label class="config-label">{{ t('settings.smtpPassword') }}</label>
-            <input
-              type="password"
-              v-model="smtpConfigs.smtp_password"
-              class="config-input"
-              placeholder="密码或授权码"
-            />
-            <span class="config-desc">{{ t('settings.smtpPasswordDesc') }}</span>
-          </div>
+          <!-- 飞书应用通知 -->
+          <template v-if="currentChannel === 'feishu_app'">
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuAppToggle') }}</label>
+              <label class="toggle-label">
+                <input type="checkbox" v-model="feishuAppConfigs.feishu_app_enabled" class="toggle-input" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">{{ feishuAppConfigs.feishu_app_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
+              </label>
+              <span class="modal-desc">{{ t('settings.feishuAppToggleDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuAppId') }}</label>
+              <input type="text" v-model="feishuAppConfigs.feishu_app_id" class="modal-input" placeholder="cli_xxxxxxxxxxxx" />
+              <span class="modal-desc">{{ t('settings.feishuAppIdDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuAppSecret') }}</label>
+              <input type="password" v-model="feishuAppConfigs.feishu_app_secret" class="modal-input" placeholder="应用密钥" />
+              <span class="modal-desc">{{ t('settings.feishuAppSecretDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuOpenId') }}</label>
+              <input type="text" v-model="feishuAppConfigs.feishu_receive_open_id" class="modal-input" placeholder="ou_xxxxxxxxxxxx" />
+              <span class="modal-desc">{{ t('settings.feishuOpenIdDesc') }}</span>
+            </div>
+            <div class="modal-field modal-actions-row">
+              <button class="btn btn-sm btn-test" @click="testFeishu" :disabled="feishuTesting">
+                {{ feishuTesting ? t('common.submit') : t('settings.feishuSendTest') }}
+              </button>
+              <span v-if="feishuTestResult" :class="['smtp-test-result', feishuTestOk ? 'ok' : 'fail']">
+                {{ feishuTestResult }}
+              </span>
+            </div>
+          </template>
+
+          <!-- SMTP 邮件 -->
+          <template v-if="currentChannel === 'smtp'">
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.smtpToggle') }}</label>
+              <label class="toggle-label">
+                <input type="checkbox" v-model="smtpConfigs.smtp_enabled" class="toggle-input" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">{{ smtpConfigs.smtp_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
+              </label>
+              <span class="modal-desc">{{ t('settings.smtpToggleDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.smtpServer') }}</label>
+              <input type="text" v-model="smtpConfigs.smtp_server" class="modal-input" placeholder="smtp.example.com" />
+              <span class="modal-desc">{{ t('settings.smtpServerDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.smtpPort') }}</label>
+              <input type="number" v-model="smtpConfigs.smtp_port" class="modal-input" placeholder="587" />
+              <span class="modal-desc">{{ t('settings.smtpPortDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.smtpUser') }}</label>
+              <input type="text" v-model="smtpConfigs.smtp_user" class="modal-input" placeholder="alert@example.com" />
+              <span class="modal-desc">{{ t('settings.smtpUserDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.smtpPassword') }}</label>
+              <input type="password" v-model="smtpConfigs.smtp_password" class="modal-input" placeholder="密码或授权码" />
+              <span class="modal-desc">{{ t('settings.smtpPasswordDesc') }}</span>
+            </div>
+            <div class="modal-field modal-actions-row">
+              <button class="btn btn-sm btn-test" @click="testSmtp" :disabled="smtpTesting">
+                {{ smtpTesting ? t('common.submit') : t('settings.sendTest') }}
+              </button>
+              <span v-if="smtpTestResult" :class="['smtp-test-result', smtpTestOk ? 'ok' : 'fail']">
+                {{ smtpTestResult }}
+              </span>
+            </div>
+          </template>
+
+          <!-- 飞书 Webhook -->
+          <template v-if="currentChannel === 'feishu'">
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuToggle') }}</label>
+              <label class="toggle-label">
+                <input type="checkbox" v-model="feishuConfigs.feishu_enabled" class="toggle-input" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">{{ feishuConfigs.feishu_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
+              </label>
+              <span class="modal-desc">{{ t('settings.feishuToggleDesc') }}</span>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">{{ t('settings.feishuWebhook') }}</label>
+              <input type="text" v-model="feishuConfigs.feishu_webhook_url" class="modal-input" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx" />
+              <span class="modal-desc">{{ t('settings.feishuWebhookDesc') }}</span>
+            </div>
+          </template>
         </div>
-        <div style="margin-top: 12px;">
-          <button class="btn btn-sm btn-test" @click="testSmtp" :disabled="smtpTesting">
-            {{ smtpTesting ? t('common.submit') : t('settings.sendTest') }}
-          </button>
-          <span v-if="smtpTestResult" :class="['smtp-test-result', smtpTestOk ? 'ok' : 'fail']">
-            {{ smtpTestResult }}
-          </span>
+        <div class="modal-footer">
+          <button class="btn btn-cancel" @click="closeChannelModal">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" @click="saveChannelConfig">{{ t('common.save') }}</button>
         </div>
       </div>
     </div>
@@ -454,6 +507,74 @@ const smtpTesting = ref(false)
 const smtpTestResult = ref('')
 const smtpTestOk = ref(false)
 let toastTimer = null
+
+// 通知渠道弹窗
+const channelModalVisible = ref(false)
+const currentChannel = ref('')
+const channelModalTitle = ref('')
+const channelTitles = {
+  wecom: () => t('settings.wecomChannel'),
+  feishu_app: () => t('settings.feishuAppChannel'),
+  smtp: () => t('settings.smtpChannel'),
+  feishu: () => t('settings.feishuWebhookChannel'),
+}
+function openChannelModal(channel) {
+  currentChannel.value = channel
+  channelModalTitle.value = channelTitles[channel]()
+  channelModalVisible.value = true
+}
+function closeChannelModal() { channelModalVisible.value = false; currentChannel.value = '' }
+async function saveChannelConfig() {
+  // 收集当前渠道相关的配置项并保存
+  const channelKeys = {
+    wecom: ['wecom_enabled', 'wecom_webhook_url'],
+    feishu_app: ['feishu_app_enabled', 'feishu_app_id', 'feishu_app_secret', 'feishu_receive_open_id'],
+    smtp: ['smtp_enabled', 'smtp_server', 'smtp_port', 'smtp_user', 'smtp_password'],
+    feishu: ['feishu_enabled', 'feishu_webhook_url'],
+  }
+  const configMap = {
+    wecom_enabled: notifyConfigs.wecom_enabled,
+    wecom_webhook_url: notifyConfigs.wecom_webhook_url,
+    feishu_app_enabled: feishuAppConfigs.feishu_app_enabled,
+    feishu_app_id: feishuAppConfigs.feishu_app_id,
+    feishu_app_secret: feishuAppConfigs.feishu_app_secret,
+    feishu_receive_open_id: feishuAppConfigs.feishu_receive_open_id,
+    smtp_enabled: smtpConfigs.smtp_enabled,
+    smtp_server: smtpConfigs.smtp_server,
+    smtp_port: smtpConfigs.smtp_port,
+    smtp_user: smtpConfigs.smtp_user,
+    smtp_password: smtpConfigs.smtp_password,
+    feishu_enabled: feishuConfigs.feishu_enabled,
+    feishu_webhook_url: feishuConfigs.feishu_webhook_url,
+  }
+  const keys = channelKeys[currentChannel.value] || []
+  const changed = keys.filter(key => originalConfigs.value[key] !== String(configMap[key] ?? ''))
+  if (changed.length === 0) {
+    closeChannelModal()
+    return
+  }
+  try {
+    const results = await Promise.allSettled(
+      changed.map(key => updateConfig(key, String(configMap[key])))
+    )
+    const failures = results.map((r, i) => r.status === 'rejected' ? changed[i] : null).filter(Boolean)
+    if (failures.length > 0) {
+      message.value = `${t('settings.saveFailed')} ${failures.join(', ')}`
+      messageType.value = 'error'
+    } else {
+      message.value = t('settings.saveSuccess', { count: changed.length })
+      messageType.value = 'success'
+      await fetchConfigs()
+      closeChannelModal()
+    }
+  } catch (e) {
+    message.value = t('settings.saveFailed') + ' ' + (e?.response?.data?.detail || e.message)
+    messageType.value = 'error'
+  } finally {
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { message.value = '' }, 3000)
+  }
+}
 
 // 品牌设置
 const brandTitle = ref('数据库监控平台')
@@ -497,6 +618,12 @@ const feishuAppConfigs = reactive({
 const feishuTesting = ref(false)
 const feishuTestResult = ref('')
 const feishuTestOk = ref(false)
+
+// 飞书 Webhook 配置
+const feishuConfigs = reactive({
+  feishu_enabled: 'false',
+  feishu_webhook_url: '',
+})
 
 // SMTP 配置
 const smtpConfigs = reactive({
@@ -605,6 +732,10 @@ async function fetchConfigs() {
     feishuAppConfigs.feishu_app_secret = find('feishu_app_secret')
     feishuAppConfigs.feishu_receive_open_id = find('feishu_receive_open_id')
 
+    // 飞书 Webhook 配置
+    feishuConfigs.feishu_enabled = find('feishu_enabled') || 'false'
+    feishuConfigs.feishu_webhook_url = find('feishu_webhook_url') || ''
+
     // SMTP 配置
     smtpConfigs.smtp_enabled = find('smtp_enabled') || 'false'
     smtpConfigs.smtp_server = find('smtp_server')
@@ -647,6 +778,8 @@ async function saveAll() {
     { key: 'feishu_app_id', value: feishuAppConfigs.feishu_app_id },
     { key: 'feishu_app_secret', value: feishuAppConfigs.feishu_app_secret },
     { key: 'feishu_receive_open_id', value: feishuAppConfigs.feishu_receive_open_id },
+    { key: 'feishu_enabled', value: feishuConfigs.feishu_enabled },
+    { key: 'feishu_webhook_url', value: feishuConfigs.feishu_webhook_url },
     { key: 'smtp_enabled', value: smtpConfigs.smtp_enabled },
     { key: 'smtp_server', value: smtpConfigs.smtp_server },
     { key: 'smtp_port', value: smtpConfigs.smtp_port },
@@ -878,6 +1011,202 @@ onUnmounted(() => { if (toastTimer) clearTimeout(toastTimer) })
 .btn-sm {
   padding: 5px 14px;
   font-size: 13px;
+}
+.btn-cancel {
+  background: #fff;
+  color: #666;
+  border: 1px solid #d9d9d9;
+}
+.btn-cancel:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+/* 通知渠道卡片 */
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.channel-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.channel-card:hover {
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24,144,255,0.15);
+}
+.channel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.wecom-icon {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+.feishu-icon {
+  background: #f0f5ff;
+  color: #2f54eb;
+}
+.smtp-icon {
+  background: #f6ffed;
+  color: #52c41a;
+}
+.channel-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.channel-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.channel-status {
+  font-size: 12px;
+}
+.channel-status.on {
+  color: #52c41a;
+}
+.channel-status.off {
+  color: #999;
+}
+.channel-arrow {
+  display: flex;
+  align-items: center;
+  color: #bfbfbf;
+  flex-shrink: 0;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.channel-modal {
+  background: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.modal-close:hover {
+  background: var(--bg-hover);
+  color: #666;
+}
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-field {
+  margin-bottom: 16px;
+}
+.modal-field:last-child {
+  margin-bottom: 0;
+}
+.modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.modal-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+.modal-input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24,144,255,0.2);
+}
+.modal-desc {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.modal-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-color);
 }
 .config-sections {
   display: flex;

@@ -132,6 +132,16 @@ _DEFAULT_CONFIGS = [
         "value": "",
         "desc": "飞书应用通知接收人 open_id",
     },
+    {
+        "key": "feishu_enabled",
+        "value": "false",
+        "desc": "飞书 Webhook 通知开关",
+    },
+    {
+        "key": "feishu_webhook_url",
+        "value": "",
+        "desc": "飞书群机器人 Webhook URL",
+    },
     # ========== 多实例模式配置 ==========
     {
         "key": "mssql_instances_enabled",

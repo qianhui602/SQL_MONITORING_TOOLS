@@ -468,13 +468,16 @@ onBeforeUnmount(() => {
 .sidebar-header { height: 72px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .sidebar-logo-img { max-width: 200px; max-height: 50px; object-fit: contain; }
 .sidebar-logo-img-mini { max-width: 40px; max-height: 40px; object-fit: contain; border-radius: 4px; }
-.nav-menu { flex: 1; padding: 16px 12px; overflow-y: auto; position: relative; }
+.nav-menu { flex: 1; padding: 8px 12px; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+.nav-menu::-webkit-scrollbar { width: 4px; }
+.nav-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.nav-menu::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 .nav-collapse-area { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 20px; height: 48px; color: rgba(255,255,255,0.45); cursor: pointer; border-radius: 4px 0 0 4px; background: rgba(255,255,255,0.04); transition: all 0.2s; }
 .nav-collapse-area:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.1); }
-.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; margin-bottom: 2px; color: rgba(255,255,255,0.75); text-decoration: none; transition: all 0.2s; cursor: pointer; border-radius: 6px; position: relative; }
+.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; margin-bottom: 1px; color: rgba(255,255,255,0.75); text-decoration: none; transition: all 0.2s; cursor: pointer; border-radius: 6px; position: relative; }
 .nav-icon-wrapper { display: flex; align-items: center; }
-.nav-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 20px; height: 20px; color: rgba(255,255,255,0.55); transition: color 0.2s; }
-.nav-label { margin-left: 12px; font-size: 14px; white-space: nowrap; font-weight: 400; }
+.nav-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 18px; height: 18px; color: rgba(255,255,255,0.55); transition: color 0.2s; }
+.nav-label { margin-left: 10px; font-size: 13px; white-space: nowrap; font-weight: 400; }
 .nav-arrow { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: rgba(255,255,255,0.35); flex-shrink: 0; transition: transform 0.2s; }
 .nav-item:hover { color: rgba(255,255,255,0.95); background-color: rgba(255,255,255,0.08); }
 .nav-item:hover .nav-icon { color: rgba(255,255,255,0.9); }
