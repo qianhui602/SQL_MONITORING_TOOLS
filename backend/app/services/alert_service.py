@@ -518,7 +518,7 @@ class AlertEngine:
         try:
             subject = f"[{severity.upper()}] SQL Monitor Alert - {alert_type}"
             notify_result = await self.notification_service.notify_all(
-                subject=subject, body=message
+                subject=subject, body=message, severity=severity
             )
 
             # 更新通知发送状态

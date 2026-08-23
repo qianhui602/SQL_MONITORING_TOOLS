@@ -1,15 +1,17 @@
 """
 告警通知发送服务
 
-提供邮件（SMTP）、钉钉机器人、企业微信机器人和飞书机器人四种通知渠道，
-以及组合发送的 NotificationService。
+提供邮件（SMTP）、钉钉机器人、企业微信机器人、飞书机器人和飞书应用通知
+五种通知渠道，以及组合发送的 NotificationService。
 """
 
+import json
 import logging
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -393,6 +395,191 @@ class FeishuNotifier:
             return False
 
 
+class FeishuAppNotifier:
+    """飞书自建应用通知发送器（应用通知）
+
+    区别于群机器人 Webhook，本发送器通过飞书自建应用（企业自建应用）调用
+    tenant_access_token 与 im/v1/messages 接口，直接向指定用户的 open_id
+    发送消息，用于关键错误（critical 严重告警）通知。
+    """
+
+    _TOKEN_URL = (
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+    )
+    _MSG_URL = "https://open.feishu.cn/open-apis/im/v1/messages"
+
+    # 类级别 token 缓存：key = app_id，value = (token, expire_at 时间戳)
+    # 跨实例共享，避免频繁请求获取 token（token 有效期约 2 小时）
+    _token_cache: Dict[str, Tuple[str, float]] = {}
+
+    def __init__(self) -> None:
+        self.enabled: bool = False
+        self.app_id: str = ""
+        self.app_secret: str = ""
+        self.receive_open_id: str = ""
+        self._db_loaded = False
+
+    async def _load_db_config(self) -> None:
+        """从数据库加载飞书应用配置，回退到环境变量"""
+        if self._db_loaded:
+            return
+        try:
+            from app.database import async_session_factory
+            from sqlalchemy import text
+
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    text(
+                        "SELECT config_key, config_value FROM system_configs "
+                        "WHERE config_key IN ('feishu_app_enabled', 'feishu_app_id', "
+                        "'feishu_app_secret', 'feishu_receive_open_id')"
+                    )
+                )
+                config = {row[0]: row[1] for row in result}
+
+                self.enabled = config.get("feishu_app_enabled", "false").lower() == "true"
+                self.app_id = config.get("feishu_app_id", "") or settings.FEISHU_APP_ID
+                self.app_secret = config.get("feishu_app_secret", "") or settings.FEISHU_APP_SECRET
+                self.receive_open_id = config.get("feishu_receive_open_id", "") or settings.FEISHU_RECEIVE_OPEN_ID
+        except Exception as e:
+            logger.warning("Failed to load Feishu app config from DB: %s", e)
+            self.enabled = bool(settings.FEISHU_APP_ID and settings.FEISHU_APP_SECRET)
+            self.app_id = settings.FEISHU_APP_ID
+            self.app_secret = settings.FEISHU_APP_SECRET
+            self.receive_open_id = settings.FEISHU_RECEIVE_OPEN_ID
+        self._db_loaded = True
+
+    def _is_configured(self) -> bool:
+        """是否已完整配置并启用"""
+        return bool(
+            self.enabled
+            and self.app_id
+            and self.app_secret
+            and self.receive_open_id
+        )
+
+    async def _get_tenant_access_token(self) -> Optional[str]:
+        """获取并缓存 tenant_access_token
+
+        通过自建应用凭证换取应用级 token，用于调用消息发送接口。
+        token 默认有效期 7200 秒，提前 5 分钟刷新。
+
+        Returns:
+            str or None: 获取成功返回 token，失败返回 None
+        """
+        cache_key = self.app_id
+        cached = self._token_cache.get(cache_key)
+        if cached:
+            token, expire_at = cached
+            if expire_at > time.time() + 300:
+                return token
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    self._TOKEN_URL,
+                    json={"app_id": self.app_id, "app_secret": self.app_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json()
+                if result.get("code") != 0:
+                    logger.error(
+                        "Feishu get tenant_access_token error: %s", result.get("msg")
+                    )
+                    return None
+                token = result.get("tenant_access_token")
+                expire = int(result.get("expire", 7200))
+                self._token_cache[cache_key] = (token, time.time() + expire)
+                return token
+        except Exception as e:
+            logger.error("Feishu get tenant_access_token failed: %s", e)
+            return None
+
+    async def _send_message(self, token: str, message: str) -> bool:
+        """向配置的 open_id 发送交互卡片消息
+
+        Args:
+            token: tenant_access_token
+            message: Markdown 格式的消息内容
+
+        Returns:
+            bool: 发送成功返回 True
+        """
+        card = {
+            "header": {
+                "title": {
+                    "tag": "plain_text",
+                    "content": "SQL Monitor 严重告警 / Critical Alert",
+                },
+                "template": "red",
+            },
+            "elements": [{"tag": "markdown", "content": message}],
+        }
+        payload = {
+            "receive_id": self.receive_open_id,
+            "msg_type": "interactive",
+            "content": json.dumps(card, ensure_ascii=False),
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    self._MSG_URL,
+                    params={"receive_id_type": "open_id"},
+                    json=payload,
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                result = resp.json()
+                if result.get("code") == 0:
+                    logger.info("Feishu app notification sent successfully")
+                    return True
+                logger.error("Feishu app send error: %s", result.get("msg"))
+                return False
+        except Exception as e:
+            logger.error("Feishu app send failed: %s", e)
+            return False
+
+    async def send(self, message: str) -> bool:
+        """发送关键错误通知
+
+        Args:
+            message: 通知内容（Markdown）
+
+        Returns:
+            bool: 发送成功返回 True
+        """
+        await self._load_db_config()
+        if not self._is_configured():
+            logger.warning("Feishu app notification not configured, skipping")
+            return False
+        token = await self._get_tenant_access_token()
+        if not token:
+            return False
+        return await self._send_message(token, message)
+
+    async def send_test(self, message: str) -> Tuple[bool, str]:
+        """发送测试消息（用于设置页验证配置）
+
+        使用当前实例已注入的配置发送一条测试消息。
+
+        Args:
+            message: 测试消息内容
+
+        Returns:
+            tuple: (是否成功, 结果描述)
+        """
+        if not self.app_id or not self.app_secret or not self.receive_open_id:
+            return False, "请填写 App ID、App Secret 和接收人 open_id"
+        token = await self._get_tenant_access_token()
+        if not token:
+            return False, "获取 tenant_access_token 失败，请检查 App ID / App Secret"
+        ok = await self._send_message(token, message)
+        if ok:
+            return True, "测试消息发送成功"
+        return False, "发送失败，请检查接收人 open_id / 应用权限"
+
+
 # ============================================================
 # NotificationService
 # ============================================================
@@ -405,6 +592,7 @@ class NotificationService:
         self.dingtalk_notifier = DingTalkNotifier()
         self.wecom_notifier = WeComNotifier()
         self.feishu_notifier = FeishuNotifier()
+        self.feishu_app_notifier = FeishuAppNotifier()
 
     async def send_webhook(self, channel: str, message: str) -> bool:
         if channel == "dingtalk":
@@ -415,8 +603,33 @@ class NotificationService:
             return await self.feishu_notifier.send(message)
         return False
 
-    async def notify_all(self, subject: str, body: str, html_body: str = "") -> Dict[str, bool]:
-        result: Dict[str, bool] = {"email": False, "dingtalk": False, "wecom": False, "feishu": False}
+    async def notify_all(
+        self,
+        subject: str,
+        body: str,
+        html_body: str = "",
+        severity: str = "",
+    ) -> Dict[str, bool]:
+        """发送告警通知到所有已配置渠道
+
+        飞书应用通知（feishu_app）仅在 severity == "critical"（关键错误）时触发。
+
+        Args:
+            subject: 通知主题
+            body: 纯文本/Markdown 内容
+            html_body: HTML 邮件内容（可选，优先用于邮件）
+            severity: 告警严重级别（critical / high / low 等）
+
+        Returns:
+            dict: 各渠道发送结果 {channel: bool}
+        """
+        result: Dict[str, bool] = {
+            "email": False,
+            "dingtalk": False,
+            "wecom": False,
+            "feishu": False,
+            "feishu_app": False,
+        }
         # 邮件（优先 HTML）
         if html_body:
             result["email"] = await self.email_notifier.send(subject, html_body)
@@ -425,4 +638,7 @@ class NotificationService:
         result["dingtalk"] = await self.dingtalk_notifier.send(body)
         result["wecom"] = await self.wecom_notifier.send(body)
         result["feishu"] = await self.feishu_notifier.send(body)
+        # 飞书应用通知：仅关键错误（critical 严重告警）时发送
+        if severity == "critical":
+            result["feishu_app"] = await self.feishu_app_notifier.send(body)
         return result

@@ -308,12 +308,65 @@
         </div>
       </div>
 
+      <!-- 飞书应用通知配置（关键错误） -->
+      <div class="config-section">
+        <h3 class="section-title">{{ t('settings.feishuAppConfig') }}</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.feishuAppToggle') }}</label>
+            <label class="toggle-label">
+              <input type="checkbox" v-model="feishuAppConfigs.feishu_app_enabled" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">{{ feishuAppConfigs.feishu_app_enabled === 'true' ? t('common.enabled') : t('common.disabled') }}</span>
+            </label>
+            <span class="config-desc">{{ t('settings.feishuAppToggleDesc') }}</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.feishuAppId') }}</label>
+            <input
+              type="text"
+              v-model="feishuAppConfigs.feishu_app_id"
+              class="config-input"
+              placeholder="cli_xxxxxxxxxxxx"
+            />
+            <span class="config-desc">{{ t('settings.feishuAppIdDesc') }}</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.feishuAppSecret') }}</label>
+            <input
+              type="password"
+              v-model="feishuAppConfigs.feishu_app_secret"
+              class="config-input"
+              placeholder="应用密钥"
+            />
+            <span class="config-desc">{{ t('settings.feishuAppSecretDesc') }}</span>
+          </div>
+          <div class="config-item">
+            <label class="config-label">{{ t('settings.feishuOpenId') }}</label>
+            <input
+              type="text"
+              v-model="feishuAppConfigs.feishu_receive_open_id"
+              class="config-input"
+              placeholder="ou_xxxxxxxxxxxx"
+            />
+            <span class="config-desc">{{ t('settings.feishuOpenIdDesc') }}</span>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-sm btn-test" @click="testFeishu" :disabled="feishuTesting">
+            {{ feishuTesting ? t('common.submit') : t('settings.feishuSendTest') }}
+          </button>
+          <span v-if="feishuTestResult" :class="['smtp-test-result', feishuTestOk ? 'ok' : 'fail']">
+            {{ feishuTestResult }}
+          </span>
+        </div>
+      </div>
+
       <!-- SMTP 邮件配置 -->
       <div class="config-section">
         <h3 class="section-title">{{ t('settings.smtpConfig') }}</h3>
         <div class="config-grid">
           <div class="config-item">
-            <label class="config-label">{{ t('settings.smtpToggle') }}</label>
             <label class="toggle-label">
               <input type="checkbox" v-model="smtpConfigs.smtp_enabled" class="toggle-input" />
               <span class="toggle-switch"></span>
@@ -434,6 +487,17 @@ const notifyConfigs = reactive({
   wecom_enabled: 'false',
 })
 
+// 飞书应用通知配置（关键错误）
+const feishuAppConfigs = reactive({
+  feishu_app_enabled: 'false',
+  feishu_app_id: '',
+  feishu_app_secret: '',
+  feishu_receive_open_id: '',
+})
+const feishuTesting = ref(false)
+const feishuTestResult = ref('')
+const feishuTestOk = ref(false)
+
 // SMTP 配置
 const smtpConfigs = reactive({
   smtp_enabled: 'false',
@@ -535,6 +599,12 @@ async function fetchConfigs() {
     notifyConfigs.wecom_webhook_url = find('wecom_webhook_url')
     notifyConfigs.wecom_enabled = find('wecom_enabled') || 'false'
 
+    // 飞书应用通知配置
+    feishuAppConfigs.feishu_app_enabled = find('feishu_app_enabled') || 'false'
+    feishuAppConfigs.feishu_app_id = find('feishu_app_id')
+    feishuAppConfigs.feishu_app_secret = find('feishu_app_secret')
+    feishuAppConfigs.feishu_receive_open_id = find('feishu_receive_open_id')
+
     // SMTP 配置
     smtpConfigs.smtp_enabled = find('smtp_enabled') || 'false'
     smtpConfigs.smtp_server = find('smtp_server')
@@ -573,6 +643,10 @@ async function saveAll() {
     { key: 'alert_cooldown_minutes', value: alertConfigs.alert_cooldown_minutes },
     { key: 'wecom_webhook_url', value: notifyConfigs.wecom_webhook_url },
     { key: 'wecom_enabled', value: notifyConfigs.wecom_enabled },
+    { key: 'feishu_app_enabled', value: feishuAppConfigs.feishu_app_enabled },
+    { key: 'feishu_app_id', value: feishuAppConfigs.feishu_app_id },
+    { key: 'feishu_app_secret', value: feishuAppConfigs.feishu_app_secret },
+    { key: 'feishu_receive_open_id', value: feishuAppConfigs.feishu_receive_open_id },
     { key: 'smtp_enabled', value: smtpConfigs.smtp_enabled },
     { key: 'smtp_server', value: smtpConfigs.smtp_server },
     { key: 'smtp_port', value: smtpConfigs.smtp_port },
@@ -680,6 +754,26 @@ async function testSmtp() {
     smtpTestResult.value = t('settings.smtpTestFailed') + ' ' + (e?.response?.data?.detail || e.message)
   } finally {
     smtpTesting.value = false
+  }
+}
+
+async function testFeishu() {
+  if (feishuTesting.value) return
+  feishuTesting.value = true
+  feishuTestResult.value = ''
+  try {
+    const result = await request.post('/feishu/test', {
+      app_id: feishuAppConfigs.feishu_app_id,
+      app_secret: feishuAppConfigs.feishu_app_secret,
+      receive_open_id: feishuAppConfigs.feishu_receive_open_id,
+    })
+    feishuTestOk.value = !!result?.success
+    feishuTestResult.value = result?.message || result?.error || t('settings.unknownResult')
+  } catch (e) {
+    feishuTestOk.value = false
+    feishuTestResult.value = t('settings.feishuTestFailed') + ' ' + (e?.response?.data?.detail || e.message)
+  } finally {
+    feishuTesting.value = false
   }
 }
 

@@ -22,6 +22,7 @@ from app.routers.export import router as export_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.smtp_test import router as smtp_test_router
+from app.routers.feishu_test import router as feishu_test_router
 from app.routers.setup import router as setup_router
 from app.routers.version import router as version_router
 from app.routers.ai_tasks import router as ai_tasks_router
@@ -45,6 +46,7 @@ api_router.include_router(export_router, prefix="/export", tags=["数据导出"]
 api_router.include_router(notifications_router, prefix="/notifications", tags=["通知"])
 api_router.include_router(reports_router, prefix="/reports", tags=["报告"])
 api_router.include_router(smtp_test_router, prefix="/smtp", tags=["SMTP邮件"])
+api_router.include_router(feishu_test_router, prefix="/feishu", tags=["飞书通知"])
 api_router.include_router(setup_router, prefix="/setup", tags=["系统安装"])
 api_router.include_router(version_router, prefix="/version", tags=["版本检查"])
 api_router.include_router(ai_tasks_router, prefix="/ai", tags=["AI 任务"])

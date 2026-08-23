@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     DINGTALK_WEBHOOK_URL: str = ""
     FEISHU_WEBHOOK_URL: str = ""
 
+    # ---------- 飞书应用通知（关键错误） ----------
+    # 通过飞书自建应用直接给用户 open_id 发送消息
+    FEISHU_APP_ID: str = ""
+    FEISHU_APP_SECRET: str = ""
+    FEISHU_RECEIVE_OPEN_ID: str = ""
+
     # ---------- 日志 ----------
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = (

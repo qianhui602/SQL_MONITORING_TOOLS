@@ -111,6 +111,27 @@ _DEFAULT_CONFIGS = [
         "value": "false",
         "desc": "企业微信通知开关",
     },
+    # ========== 飞书应用通知配置（关键错误） ==========
+    {
+        "key": "feishu_app_enabled",
+        "value": "false",
+        "desc": "飞书应用通知开关（仅关键错误/严重告警时发送）",
+    },
+    {
+        "key": "feishu_app_id",
+        "value": "",
+        "desc": "飞书自建应用 App ID",
+    },
+    {
+        "key": "feishu_app_secret",
+        "value": "",
+        "desc": "飞书自建应用 App Secret",
+    },
+    {
+        "key": "feishu_receive_open_id",
+        "value": "",
+        "desc": "飞书应用通知接收人 open_id",
+    },
     # ========== 多实例模式配置 ==========
     {
         "key": "mssql_instances_enabled",
