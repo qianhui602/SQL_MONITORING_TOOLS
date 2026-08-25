@@ -399,8 +399,9 @@ class FeishuAppNotifier:
     """飞书自建应用通知发送器（应用通知）
 
     区别于群机器人 Webhook，本发送器通过飞书自建应用（企业自建应用）调用
-    tenant_access_token 与 im/v1/messages 接口，直接向指定用户的 open_id
-    发送消息，用于关键错误（critical 严重告警）通知。
+    tenant_access_token 与 im/v1/messages 接口，直接向指定用户发送消息，
+    支持 open_id（以 ou_ 开头）或邮箱地址作为接收人标识，
+    用于关键错误（critical 严重告警）通知。
     """
 
     _TOKEN_URL = (
@@ -457,6 +458,17 @@ class FeishuAppNotifier:
             and self.app_secret
             and self.receive_open_id
         )
+
+    def _get_receive_id_type(self) -> str:
+        """根据 receive_open_id 的值自动判断 receive_id_type
+
+        支持两种格式：
+        - 邮箱地址（包含 @）→ "email"
+        - open_id（以 ou_ 开头）或其他 → "open_id"
+        """
+        if "@" in self.receive_open_id:
+            return "email"
+        return "open_id"
 
     async def _get_tenant_access_token(self) -> Optional[str]:
         """获取并缓存 tenant_access_token
@@ -525,7 +537,7 @@ class FeishuAppNotifier:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(
                     self._MSG_URL,
-                    params={"receive_id_type": "open_id"},
+                    params={"receive_id_type": self._get_receive_id_type()},
                     json=payload,
                     headers=headers,
                 )
@@ -570,14 +582,14 @@ class FeishuAppNotifier:
             tuple: (是否成功, 结果描述)
         """
         if not self.app_id or not self.app_secret or not self.receive_open_id:
-            return False, "请填写 App ID、App Secret 和接收人 open_id"
+            return False, "请填写 App ID、App Secret 和接收人（邮箱或 open_id）"
         token = await self._get_tenant_access_token()
         if not token:
             return False, "获取 tenant_access_token 失败，请检查 App ID / App Secret"
         ok = await self._send_message(token, message)
         if ok:
             return True, "测试消息发送成功"
-        return False, "发送失败，请检查接收人 open_id / 应用权限"
+        return False, "发送失败，请检查接收人邮箱/open_id 或应用权限"
 
 
 # ============================================================
