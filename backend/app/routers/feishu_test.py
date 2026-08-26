@@ -37,7 +37,6 @@ async def test_feishu(
     notifier.app_id = payload.app_id
     notifier.app_secret = payload.app_secret
     notifier.receive_open_id = payload.receive_open_id
-    notifier._db_loaded = True
 
     test_msg = (
         "## 飞书应用通知测试 / Test\n\n"

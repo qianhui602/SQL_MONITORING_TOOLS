@@ -106,12 +106,12 @@ class EmailNotifier:
         self.password: str = ""
         self.recipients: List[str] = []
         self.frontend_url: str = ""
-        self._db_loaded = False
 
     async def _load_db_config(self) -> None:
-        """从数据库加载 SMTP 和前端 URL 配置"""
-        if self._db_loaded:
-            return
+        """从数据库加载 SMTP 和前端 URL 配置
+
+        每次发送前重新读取，保证前端保存的开关/配置即时生效（无需重启服务）。
+        """
         try:
             from app.database import async_session_factory
             from sqlalchemy import text
@@ -125,7 +125,12 @@ class EmailNotifier:
                 self.frontend_url = config.get("frontend_url", "") or getattr(settings, "FRONTEND_URL", "")
 
                 if config.get("smtp_enabled", "false").lower() != "true":
-                    self._db_loaded = True
+                    # 开关关闭时清空 SMTP 配置，确保 _is_configured() 返回 False 不再发送
+                    self.server = ""
+                    self.port = 587
+                    self.user = ""
+                    self.password = ""
+                    self.recipients = []
                     return
                 self.server = config.get("smtp_server", "")
                 self.port = int(config.get("smtp_port", "587"))
@@ -141,7 +146,6 @@ class EmailNotifier:
             self.password = settings.SMTP_PASSWORD
             self.recipients = settings.ALERT_EMAILS
             self.frontend_url = getattr(settings, "FRONTEND_URL", "")
-        self._db_loaded = True
 
     def _is_configured(self) -> bool:
         return bool(self.server and self.user and self.password)
@@ -418,12 +422,12 @@ class FeishuAppNotifier:
         self.app_id: str = ""
         self.app_secret: str = ""
         self.receive_open_id: str = ""
-        self._db_loaded = False
 
     async def _load_db_config(self) -> None:
-        """从数据库加载飞书应用配置，回退到环境变量"""
-        if self._db_loaded:
-            return
+        """从数据库加载飞书应用配置，回退到环境变量
+
+        每次发送前重新读取，保证前端保存的开关/配置即时生效（无需重启服务）。
+        """
         try:
             from app.database import async_session_factory
             from sqlalchemy import text
@@ -448,7 +452,6 @@ class FeishuAppNotifier:
             self.app_id = settings.FEISHU_APP_ID
             self.app_secret = settings.FEISHU_APP_SECRET
             self.receive_open_id = settings.FEISHU_RECEIVE_OPEN_ID
-        self._db_loaded = True
 
     def _is_configured(self) -> bool:
         """是否已完整配置并启用"""

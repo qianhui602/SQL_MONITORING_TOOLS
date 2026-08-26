@@ -47,7 +47,6 @@ async def test_smtp(
     notifier.user = payload.user
     notifier.password = payload.password
     notifier.recipients = [r.strip() for r in payload.recipients.split(",") if r.strip()]
-    notifier._db_loaded = True
 
     subject = "SQL Monitor SMTP 连接测试 / Connection Test"
 
