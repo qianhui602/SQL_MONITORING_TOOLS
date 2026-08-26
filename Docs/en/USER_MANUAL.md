@@ -314,9 +314,10 @@ Manages SQL Server monitoring instances.
 - Configure alert thresholds
 
 ### 16.4 Notification Configuration
-- Configure email notifications (SMTP)
-- Configure DingTalk robot
-- Configure WeCom robot
+- Each notification channel is presented as a card: Email (SMTP), DingTalk robot, WeCom robot, Feishu group robot, Feishu app notification
+- Click a channel card to open its config modal; after filling it in, you can send a test message to verify connectivity
+- The Feishu app notification recipient supports open_id or email address (auto-detected) and is used only for critical-severity alerts
+- The Feishu custom app requires bot capability enabled and the im:message:send_as_bot permission granted in the developer console before messages can be sent
 
 ### 16.5 Brand Customization
 - Customize the system title

@@ -2,6 +2,21 @@
 
 [简体中文](./changelog.md) | **English**
 
+## 2026-08-26
+
+**Title:** Critical-error Feishu app notifications / Email recipient support / Modal-based notification channel config
+**Files:** `backend/app/services/notification.py`, `backend/app/routers/feishu_test.py`, `backend/app/init_db.py`, `frontend/src/views/Settings.vue`, `frontend/src/components/Layout.vue`, `frontend/src/i18n/zh-CN.js`, `frontend/src/i18n/en-US.js`
+**Details:**
+- Added critical-error Feishu app notifications (FeishuAppNotifier): calls the Feishu custom-app API (tenant_access_token + im/v1/messages) to push an interactive red card alert directly to designated users, separate from the group robot webhook channel
+- Feishu app notifications trigger only for critical-severity alerts; tenant_access_token is cached at class level (valid ~2 hours, refreshed 5 minutes early)
+- Recipients now support both open_id and email address: values containing @ are auto-detected as email receive_id_type, otherwise open_id is used
+- Send results now return a (success, error message) tuple; exceptions such as network connection failures, timeouts, and HTTP status errors are classified and their specific reasons surfaced to the frontend
+- Feishu config is read first from the database system_configs table (feishu_app_enabled / feishu_app_id / feishu_app_secret / feishu_receive_open_id), falling back to environment variables such as FEISHU_APP_ID
+- "Notification Service" page redesign: WeCom / Feishu App / SMTP / Feishu Webhook channels are displayed as a card grid; clicking a card opens its config modal with test-message sending and detailed results
+- Sidebar layout fix: layout container changed to min-height: 100vh to allow page scrolling and sidebar pinned via position: sticky, so all menus fit without zooming out the browser
+
+---
+
 ## 2026-07-09
 
 **Title:** Tab icons removed / Help page expanded / Browser desktop notifications

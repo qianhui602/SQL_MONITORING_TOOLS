@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-26
+
+**标题：** 关键错误飞书应用通知 / 接收人邮箱支持 / 通知渠道配置弹窗化
+**文件：** `backend/app/services/notification.py`, `backend/app/routers/feishu_test.py`, `backend/app/init_db.py`, `frontend/src/views/Settings.vue`, `frontend/src/components/Layout.vue`, `frontend/src/i18n/zh-CN.js`, `frontend/src/i18n/en-US.js`
+**明细：**
+- 新增关键错误飞书应用通知（FeishuAppNotifier）：通过飞书自建应用调用 tenant_access_token 与 im/v1/messages 接口，直接向指定用户推送红色交互卡片告警，区别于群机器人 Webhook 渠道
+- 仅 severity 为 critical 的严重告警触发飞书应用通知；tenant_access_token 类级别缓存（有效期约 2 小时，提前 5 分钟刷新）
+- 接收人同时支持 open_id 和邮箱地址：值包含 @ 时自动识别为 email 类型的 receive_id_type，否则使用 open_id
+- 发送结果改为返回 (是否成功, 错误描述) 元组，细分网络连接失败、请求超时、HTTP 状态错误等异常并将具体原因透出到前端提示
+- 飞书配置优先读取数据库 system_configs（feishu_app_enabled / feishu_app_id / feishu_app_secret / feishu_receive_open_id），回退环境变量 FEISHU_APP_ID 等
+- 设置页"通知服务"改版：企业微信 / 飞书应用 / SMTP 邮件 / 飞书 Webhook 四个渠道以卡片网格展示，点击卡片弹出配置窗口，支持发送测试消息并显示具体结果
+- 侧边栏布局修复：layout 容器改为 min-height: 100vh 允许页面滚动，sidebar 采用 position: sticky 固定，无需缩小浏览器即可完整查看所有菜单
+
+---
+
 ## 2026-07-09
 
 **标题：** 标签页去图标 / 帮助页面扩充 / 浏览器桌面通知

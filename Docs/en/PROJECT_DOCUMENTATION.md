@@ -48,6 +48,9 @@ The SQL Monitoring Platform is an MS SQL Server performance monitoring and alert
 - **Email notifications**: Send alert emails via SMTP
 - **DingTalk notifications**: Support DingTalk robot webhook notifications
 - **WeCom notifications**: Support WeCom (WeChat Work) group robot webhook notifications
+- **Feishu robot notifications**: Support Feishu group robot webhook notifications
+- **Feishu app notifications**: Critical errors are pushed directly to designated users via a Feishu custom app; recipients support both open_id and email address (receive_id_type auto-detected), with specific failure reasons surfaced on errors
+- **Channel testing**: SMTP and Feishu app channels support sending test messages to verify configuration
 - **Multi-channel combination**: Support sending notifications through multiple channels simultaneously
 
 #### 1.3.7 Blocking Process Monitoring
@@ -302,6 +305,10 @@ Personal information management:
 | `ALERT_EMAILS` | Alert recipient email list | [] |
 | **DingTalk** | | |
 | `DINGTALK_WEBHOOK_URL` | DingTalk robot webhook URL | (optional) |
+| **Feishu (custom app)** | | |
+| `FEISHU_APP_ID` | Feishu custom app App ID | (optional) |
+| `FEISHU_APP_SECRET` | Feishu custom app App Secret | (optional) |
+| `FEISHU_RECEIVE_OPEN_ID` | Critical alert recipient (open_id or email address) | (optional) |
 | **Logging** | | |
 | `LOG_LEVEL` | Log level | INFO |
 | **Auth / JWT** | | |

@@ -476,6 +476,8 @@ class NotificationService:
         self.email_notifier = EmailNotifier()
         self.dingtalk_notifier = DingTalkNotifier()
         self.wecom_notifier = WeComNotifier()
+        self.feishu_notifier = FeishuNotifier()
+        self.feishu_app_notifier = FeishuAppNotifier()
     
     async def notify_all(self, subject: str, body: str) -> Dict[str, bool]:
         """Send notifications through all channels simultaneously"""
@@ -483,6 +485,8 @@ class NotificationService:
             "email": False,
             "dingtalk": False,
             "wecom": False,
+            "feishu": False,
+            "feishu_app": False,
         }
         
         # Email sent synchronously
@@ -493,6 +497,12 @@ class NotificationService:
         
         # WeCom sent asynchronously
         result["wecom"] = await self.wecom_notifier.send(body)
+        
+        # Feishu webhook sent asynchronously
+        result["feishu"] = await self.feishu_notifier.send(body)
+        
+        # Feishu app notification: triggered only for critical errors; recipients support open_id or email address
+        result["feishu_app"] = await self.feishu_app_notifier.send(body)
         
         return result
 ```
@@ -2355,6 +2365,17 @@ A: Check the following:
 - Documentation updates
   - README with upgrade guide and one-click upgrade scripts
   - Added user manual (Docs/USER_MANUAL.md)
+
+### v1.6.0 (2026-08-26)
+- Added critical-error Feishu app notifications
+  - Reaches designated users directly via Feishu custom app (tenant_access_token + im/v1/messages)
+  - Recipients support both open_id and email address with receive_id_type auto-detection
+  - tenant_access_token cached at class level (valid ~2 hours, refreshed 5 minutes early)
+  - Triggered only for critical-severity alerts, independent of the group robot webhook channel
+- Added Feishu group robot webhook notification channel
+- Send failures now classify exception types and surface specific reasons (connection failure / timeout / HTTP error / Feishu business code)
+- System Settings "Notification Service" redesigned as card grid + modal config, each channel supports sending test messages
+- Sidebar layout fix: page scrolling allowed and sidebar pinned via sticky positioning; all menus visible without zooming out on low-resolution screens
 
 ## 14. Future Plans
 

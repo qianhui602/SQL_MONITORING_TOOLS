@@ -17,7 +17,11 @@ A performance monitoring and alerting platform for MS SQL Server, built with Fas
 - **Multi-instance Support**: Monitor multiple SQL Server instances simultaneously
 
 ### Alerts & Notifications
-- **Alert System**: Custom alert rules with WeCom (WeChat Work) notifications
+- **Alert System**: Custom alert rules with multi-channel combined notifications
+- **Feishu App Notification**: Critical errors are pushed directly to designated users via a Feishu custom app; recipients support both open_id and email address (receive_id_type auto-detected), with specific failure reasons surfaced on errors
+- **Group Robot Webhooks**: DingTalk / WeCom / Feishu group robot webhook push
+- **Email Notifications**: Alert emails via SMTP
+- **Channel Modal Config & Test**: Each notification channel in System Settings is presented as a card; click to configure in a modal dialog and send a test message with one click
 - **Sound Alerts**: Audible notification for new alerts, with mute toggle
 - **Connection Status Alerts**: Automatic alerts on instance offline/recovery
 
@@ -150,6 +154,7 @@ For detailed documentation, see the [Docs](./Docs/) directory:
 - **Personal Settings**: Click the user menu at the top right → "Personal Settings" to update your name and email
 - **Installation Wizard**: On first deployment, the setup wizard guides you through database initialization and admin account creation
 - **Sound Alerts**: Click the bell icon in the top bar to view notifications; toggle sound alerts on/off
+- **Notification Channels**: Admins configure email, DingTalk, WeCom, and Feishu channels as cards under "System Settings → Notification Service"; click a card to open its config modal and send test messages. Feishu app notifications accept either an email address or open_id as the recipient
 
 ## Upgrade Guide
 

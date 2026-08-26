@@ -302,6 +302,10 @@ SQL Server 实例的管理：
 | `ALERT_EMAILS` | 告警接收邮箱列表 | [] |
 | **钉钉通知** | | |
 | `DINGTALK_WEBHOOK_URL` | 钉钉机器人 Webhook 地址 | （可选） |
+| **飞书通知（自建应用）** | | |
+| `FEISHU_APP_ID` | 飞书自建应用 App ID | （可选） |
+| `FEISHU_APP_SECRET` | 飞书自建应用 App Secret | （可选） |
+| `FEISHU_RECEIVE_OPEN_ID` | 关键错误通知接收人（open_id 或邮箱地址） | （可选） |
 | **日志** | | |
 | `LOG_LEVEL` | 日志级别 | INFO |
 | **认证 / JWT** | | |
@@ -317,7 +321,7 @@ SQL Server 实例的管理：
 系统还支持通过数据库 `system_configs` 表存储运行时配置，包括：
 - SQL Server 连接配置
 - 采集与告警配置
-- Webhook 通知配置
+- Webhook 与飞书应用通知配置（接收人支持 open_id 或邮箱地址）
 - 多实例模式配置
 - 前端访问地址（frontend_url）
 - 品牌标题（brand_title）
