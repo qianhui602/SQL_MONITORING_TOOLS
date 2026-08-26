@@ -507,7 +507,7 @@ class FeishuAppNotifier:
             logger.error("Feishu get tenant_access_token failed: %s", e)
             return None
 
-    async def _send_message(self, token: str, message: str) -> bool:
+    async def _send_message(self, token: str, message: str) -> Tuple[bool, str]:
         """向配置的 open_id 发送交互卡片消息
 
         Args:
@@ -515,7 +515,7 @@ class FeishuAppNotifier:
             message: Markdown 格式的消息内容
 
         Returns:
-            bool: 发送成功返回 True
+            tuple: (是否成功, 错误描述)
         """
         card = {
             "header": {
@@ -545,12 +545,26 @@ class FeishuAppNotifier:
                 result = resp.json()
                 if result.get("code") == 0:
                     logger.info("Feishu app notification sent successfully")
-                    return True
-                logger.error("Feishu app send error: %s", result.get("msg"))
-                return False
+                    return True, ""
+                err_msg = result.get("msg", "未知错误")
+                logger.error("Feishu app send error: %s", err_msg)
+                return False, err_msg
+        except httpx.ConnectError as e:
+            msg = f"网络连接失败，无法访问飞书服务器: {e}"
+            logger.error("Feishu app connect failed: %s", e)
+            return False, msg
+        except httpx.TimeoutException as e:
+            msg = f"请求超时: {e}"
+            logger.error("Feishu app timeout: %s", e)
+            return False, msg
+        except httpx.HTTPStatusError as e:
+            msg = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+            logger.error("Feishu app HTTP error: %s", msg)
+            return False, msg
         except Exception as e:
+            msg = f"{type(e).__name__}: {e}"
             logger.error("Feishu app send failed: %s", e)
-            return False
+            return False, msg
 
     async def send(self, message: str) -> bool:
         """发送关键错误通知
@@ -568,7 +582,8 @@ class FeishuAppNotifier:
         token = await self._get_tenant_access_token()
         if not token:
             return False
-        return await self._send_message(token, message)
+        ok, _ = await self._send_message(token, message)
+        return ok
 
     async def send_test(self, message: str) -> Tuple[bool, str]:
         """发送测试消息（用于设置页验证配置）
@@ -586,10 +601,10 @@ class FeishuAppNotifier:
         token = await self._get_tenant_access_token()
         if not token:
             return False, "获取 tenant_access_token 失败，请检查 App ID / App Secret"
-        ok = await self._send_message(token, message)
+        ok, err_msg = await self._send_message(token, message)
         if ok:
             return True, "测试消息发送成功"
-        return False, "发送失败，请检查接收人邮箱/open_id 或应用权限"
+        return False, err_msg or "发送失败，请检查接收人邮箱/open_id 或应用权限"
 
 
 # ============================================================
