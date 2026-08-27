@@ -2,8 +2,8 @@
 
 ## 2026-08-26
 
-**标题：** 关键错误飞书应用通知 / 接收人邮箱支持 / 通知渠道配置弹窗化
-**文件：** `backend/app/services/notification.py`, `backend/app/routers/feishu_test.py`, `backend/app/init_db.py`, `frontend/src/views/Settings.vue`, `frontend/src/components/Layout.vue`, `frontend/src/i18n/zh-CN.js`, `frontend/src/i18n/en-US.js`
+**标题：** 关键错误飞书应用通知 / 接收人邮箱支持 / 通知渠道配置弹窗化 / 通知开关即时生效
+**文件：** `backend/app/services/notification.py`, `backend/app/routers/feishu_test.py`, `backend/app/routers/smtp_test.py`, `backend/app/init_db.py`, `frontend/src/views/Settings.vue`, `frontend/src/components/Layout.vue`, `frontend/src/i18n/zh-CN.js`, `frontend/src/i18n/en-US.js`
 **明细：**
 - 新增关键错误飞书应用通知（FeishuAppNotifier）：通过飞书自建应用调用 tenant_access_token 与 im/v1/messages 接口，直接向指定用户推送红色交互卡片告警，区别于群机器人 Webhook 渠道
 - 仅 severity 为 critical 的严重告警触发飞书应用通知；tenant_access_token 类级别缓存（有效期约 2 小时，提前 5 分钟刷新）

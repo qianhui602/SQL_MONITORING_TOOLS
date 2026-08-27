@@ -2376,6 +2376,7 @@ A: Check the following:
 - Send failures now classify exception types and surface specific reasons (connection failure / timeout / HTTP error / Feishu business code)
 - System Settings "Notification Service" redesigned as card grid + modal config, each channel supports sending test messages
 - Sidebar layout fix: page scrolling allowed and sidebar pinned via sticky positioning; all menus visible without zooming out on low-resolution screens
+- Bug fix: removed the _db_loaded config cache from EmailNotifier / FeishuAppNotifier so database config is re-read on every send; disabling the feishu_app_enabled / smtp_enabled toggles takes effect immediately without a service restart
 
 ## 14. Future Plans
 

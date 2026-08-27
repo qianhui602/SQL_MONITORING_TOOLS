@@ -14,6 +14,7 @@
 - Feishu config is read first from the database system_configs table (feishu_app_enabled / feishu_app_id / feishu_app_secret / feishu_receive_open_id), falling back to environment variables such as FEISHU_APP_ID
 - "Notification Service" page redesign: WeCom / Feishu App / SMTP / Feishu Webhook channels are displayed as a card grid; clicking a card opens its config modal with test-message sending and detailed results
 - Sidebar layout fix: layout container changed to min-height: 100vh to allow page scrolling and sidebar pinned via position: sticky, so all menus fit without zooming out the browser
+- Bug fix: removed the _db_loaded config cache from EmailNotifier / FeishuAppNotifier so database config is re-read on every send — disabling the feishu_app_enabled / smtp_enabled toggles now stops sending immediately without a service restart; SMTP fields are cleared when smtp_enabled is off so _is_configured() returns False
 
 ---
 

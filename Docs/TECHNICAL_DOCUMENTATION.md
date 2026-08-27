@@ -2357,6 +2357,17 @@ A: 检查以下配置：
   - README 新增升级指南和一键升级脚本
   - 新增用户手册（Docs/USER_MANUAL.md）
 
+### v1.6.0 (2026-08-26)
+- 新增关键错误飞书应用通知
+  - 通过飞书自建应用 tenant_access_token + im/v1/messages 直达指定用户
+  - 接收人支持 open_id 与邮箱地址，自动识别 receive_id_type
+  - 仅 critical 严重告警触发，与群机器人 Webhook 渠道相互独立
+- 新增飞书群机器人 Webhook 通知渠道
+- 发送失败细分异常类型并透出具体原因（网络连接失败 / 请求超时 / HTTP 错误 / 飞书业务码）
+- 系统设置"通知服务"改版为卡片网格 + 弹窗配置模式，各渠道支持发送测试消息
+- 侧边栏布局修复：允许页面滚动、侧边栏 sticky 固定，低分辨率下无需缩放浏览器即可查看全部菜单
+- Bug修复：移除 EmailNotifier / FeishuAppNotifier 的 _db_loaded 配置缓存，每次发送前重新读取数据库配置，前端关闭 feishu_app_enabled / smtp_enabled 开关后立即生效，无需重启服务
+
 ## 14. 未来规划
 
 ### 14.1 功能扩展
