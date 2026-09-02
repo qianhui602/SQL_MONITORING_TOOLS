@@ -17,7 +17,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.alert import AlertLog
-from app.models.deadlock import DeadlockEvent, DeadlockSql
+from app.models.deadlock import DeadlockEvent
 from app.models.performance import MetricRecord
 from app.models.slow_query import SlowQueryRecord
 from app.models.user import User
@@ -203,11 +203,7 @@ async def export_deadlocks(
     stmt = (
         select(DeadlockEvent)
         .where(*conditions)
-        .options(
-            selectinload(DeadlockEvent.deadlock_sqls).order_by(
-                DeadlockSql.session_id
-            )
-        )
+        .options(selectinload(DeadlockEvent.deadlock_sqls))
         .order_by(DeadlockEvent.occur_at.desc())
         .limit(50000)
     )
@@ -222,8 +218,12 @@ async def export_deadlocks(
 
     async def row_generator():
         for rec in records:
+            sqls = sorted(
+                rec.deadlock_sqls or [],
+                key=lambda s: (s.session_id is not None, s.session_id),
+            )
             sql_parts = []
-            for sql in rec.deadlock_sqls or []:
+            for sql in sqls:
                 sql_text = (sql.sql_text or "").strip()
                 if not sql_text:
                     continue
