@@ -257,6 +257,7 @@ export default {
       '1h': 'Last 1 hour',
       '6h': 'Last 6 hours',
       '24h': 'Last 24 hours',
+      '3d': 'Last 3 days',
       '7d': 'Last 7 days',
     },
   },

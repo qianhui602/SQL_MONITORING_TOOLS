@@ -182,6 +182,7 @@ const timeRangeOptions = computed(() => [
   { label: t('slowQueries.ranges.1h'), value: '1h' },
   { label: t('slowQueries.ranges.6h'), value: '6h' },
   { label: t('slowQueries.ranges.24h'), value: '24h' },
+  { label: t('slowQueries.ranges.3d'), value: '3d' },
   { label: t('slowQueries.ranges.7d'), value: '7d' }
 ])
 
@@ -200,7 +201,7 @@ const error = ref(null)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
 function getTimeRange() {
-  const rangeMap = { '1h': 1, '6h': 6, '24h': 24, '7d': 168 }
+  const rangeMap = { '1h': 1, '6h': 6, '24h': 24, '3d': 72, '7d': 168 }
   const hours = rangeMap[timeRange.value] || 1
   const now = new Date()
   const start = new Date(now.getTime() - hours * 60 * 60 * 1000)
@@ -264,7 +265,15 @@ async function onExport() {
     downloadBlob(blob, buildExportFilename('slow_queries'))
   } catch (e) {
     console.error('导出慢查询失败', e)
-    alert(t('common.exportFailed'))
+    let msg = t('common.exportFailed')
+    try {
+      const data = e?.response?.data
+      if (data && typeof data.text === 'function') {
+        const parsed = JSON.parse(await data.text())
+        if (parsed?.detail) msg = `${msg} - ${parsed.detail}`
+      }
+    } catch (_) { /* 忽略解析失败，使用通用提示 */ }
+    alert(msg)
   } finally {
     exporting.value = false
   }
