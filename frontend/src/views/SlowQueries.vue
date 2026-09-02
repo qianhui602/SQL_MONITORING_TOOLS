@@ -169,8 +169,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSlowQueries } from '@/api'
+import { getSlowQueries, exportSlowQueries } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { downloadBlob, buildExportFilename } from '@/utils/export'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
 
 const { t } = useI18n()
@@ -189,6 +190,7 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const exporting = ref(false)
 const expandedId = ref(null)
 const expandedQuery = ref('')
 const sortField = ref('total_elapsed_ms')
@@ -243,6 +245,29 @@ function onSearch() {
   expandedId.value = null
   expandedQuery.value = ''
   fetchList()
+}
+
+async function onExport() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const range = getTimeRange()
+    const params = {
+      start_time: range.start_time,
+      end_time: range.end_time,
+      sort_by: sortField.value,
+      sort_order: sortOrder.value
+    }
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
+    const blob = await exportSlowQueries(params)
+    downloadBlob(blob, buildExportFilename('slow_queries'))
+  } catch (e) {
+    console.error('导出慢查询失败', e)
+    alert(t('common.exportFailed'))
+  } finally {
+    exporting.value = false
+  }
 }
 
 function goPage(p) {

@@ -196,8 +196,12 @@ export default {
   deadlocks: {
     instance: 'Instance',
     allInstances: 'All instances',
-    startTime: 'Start Time',
-    endTime: 'End Time',
+    timeRange: 'Time Range',
+    ranges: {
+      '6h': 'Last 6 hours',
+      '24h': 'Last 1 day',
+      '7d': 'Last 7 days',
+    },
     user: 'User',
     host: 'Host (Device)',
     application: 'Application',

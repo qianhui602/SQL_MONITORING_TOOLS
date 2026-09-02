@@ -10,15 +10,22 @@
           </select>
         </div>
         <div class="toolbar-group">
-          <label class="toolbar-label">{{ t('deadlocks.startTime') }}</label>
-          <input type="datetime-local" v-model="startTime" class="input" />
-        </div>
-        <div class="toolbar-group">
-          <label class="toolbar-label">{{ t('deadlocks.endTime') }}</label>
-          <input type="datetime-local" v-model="endTime" class="input" />
+          <label class="toolbar-label">{{ t('deadlocks.timeRange') }}</label>
+          <div class="time-range-group">
+            <button
+              v-for="opt in timeRangeOptions"
+              :key="opt.value"
+              class="time-btn"
+              :class="{ active: timeRange === opt.value }"
+              @click="onTimeRangeChange(opt.value)"
+            >{{ opt.label }}</button>
+          </div>
         </div>
         <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
         <button class="btn-secondary" @click="onResetFilters" :title="t('common.reset')">{{ t('common.reset') }}</button>
+        <button class="btn-export" :disabled="exporting" @click="onExport">
+          {{ exporting ? t('common.exporting') : t('common.export') }}
+        </button>
       </div>
       <div class="toolbar-row filter-row">
         <div class="toolbar-group">
@@ -198,20 +205,27 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getDeadlocks, getDeadlockDetail, analyzeDeadlock } from '@/api'
+import { getDeadlocks, getDeadlockDetail, analyzeDeadlock, exportDeadlocks } from '@/api'
 import { formatDateTime } from '@/utils/datetime'
+import { downloadBlob, buildExportFilename } from '@/utils/export'
 import { useInstanceFilter } from '@/composables/useInstanceFilter'
 
 const { t } = useI18n()
 
 const { instances, selectedInstance, loadingInstances, getServerAddress } = useInstanceFilter()
 
+const timeRangeOptions = computed(() => [
+  { label: t('deadlocks.ranges.6h'), value: '6h' },
+  { label: t('deadlocks.ranges.24h'), value: '24h' },
+  { label: t('deadlocks.ranges.7d'), value: '7d' }
+])
+
+const timeRange = ref('6h')
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
-const startTime = ref('')
-const endTime = ref('')
+const exporting = ref(false)
 const filterLoginName = ref('')
 const filterHostName = ref('')
 const filterClientApp = ref('')
@@ -240,15 +254,24 @@ function renderAnalysis(text) {
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
+function getTimeRange() {
+  const rangeMap = { '6h': 6, '24h': 24, '7d': 168 }
+  const hours = rangeMap[timeRange.value] || 6
+  const now = new Date()
+  const start = new Date(now.getTime() - hours * 60 * 60 * 1000)
+  return { start_time: start.toISOString(), end_time: now.toISOString() }
+}
+
 async function fetchList() {
   error.value = null
   try {
+    const range = getTimeRange()
     const params = {
       page: page.value,
-      page_size: pageSize.value
+      page_size: pageSize.value,
+      start_time: range.start_time,
+      end_time: range.end_time
     }
-    if (startTime.value) params.start_time = startTime.value
-    if (endTime.value) params.end_time = endTime.value
     if (filterLoginName.value) params.login_name = filterLoginName.value
     if (filterHostName.value) params.host_name = filterHostName.value
     if (filterClientApp.value) params.client_app = filterClientApp.value
@@ -273,10 +296,14 @@ function onSearch() {
   fetchList()
 }
 
+function onTimeRangeChange(value) {
+  timeRange.value = value
+  onSearch()
+}
+
 function onResetFilters() {
   selectedInstance.value = ''
-  startTime.value = ''
-  endTime.value = ''
+  timeRange.value = '6h'
   filterLoginName.value = ''
   filterHostName.value = ''
   filterClientApp.value = ''
@@ -287,9 +314,11 @@ async function onExport() {
   if (exporting.value) return
   exporting.value = true
   try {
-    const params = {}
-    if (startTime.value) params.start_time = startTime.value
-    if (endTime.value) params.end_time = endTime.value
+    const range = getTimeRange()
+    const params = {
+      start_time: range.start_time,
+      end_time: range.end_time
+    }
     if (filterLoginName.value) params.login_name = filterLoginName.value
     if (filterHostName.value) params.host_name = filterHostName.value
     if (filterClientApp.value) params.client_app = filterClientApp.value
@@ -412,6 +441,38 @@ onMounted(() => {
 .toolbar-label {
   font-size: 13px;
   color: #8c8c8c;
+}
+
+.time-range-group {
+  display: flex;
+  gap: 4px;
+  background: #f5f6fa;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.time-btn {
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.time-btn:hover {
+  color: #333;
+}
+
+.time-btn.active {
+  background: #fff;
+  color: #1890ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
 }
 
 .input {

@@ -196,8 +196,12 @@ export default {
   deadlocks: {
     instance: '实例',
     allInstances: '全部实例',
-    startTime: '开始时间',
-    endTime: '结束时间',
+    timeRange: '时间范围',
+    ranges: {
+      '6h': '最近6小时',
+      '24h': '最近1天',
+      '7d': '最近7天',
+    },
     user: '用户',
     host: '主机（设备）',
     application: '应用程序',
