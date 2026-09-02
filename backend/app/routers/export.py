@@ -300,7 +300,7 @@ async def export_slow_queries(
     )
 
     try:
-        result = await db.stream(stmt.yield_per(1000))
+        result = await db.stream(stmt.execution_options(yield_per=1000))
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"查询慢查询记录失败: {str(e)}"
