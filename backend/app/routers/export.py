@@ -13,10 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.alert import AlertLog
-from app.models.deadlock import DeadlockEvent
+from app.models.deadlock import DeadlockEvent, DeadlockSql
 from app.models.performance import MetricRecord
 from app.models.slow_query import SlowQueryRecord
 from app.models.user import User
@@ -202,6 +203,11 @@ async def export_deadlocks(
     stmt = (
         select(DeadlockEvent)
         .where(*conditions)
+        .options(
+            selectinload(DeadlockEvent.deadlock_sqls).order_by(
+                DeadlockSql.session_id
+            )
+        )
         .order_by(DeadlockEvent.occur_at.desc())
         .limit(50000)
     )
@@ -216,6 +222,17 @@ async def export_deadlocks(
 
     async def row_generator():
         for rec in records:
+            sql_parts = []
+            for sql in rec.deadlock_sqls or []:
+                sql_text = (sql.sql_text or "").strip()
+                if not sql_text:
+                    continue
+                prefix = (
+                    f"[会话 {sql.session_id}]\n"
+                    if sql.session_id is not None
+                    else ""
+                )
+                sql_parts.append(f"{prefix}{sql_text}")
             yield (
                 rec.occur_at.isoformat() if rec.occur_at else "",
                 rec.victim_session_id if rec.victim_session_id is not None else "",
@@ -223,9 +240,13 @@ async def export_deadlocks(
                 rec.login_name or "",
                 rec.host_name or "",
                 rec.client_app or "",
+                "\n\n".join(sql_parts),
             )
 
-    headers = ["发生时间", "受害会话ID", "SQL Server地址", "用户", "主机（设备）", "应用程序"]
+    headers = [
+        "发生时间", "受害会话ID", "SQL Server地址", "用户",
+        "主机（设备）", "应用程序", "关联SQL语句",
+    ]
     filename = f"deadlocks_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 
     return StreamingResponse(
@@ -279,15 +300,14 @@ async def export_slow_queries(
     )
 
     try:
-        result = await db.execute(stmt)
-        records = result.scalars().all()
+        result = await db.stream(stmt.execution_options(stream_results=True))
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"查询慢查询记录失败: {str(e)}"
         )
 
     async def row_generator():
-        for r in records:
+        async for r in result.scalars():
             yield (
                 r.sql_text or "",
                 r.execution_count,
