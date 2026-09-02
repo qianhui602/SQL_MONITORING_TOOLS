@@ -215,8 +215,8 @@ export function getAuditLogs(params) { return request.get('/audit-logs', { param
 // ===== 数据导出 =====
 export function exportMetrics(params) { return request.get('/export/metrics', { params, responseType: 'blob' }) }
 export function exportAlerts(params) { return request.get('/export/alerts', { params, responseType: 'blob' }) }
-export function exportDeadlocks(params) { return request.get('/export/deadlocks', { params, responseType: 'blob' }) }
-export function exportSlowQueries(params) { return request.get('/export/slow-queries', { params, responseType: 'blob' }) }
+export function exportDeadlocks(params) { return request.get('/export/deadlocks', { params, responseType: 'blob', timeout: 120000 }) }
+export function exportSlowQueries(params) { return request.get('/export/slow-queries', { params, responseType: 'blob', timeout: 120000 }) }
 
 // ===== 通知管理 =====
 export function getUnreadCount() { return request.get('/notifications/unread-count') }

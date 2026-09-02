@@ -283,6 +283,28 @@ function onResetFilters() {
   onSearch()
 }
 
+async function onExport() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params = {}
+    if (startTime.value) params.start_time = startTime.value
+    if (endTime.value) params.end_time = endTime.value
+    if (filterLoginName.value) params.login_name = filterLoginName.value
+    if (filterHostName.value) params.host_name = filterHostName.value
+    if (filterClientApp.value) params.client_app = filterClientApp.value
+    const serverAddress = getServerAddress()
+    if (serverAddress) params.server_address = serverAddress
+    const blob = await exportDeadlocks(params)
+    downloadBlob(blob, buildExportFilename('deadlocks'))
+  } catch (e) {
+    console.error('导出死锁记录失败', e)
+    alert(t('common.exportFailed'))
+  } finally {
+    exporting.value = false
+  }
+}
+
 function goPage(p) {
   if (p < 1 || p > totalPages.value) return
   page.value = p
@@ -435,6 +457,28 @@ onMounted(() => {
 .btn-secondary:hover {
   border-color: #1890ff;
   color: #1890ff;
+}
+
+.btn-export {
+  height: 32px;
+  padding: 0 16px;
+  background: #fff;
+  color: #595959;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export:hover:not(:disabled) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.btn-export:disabled {
+  color: #bfbfbf;
+  cursor: not-allowed;
 }
 
 .instance-select {

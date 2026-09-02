@@ -21,6 +21,9 @@
         </div>
       </div>
       <button class="btn-primary" @click="onSearch">{{ t('common.query') }}</button>
+      <button class="btn-export" :disabled="exporting" @click="onExport">
+        {{ exporting ? t('common.exporting') : t('common.export') }}
+      </button>
     </div>
 
     <div v-if="error" class="error-state">
@@ -378,6 +381,28 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #40a9ff;
+}
+
+.btn-export {
+  height: 32px;
+  padding: 0 16px;
+  background: var(--bg-card, #fff);
+  color: var(--text-secondary, #595959);
+  border: 1px solid var(--border-color, #d9d9d9);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export:hover:not(:disabled) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.btn-export:disabled {
+  color: var(--text-muted, #bfbfbf);
+  cursor: not-allowed;
 }
 
 .instance-select {

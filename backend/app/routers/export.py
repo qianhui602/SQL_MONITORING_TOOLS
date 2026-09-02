@@ -28,8 +28,8 @@ router = APIRouter()
 async def _stream_csv(headers: list, rows_generator):
     """生成 CSV 流
 
-    使用 StringIO 缓冲区逐批写入 CSV 数据并 yield，
-    实现低内存占用的流式导出。
+    使用 csv.writer 正确转义逗号、引号、换行等特殊字符，
+    逐行产出数据块，实现低内存占用的流式导出。
 
     Args:
         headers: CSV 列标题列表
@@ -41,31 +41,17 @@ async def _stream_csv(headers: list, rows_generator):
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # 写入 BOM 确保 Excel 正确识别 UTF-8
-    yield io.BytesIO(b"\xef\xbb\xbf").read()
-    # 写入表头
-    output.write(",".join(f'"{h}"' for h in headers) + "\n")
-
-    batch_size = 500
-    batch = []
+    yield b"\xef\xbb\xbf"
+    writer.writerow(headers)
+    yield output.getvalue().encode("utf-8")
+    output.seek(0)
+    output.truncate()
 
     async for row in rows_generator:
-        batch.append(row)
-        if len(batch) >= batch_size:
-            for r in batch:
-                output.write(",".join(f'"{v}"' if v is not None else "" for v in r) + "\n")
-            data = output.getvalue()
-            output.seek(0)
-            output.truncate()
-            yield data.encode("utf-8")
-            batch = []
-
-    # 写入剩余批次
-    for r in batch:
-        output.write(",".join(f'"{v}"' if v is not None else "" for v in r) + "\n")
-    data = output.getvalue()
-    if data:
-        yield data.encode("utf-8")
+        writer.writerow(row)
+        yield output.getvalue().encode("utf-8")
+        output.seek(0)
+        output.truncate()
 
 
 @router.get(
@@ -191,15 +177,27 @@ async def export_alerts(
 async def export_deadlocks(
     start_time: Optional[datetime] = Query(None, description="起始时间"),
     end_time: Optional[datetime] = Query(None, description="结束时间"),
+    server_address: Optional[str] = Query(None, description="按实例筛选"),
+    login_name: Optional[str] = Query(None, description="按用户名筛选（模糊匹配）"),
+    host_name: Optional[str] = Query(None, description="按主机名筛选（模糊匹配）"),
+    client_app: Optional[str] = Query(None, description="按应用程序筛选（模糊匹配）"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    """导出死锁事件为 CSV 文件。"""
+    """导出死锁事件为 CSV 文件，列与死锁监控页面一致，筛选条件与列表接口一致。"""
     conditions = []
     if start_time:
         conditions.append(DeadlockEvent.occur_at >= start_time)
     if end_time:
         conditions.append(DeadlockEvent.occur_at <= end_time)
+    if server_address:
+        conditions.append(DeadlockEvent.server_address == server_address)
+    if login_name:
+        conditions.append(DeadlockEvent.login_name.ilike(f"%{login_name}%"))
+    if host_name:
+        conditions.append(DeadlockEvent.host_name.ilike(f"%{host_name}%"))
+    if client_app:
+        conditions.append(DeadlockEvent.client_app.ilike(f"%{client_app}%"))
 
     stmt = (
         select(DeadlockEvent)
@@ -219,13 +217,15 @@ async def export_deadlocks(
     async def row_generator():
         for rec in records:
             yield (
-                rec.id,
                 rec.occur_at.isoformat() if rec.occur_at else "",
-                rec.victim_session_id or "",
+                rec.victim_session_id if rec.victim_session_id is not None else "",
                 rec.server_address,
+                rec.login_name or "",
+                rec.host_name or "",
+                rec.client_app or "",
             )
 
-    headers = ["ID", "发生时间", "受害者会话ID", "服务器地址"]
+    headers = ["发生时间", "受害会话ID", "SQL Server地址", "用户", "主机（设备）", "应用程序"]
     filename = f"deadlocks_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 
     return StreamingResponse(
@@ -244,45 +244,65 @@ async def export_deadlocks(
 async def export_slow_queries(
     start_time: Optional[datetime] = Query(None, description="起始时间"),
     end_time: Optional[datetime] = Query(None, description="结束时间"),
+    server_address: Optional[str] = Query(None, description="按实例筛选"),
+    sort_by: str = Query("total_elapsed_ms", description="排序字段"),
+    sort_order: str = Query("desc", description="排序方向 asc/desc"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    """导出慢查询数据为 CSV 文件。"""
-    headers = [
-        "ID", "SQL哈希", "SQL文本", "执行次数", "CPU时间(ms)",
-        "逻辑读", "总耗时(ms)", "平均耗时(ms)", "最后执行时间", "采集时间",
-    ]
+    """导出慢查询数据为 CSV 文件，列与慢查询分析页面一致，筛选和排序与列表接口一致。"""
+    filters = []
+    if start_time:
+        filters.append(SlowQueryRecord.collected_at >= start_time)
+    if end_time:
+        filters.append(SlowQueryRecord.collected_at <= end_time)
+    if server_address:
+        filters.append(SlowQueryRecord.server_address == server_address)
 
-    async def row_generator():
-        filters = []
-        if start_time:
-            filters.append(SlowQueryRecord.collected_at >= start_time)
-        if end_time:
-            filters.append(SlowQueryRecord.collected_at <= end_time)
+    sort_field_map = {
+        "execution_count": SlowQueryRecord.execution_count,
+        "total_cpu_time_ms": SlowQueryRecord.total_cpu_ms,
+        "total_logical_reads": SlowQueryRecord.total_logical_reads,
+        "avg_duration_ms": SlowQueryRecord.avg_elapsed_ms,
+        "last_execution_time": SlowQueryRecord.last_execution_time,
+        "collected_at": SlowQueryRecord.collected_at,
+        "total_elapsed_ms": SlowQueryRecord.total_elapsed_ms,
+    }
+    sort_col = sort_field_map.get(sort_by, SlowQueryRecord.total_elapsed_ms)
+    order_clause = sort_col.asc() if sort_order == "asc" else sort_col.desc()
 
-        stmt = (
-            select(SlowQueryRecord)
-            .where(*filters) if filters else select(SlowQueryRecord)
-        )
-        stmt = stmt.order_by(SlowQueryRecord.collected_at.desc())
+    stmt = (
+        select(SlowQueryRecord)
+        .where(*filters)
+        .order_by(order_clause)
+        .limit(50000)
+    )
 
+    try:
         result = await db.execute(stmt)
         records = result.scalars().all()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"查询慢查询记录失败: {str(e)}"
+        )
 
+    async def row_generator():
         for r in records:
             yield (
-                r.id,
-                r.sql_hash,
-                r.sql_text[:200] if r.sql_text else "",
+                r.sql_text or "",
                 r.execution_count,
-                round(r.total_cpu_ms, 2),
+                r.total_cpu_ms,
                 r.total_logical_reads,
-                round(r.total_elapsed_ms, 2),
-                round(r.avg_elapsed_ms, 2),
+                r.avg_elapsed_ms,
                 r.last_execution_time.isoformat() if r.last_execution_time else "",
-                r.collected_at.isoformat(),
+                r.collected_at.isoformat() if r.collected_at else "",
+                r.server_address,
             )
 
+    headers = [
+        "查询文本", "执行次数", "总CPU时间(ms)", "总逻辑读",
+        "平均耗时(ms)", "最后执行时间", "采集时间", "实例地址",
+    ]
     filename = f"slow_queries_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 
     return StreamingResponse(
